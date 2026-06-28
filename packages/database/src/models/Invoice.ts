@@ -56,7 +56,7 @@ const InvoiceSchema = new Schema<InvoiceDocument>({
   currency: { type: String, required: true, default: 'USD' },
   notes: { type: String },
   issueDate: { type: Date, default: Date.now },
-  dueDate: { type: Date, required: true },
+  dueDate: { type: Date },
   
   status: {
     type: String,

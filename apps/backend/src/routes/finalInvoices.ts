@@ -93,7 +93,8 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
-    const merged = { ...existing.toObject(), ...req.body };
+    const existingPlain = JSON.parse(JSON.stringify(existing.toObject()));
+    const merged = { ...existingPlain, ...req.body };
     const validatedData = invoiceSchema.parse(merged);
     const totals = calculateTotals(validatedData.items);
     

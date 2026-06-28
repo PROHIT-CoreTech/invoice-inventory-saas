@@ -29,10 +29,10 @@ export const invoiceSchema = z.object({
   subTotal: z.number().nonnegative().default(0),
   taxAmount: z.number().nonnegative().default(0),
   totalAmount: z.number().nonnegative().default(0),
-  currency: z.string().min(1, 'Currency is required').default('USD'),
+  currency: z.string().min(1, 'Currency is required').default('INR'),
   notes: z.string().optional(),
   issueDate: z.union([z.date(), z.string()]).default(() => new Date()),
-  dueDate: z.union([z.date(), z.string()]),
+  dueDate: z.union([z.date(), z.string()]).optional(),
   status: z.string().default('DRAFT'),
   
   // Tracing references

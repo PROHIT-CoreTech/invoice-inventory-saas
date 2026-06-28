@@ -49,3 +49,17 @@ export const useUpdateProformaInvoice = () => {
     },
   });
 };
+
+export const useConvertProformaToInvoice = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, Error, string>({
+    mutationFn: async (proformaId) => {
+      const response = await apiClient.post(`/convert/proforma-to-invoice/${proformaId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proformaInvoices'] });
+      queryClient.invalidateQueries({ queryKey: ['finalInvoices'] });
+    },
+  });
+};

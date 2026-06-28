@@ -13,8 +13,8 @@ export interface LineItem {
   quantity: number;
   price: number;
   taxRate: number; // Percentage, e.g. 18 for 18%
-  taxAmount: number; // (Price * Quantity) * (TaxRate / 100)
-  total: number; // (Price * Quantity) + TaxAmount
+  taxAmount?: number; // (Price * Quantity) * (TaxRate / 100)
+  total?: number; // (Price * Quantity) + TaxAmount
 }
 
 export interface BaseDocument {
@@ -28,7 +28,7 @@ export interface BaseDocument {
   currency: string;
   notes?: string;
   issueDate: Date | string;
-  dueDate: Date | string;
+  dueDate?: Date | string;
 }
 
 export type BillingDocumentType = 'QUOTATION' | 'PROFORMA' | 'FINAL_INVOICE';
@@ -54,20 +54,23 @@ export interface Invoice extends BaseDocument {
 }
 
 // Kept for legacy model compatibility
-export interface Quotation extends BaseDocument {
+export interface Quotation extends Invoice {
+  documentType: 'QUOTATION';
   quoteNumber: string;
   validUntil: Date | string;
   status: QuotationStatus;
 }
 
-export interface ProformaInvoice extends BaseDocument {
+export interface ProformaInvoice extends Invoice {
+  documentType: 'PROFORMA';
   proformaNumber: string;
   quotationRef?: any;
   validUntil: Date | string;
   status: ProformaStatus;
 }
 
-export interface FinalInvoice extends BaseDocument {
+export interface FinalInvoice extends Invoice {
+  documentType: 'FINAL_INVOICE';
   invoiceNumber: string;
   proformaRef?: any;
   status: InvoiceStatus;

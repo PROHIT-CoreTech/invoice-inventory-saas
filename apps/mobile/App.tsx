@@ -8,6 +8,8 @@ import {
   useColorScheme,
   View,
   Platform,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -15,6 +17,7 @@ import {
   useGetQuotations,
   useGetProformaInvoices,
   useGetFinalInvoices,
+  useUpdateFinalInvoice,
 } from '@my-billing/api-client';
 
 // 1. Configure the API client host at runtime depending on the platform.
@@ -38,8 +41,31 @@ function DashboardScreen() {
   const { data: quotations = [], isLoading: loadingQuotes, error: errorQuotes } = useGetQuotations();
   const { data: proformas = [], isLoading: loadingProformas, error: errorProformas } = useGetProformaInvoices();
   const { data: invoices = [], isLoading: loadingInvoices, error: errorInvoices } = useGetFinalInvoices();
+  const updateInvoice = useUpdateFinalInvoice();
 
   const isApiError = errorQuotes || errorProformas || errorInvoices;
+
+  const handleMarkPaid = (id: string) => {
+    Alert.alert(
+      'Confirm Payment',
+      'Are you sure you want to mark this invoice as Paid?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            try {
+              await updateInvoice.mutateAsync({ id, data: { status: 'PAID' as any, paymentStatus: 'PAID' as any } });
+              Alert.alert('Success', 'Invoice marked as PAID');
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Error', 'Failed to mark invoice as paid');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const totalQuoteVolume = quotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0);
   const totalProformaVolume = proformas.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
@@ -107,15 +133,25 @@ function DashboardScreen() {
           <Text style={styles.emptyText}>No final invoices generated yet.</Text>
         ) : (
           invoices.slice(0, 5).map((item) => (
-            <View key={item.id || item.invoiceNumber} style={styles.docRow}>
-              <View>
-                <Text style={styles.docNumber}>{item.invoiceNumber}</Text>
-                <Text style={styles.docClient}>{item.clientInfo.name}</Text>
+            <View key={item.id || item.documentNumber || item.invoiceNumber} style={styles.docRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.docNumber}>{item.documentNumber || item.invoiceNumber}</Text>
+                <Text style={styles.docClient}>{item.clientInfo?.name}</Text>
               </View>
               <View style={styles.docRight}>
                 <Text style={styles.docAmount}>{formatCurrency(item.totalAmount)}</Text>
-                <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '1A' }]}>
-                  <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 }}>
+                  {item.status !== 'PAID' && (
+                    <TouchableOpacity
+                      style={styles.markPaidBtn}
+                      onPress={() => handleMarkPaid(item.id || (item as any)._id)}
+                    >
+                      <Text style={styles.markPaidText}>Mark Paid</Text>
+                    </TouchableOpacity>
+                  )}
+                  <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '1A', marginTop: 0 }]}>
+                    <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -129,10 +165,10 @@ function DashboardScreen() {
           <Text style={styles.emptyText}>No quotations generated yet.</Text>
         ) : (
           quotations.slice(0, 5).map((item) => (
-            <View key={item.id || item.quoteNumber} style={styles.docRow}>
+            <View key={item.id || item.documentNumber || item.quoteNumber} style={styles.docRow}>
               <View>
-                <Text style={styles.docNumber}>{item.quoteNumber}</Text>
-                <Text style={styles.docClient}>{item.clientInfo.name}</Text>
+                <Text style={styles.docNumber}>{item.documentNumber || item.quoteNumber}</Text>
+                <Text style={styles.docClient}>{item.clientInfo?.name}</Text>
               </View>
               <View style={styles.docRight}>
                 <Text style={styles.docAmount}>{formatCurrency(item.totalAmount)}</Text>
@@ -285,5 +321,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     padding: 10,
+  },
+  markPaidBtn: {
+    backgroundColor: '#10b981',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
+  markPaidText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });

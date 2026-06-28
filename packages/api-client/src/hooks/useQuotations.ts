@@ -49,3 +49,17 @@ export const useUpdateQuotation = () => {
     },
   });
 };
+
+export const useConvertQuoteToProforma = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, Error, string>({
+    mutationFn: async (quoteId) => {
+      const response = await apiClient.post(`/convert/quote-to-proforma/${quoteId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['proformaInvoices'] });
+    },
+  });
+};

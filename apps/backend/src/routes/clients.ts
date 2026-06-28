@@ -25,6 +25,16 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+// GET: List all clients in the master list (sorted alphabetically)
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const clients = await ClientModel.find().sort({ name: 1 });
+    res.json(clients);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET: Search clients by query (case-insensitive regex for autocomplete dropdowns)
 router.get('/search', async (req: Request, res: Response, next: NextFunction) => {
   try {
