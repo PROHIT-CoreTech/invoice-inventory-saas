@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import './index.css';
 import {
   useGetQuotations,
@@ -16,6 +16,7 @@ import {
   useUpdateFinalInvoice,
 } from '@my-billing/api-client';
 import { type Quotation, type ProformaInvoice, type FinalInvoice } from '@my-billing/database';
+import { generateDocumentHtml } from '@my-billing/document-templates';
 
 export default function App() {
   // Querying using shared TanStack Query hooks from @my-billing/api-client
@@ -41,6 +42,47 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [docType, setDocType] = useState<'QUOTATION' | 'PROFORMA' | 'FINAL_INVOICE'>('QUOTATION');
   const [printDoc, setPrintDoc] = useState<Quotation | ProformaInvoice | FinalInvoice | null>(null);
+  
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const getDocumentData = (doc: Quotation | ProformaInvoice | FinalInvoice) => {
+    return {
+      documentType: doc.documentType,
+      documentNumber: doc.documentNumber || (doc as any).quoteNumber || (doc as any).proformaNumber || (doc as any).invoiceNumber || '',
+      issueDate: doc.issueDate,
+      dueDate: (doc as any).dueDate,
+      validUntil: (doc as any).validUntil,
+      clientInfo: {
+        name: doc.clientInfo?.name || '',
+        email: doc.clientInfo?.email,
+        billingAddress: doc.clientInfo?.billingAddress,
+        billingAndShippingAddress: doc.clientInfo?.billingAddress,
+        gstin: doc.clientInfo?.gstin,
+        stateName: (doc.clientInfo as any)?.stateName || 'Maharashtra',
+        stateCode: (doc.clientInfo as any)?.stateCode || '27',
+      },
+      items: (doc.items || []).map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        price: item.price,
+        taxRate: item.taxRate,
+        hsnSac: (item as any).hsnSac || '998311',
+        per: (item as any).per || 'nos',
+        discountPercent: (item as any).discountPercent || 0,
+      })),
+      notes: doc.notes,
+      currency: doc.currency,
+      applyGst: (doc as any).applyGst !== false,
+    };
+  };
+
+  const handlePrint = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.print();
+    } else {
+      window.print();
+    }
+  };
 
   // Daily Mode & History States
   const [viewMode, setViewMode] = useState<'daily' | 'history'>('daily');
@@ -955,84 +997,15 @@ export default function App() {
               <h3>Print Preview</h3>
               <button type="button" className="btn-close" onClick={() => setPrintDoc(null)}>&times;</button>
             </div>
-            <div className="modal-body" style={{ background: '#f8f9fa' }}>
+            <div className="modal-body" style={{ background: '#f8f9fa', padding: 0 }}>
               {renderAuditTrail(printDoc)}
-              <div className="print-area">
-                <div className="invoice-print-header">
-                  <div>
-                    <h2 className="company-title">PROHIT CoreTech</h2>
-                    <p className="company-details">GSTIN: 27ASDFG1234H1Z1 | PAN: ABCDE1234F</p>
-                    <p className="company-details">Kalyan, Maharashtra, India</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <h1 className="doc-type-title">
-                      {printDoc.documentType === 'QUOTATION' ? 'QUOTATION' : printDoc.documentType === 'PROFORMA' ? 'PROFORMA INVOICE' : 'TAX INVOICE'}
-                    </h1>
-                    <p><strong>Doc #:</strong> {printDoc.documentNumber || (printDoc as any).quoteNumber || (printDoc as any).proformaNumber || (printDoc as any).invoiceNumber}</p>
-                    <p><strong>Date:</strong> {formatDate(printDoc.issueDate)}</p>
-                    {printDoc.documentType === 'FINAL_INVOICE' ? (
-                      <p><strong>Due Date:</strong> {formatDate((printDoc as any).dueDate)}</p>
-                    ) : (
-                      <p><strong>Valid Until:</strong> {formatDate((printDoc as any).validUntil)}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="invoice-print-client">
-                  <h3>Bill To:</h3>
-                  <p className="client-name">{printDoc.clientInfo?.name}</p>
-                  <p>{printDoc.clientInfo?.email}</p>
-                  {printDoc.clientInfo?.billingAddress && <p>{printDoc.clientInfo.billingAddress}</p>}
-                  {printDoc.clientInfo?.gstin && <p><strong>GSTIN:</strong> {printDoc.clientInfo.gstin}</p>}
-                  {printDoc.clientInfo?.pan && <p><strong>PAN:</strong> {printDoc.clientInfo.pan}</p>}
-                </div>
-
-                <table className="invoice-print-items">
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left' }}>Description</th>
-                      <th style={{ textAlign: 'right', width: '10%' }}>Qty</th>
-                      <th style={{ textAlign: 'right', width: '15%' }}>Price</th>
-                      <th style={{ textAlign: 'right', width: '10%' }}>Tax %</th>
-                      <th style={{ textAlign: 'right', width: '15%' }}>Tax Amt</th>
-                      <th style={{ textAlign: 'right', width: '15%' }}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {printDoc.items.map((item, idx) => {
-                      const qty = item.quantity || 0;
-                      const price = item.price || 0;
-                      const taxRate = item.taxRate || 0;
-                      const itemSub = qty * price;
-                      const taxAmt = item.taxAmount ?? (itemSub * (taxRate / 100));
-                      const itemTotal = item.total ?? (itemSub + taxAmt);
-                      return (
-                        <tr key={idx}>
-                          <td style={{ textAlign: 'left' }}>{item.description}</td>
-                          <td style={{ textAlign: 'right' }}>{qty}</td>
-                          <td style={{ textAlign: 'right' }}>{formatCurrency(price, printDoc.currency)}</td>
-                          <td style={{ textAlign: 'right' }}>{taxRate}%</td>
-                          <td style={{ textAlign: 'right' }}>{formatCurrency(taxAmt, printDoc.currency)}</td>
-                          <td style={{ textAlign: 'right' }}>{formatCurrency(itemTotal, printDoc.currency)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                <div className="invoice-print-totals">
-                  <div>Subtotal: {formatCurrency(printDoc.subTotal, printDoc.currency)}</div>
-                  <div>Tax Amount: {formatCurrency(printDoc.taxAmount, printDoc.currency)}</div>
-                  <div className="grand-total">Total: {formatCurrency(printDoc.totalAmount, printDoc.currency)}</div>
-                </div>
-
-                {printDoc.notes && (
-                  <div className="invoice-print-notes">
-                    <strong>Notes:</strong>
-                    <p>{printDoc.notes}</p>
-                  </div>
-                )}
-              </div>
+              <iframe
+                ref={iframeRef}
+                title="Print Preview"
+                style={{ width: '100%', height: '700px', border: 'none', background: '#fff', display: 'block' }}
+                srcDoc={generateDocumentHtml(getDocumentData(printDoc))}
+              />
+              <div className="print-area" style={{ display: 'none' }} dangerouslySetInnerHTML={{ __html: generateDocumentHtml(getDocumentData(printDoc)) }} />
             </div>
             <div className="modal-footer no-print">
               <button type="button" className="btn-secondary-action" onClick={() => setPrintDoc(null)}>Close</button>
@@ -1046,7 +1019,7 @@ export default function App() {
                   Convert to Final Invoice
                 </button>
               )}
-              <button type="button" className="btn-primary-action" onClick={() => window.print()}>Print / Save PDF</button>
+              <button type="button" className="btn-primary-action" onClick={handlePrint}>Print / Save PDF</button>
             </div>
           </div>
         </div>

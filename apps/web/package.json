@@ -11,6 +11,7 @@
   "dependencies": {
     "@my-billing/api-client": "*",
     "@my-billing/database": "*",
+    "@my-billing/document-templates": "*",
     "@tanstack/react-query": "^5.45.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
