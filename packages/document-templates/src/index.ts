@@ -217,7 +217,7 @@ body.tally-billing-body {
 .tally-meta-subtable {
   width: 100%;
   border-collapse: collapse;
-  margin: -5px; /* Neutralize parent padding */
+  margin: 0;
 }
 
 .tally-meta-subtable td {
