@@ -18,6 +18,7 @@ import {
 import { type Quotation, type ProformaInvoice, type FinalInvoice } from '@my-billing/database';
 import { generateDocumentHtml } from '@my-billing/document-templates';
 
+// Trigger Vercel deployment
 export default function App() {
   // Querying using shared TanStack Query hooks from @my-billing/api-client
   const { data: quotations = [], isLoading: loadingQuotes, error: errorQuotes } = useGetQuotations();
