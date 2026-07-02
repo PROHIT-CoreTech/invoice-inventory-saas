@@ -63,3 +63,30 @@ export const useConvertQuoteToProforma = () => {
     },
   });
 };
+
+export const useConvertQuoteToInvoice = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, Error, string>({
+    mutationFn: async (quoteId) => {
+      const response = await apiClient.post(`/convert/quote-to-invoice/${quoteId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['finalInvoices'] });
+    },
+  });
+};
+
+export const useDeleteQuotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, Error, string>({
+    mutationFn: async (id) => {
+      const response = await apiClient.delete(`/quotations/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+    },
+  });
+};

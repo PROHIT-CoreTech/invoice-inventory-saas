@@ -16,7 +16,8 @@
     "paths": {
       "@my-billing/database": ["packages/database/dist/index.d.ts"],
       "@my-billing/database/server": ["packages/database/dist/server.d.ts"],
-      "@my-billing/api-client": ["packages/api-client/dist/index.d.ts"]
+      "@my-billing/api-client": ["packages/api-client/dist/index.d.ts"],
+      "@my-billing/document-templates": ["packages/document-templates/dist/index.d.ts"]
     }
   },
   "exclude": ["node_modules", "dist", "build"]

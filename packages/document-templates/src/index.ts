@@ -4,7 +4,7 @@ export interface TemplateLineItem {
   description: string;
   specifications?: string; // Sub-text for specifications / serial numbers
   hsnSac?: string;         // HSN/SAC code, defaults to "998311"
-  quantity: number;
+  quantity?: number;
   price: number;           // Rate
   per?: string;            // Unit, e.g., "nos", "pcs", defaults to "nos"
   discountPercent?: number; // Discount percentage, defaults to 0
@@ -269,7 +269,6 @@ body.tally-billing-body {
 .tally-items-table tr.spacer-row td {
   border-top: none;
   border-bottom: none;
-  height: 160px;
 }
 
 .tally-items-table tr.tax-row td {
@@ -448,6 +447,7 @@ export function generateDocumentHtml(data: DocumentData): string {
   let subtotal = 0;
   let totalTax = 0;
   let totalQty = 0;
+  let estimatedItemsHeight = 0;
 
   // Group by HSN/SAC for the Tax summary table
   const hsnGroups: { 
@@ -465,7 +465,8 @@ export function generateDocumentHtml(data: DocumentData): string {
 
   // Process item rows
   const itemRowsHtml = data.items.map((item, index) => {
-    const qty = Number(item.quantity) || 0;
+    const isQtyProvided = item.quantity !== undefined && item.quantity !== null;
+    const qty = isQtyProvided ? Number(item.quantity) : 1;
     const rate = Number(item.price) || 0;
     const hsn = item.hsnSac || '998311';
     const per = item.per || 'nos';
@@ -479,7 +480,22 @@ export function generateDocumentHtml(data: DocumentData): string {
 
     subtotal += taxableValue;
     totalTax += itemTax;
-    totalQty += qty;
+    if (isQtyProvided) {
+      totalQty += qty;
+    }
+
+    // Estimate height
+    let itemLines = 0;
+    const desc = item.description || '';
+    desc.split('\n').forEach(part => {
+      itemLines += Math.max(1, Math.ceil(part.length / 40));
+    });
+    if (item.specifications) {
+      item.specifications.split('\n').forEach(part => {
+        itemLines += Math.max(1, Math.ceil(part.length / 45));
+      });
+    }
+    estimatedItemsHeight += (itemLines * 13) + 10;
 
     // Build HSN group summary
     if (!hsnGroups[hsn]) {
@@ -504,14 +520,17 @@ export function generateDocumentHtml(data: DocumentData): string {
           ${item.specifications ? `<div class="tally-item-specs">${item.specifications.replace(/\n/g, '<br>')}</div>` : ''}
         </td>
         <td class="tally-text-center" style="border-right: 1px solid #000;">${escapeHtml(hsn)}</td>
-        <td class="tally-text-center tally-bold" style="border-right: 1px solid #000;">${qty} ${escapeHtml(per)}</td>
+        <td class="tally-text-center tally-bold" style="border-right: 1px solid #000;">${isQtyProvided ? `${qty} ${escapeHtml(per)}` : ''}</td>
         <td class="tally-text-right" style="border-right: 1px solid #000;">${formatAmount(rate)}</td>
         <td class="tally-text-center" style="border-right: 1px solid #000;">${escapeHtml(per)}</td>
-        <td class="tally-text-center" style="border-right: 1px solid #000;">${discPct > 0 ? `${discPct.toFixed(3)} %` : ''}</td>
+        <td class="tally-text-center" style="border-right: 1px solid #000;">${discPct > 0 ? `${parseFloat(discPct.toFixed(2))}%` : ''}</td>
         <td class="tally-text-right tally-bold">${formatAmount(taxableValue)}</td>
       </tr>
     `;
   }).join('');
+
+  const targetItemsAreaHeight = 0;
+  const spacerHeight = Math.max(0, targetItemsAreaHeight - estimatedItemsHeight);
 
   // Generate tax calculation rows inside items section
   let taxCalculationRowsHtml = '';
@@ -530,7 +549,7 @@ export function generateDocumentHtml(data: DocumentData): string {
           <td style="border-right: 1px solid #000;"></td>
           <td style="border-right: 1px solid #000;"></td>
           <td style="border-right: 1px solid #000;"></td>
-          <td class="tally-text-center" style="border-right: 1px solid #000;">${taxRateLabel} %</td>
+          <td class="tally-text-center" style="border-right: 1px solid #000;"></td>
           <td class="tally-text-right tally-bold">${formatAmount(cgstAmount)}</td>
         </tr>
         <tr class="tax-row">
@@ -540,7 +559,7 @@ export function generateDocumentHtml(data: DocumentData): string {
           <td style="border-right: 1px solid #000;"></td>
           <td style="border-right: 1px solid #000;"></td>
           <td style="border-right: 1px solid #000;"></td>
-          <td class="tally-text-center" style="border-right: 1px solid #000;">${taxRateLabel} %</td>
+          <td class="tally-text-center" style="border-right: 1px solid #000;"></td>
           <td class="tally-text-right tally-bold">${formatAmount(sgstAmount)}</td>
         </tr>
       `;
@@ -554,7 +573,7 @@ export function generateDocumentHtml(data: DocumentData): string {
           <td style="border-right: 1px solid #000;"></td>
           <td style="border-right: 1px solid #000;"></td>
           <td style="border-right: 1px solid #000;"></td>
-          <td class="tally-text-center" style="border-right: 1px solid #000;">${fullTaxRateLabel} %</td>
+          <td class="tally-text-center" style="border-right: 1px solid #000;"></td>
           <td class="tally-text-right tally-bold">${formatAmount(totalTax)}</td>
         </tr>
       `;
@@ -675,12 +694,12 @@ export function generateDocumentHtml(data: DocumentData): string {
     <table class="tally-invoice-grid">
       <!-- Top Grid: Issuer & Meta Details -->
       <tr>
-        <td style="width: 50%; height: 110px;">
+        <td style="width: 50%;">
           <!-- Primary Issuer Details (Tally style top left) -->
           <div class="tally-issuer-details">
             <div class="tally-company-name" style="font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 5px;">
               ${data.logoUrl ? `<img src="${data.logoUrl}" alt="Logo" style="height: 16px; width: 16px; object-fit: contain; display: inline-block; vertical-align: middle;" onError="this.style.display='none';" />` : ''}
-              CASHFLOW DETAILS
+              CASHFLOW SOLUTIONS
             </div>
             <div class="tally-small-text">Proprietor: Naresh Pandurang Bhuvad</div>
             <div>
@@ -758,7 +777,7 @@ export function generateDocumentHtml(data: DocumentData): string {
               </td>
             </tr>
             <tr>
-              <td colspan="2" style="height: 60px;">
+              <td colspan="2">
                 <div class="tally-small-text">Terms of Delivery</div>
                 <div class="tally-bold">-</div>
               </td>
@@ -769,7 +788,7 @@ export function generateDocumentHtml(data: DocumentData): string {
 
       <!-- Combined Client Block (Tally style left mid) -->
       <tr>
-        <td style="height: 200px;">
+        <td>
           <div class="tally-client-title">Buyer (Bill to) & Consignee (Ship to)</div>
           <div class="tally-bold" style="font-size: 11px; margin-top: 4px;">${escapeHtml(data.clientInfo.name)}</div>
           <div style="margin-top: 3px; line-height: 1.35;">${escapeHtml(clientAddress).replace(/\n/g, '<br>')}</div>
@@ -802,16 +821,18 @@ export function generateDocumentHtml(data: DocumentData): string {
               ${itemRowsHtml}
 
               <!-- Spacer Row to push totals down -->
-              <tr class="spacer-row">
-                <td style="border-right: 1px solid #000;"></td>
-                <td style="border-right: 1px solid #000;"></td>
-                <td style="border-right: 1px solid #000;"></td>
-                <td style="border-right: 1px solid #000;"></td>
-                <td style="border-right: 1px solid #000;"></td>
-                <td style="border-right: 1px solid #000;"></td>
-                <td style="border-right: 1px solid #000;"></td>
-                <td></td>
+              ${spacerHeight > 0 ? `
+              <tr class="spacer-row" style="height: ${spacerHeight}px;">
+                <td style="border-right: 1px solid #000; height: ${spacerHeight}px;"></td>
+                <td style="border-right: 1px solid #000; height: ${spacerHeight}px;"></td>
+                <td style="border-right: 1px solid #000; height: ${spacerHeight}px;"></td>
+                <td style="border-right: 1px solid #000; height: ${spacerHeight}px;"></td>
+                <td style="border-right: 1px solid #000; height: ${spacerHeight}px;"></td>
+                <td style="border-right: 1px solid #000; height: ${spacerHeight}px;"></td>
+                <td style="border-right: 1px solid #000; height: ${spacerHeight}px;"></td>
+                <td style="height: ${spacerHeight}px;"></td>
               </tr>
+              ` : ''}
 
               <!-- Tax and Rounding rows -->
               ${taxCalculationRowsHtml}
@@ -951,8 +972,9 @@ export function generateDocumentHtml(data: DocumentData): string {
               <td style="border-bottom: none; border-left: none;">
                 <div class="tally-small-text">Customer's Seal and Signature</div>
               </td>
-              <td style="border-bottom: none; border-right: none; text-align: right;">
-                <div class="tally-bold" style="font-size: 9px; margin-bottom: 25px;">for CASHFLOW DETAILS</div>
+              <td style="border-bottom: none; border-right: none; text-align: right; position: relative;">
+                <div class="tally-bold" style="font-size: 9px; margin-bottom: 45px;">for CASHFLOW SOLUTIONS</div>
+                <img src="${typeof window !== 'undefined' ? window.location.origin : ''}/images/signature.png" alt="" style="position: absolute; bottom: 15px; right: 20px; height: 48px; max-width: 180px; object-fit: contain; pointer-events: none;" onerror="if(this.src.indexOf('.png')!==-1){this.src=this.src.replace('.png','.svg');}else{this.style.display='none';}" />
                 <div style="position: absolute; bottom: 5px; right: 10px;" class="tally-bold">Authorised Signatory</div>
               </td>
             </tr>

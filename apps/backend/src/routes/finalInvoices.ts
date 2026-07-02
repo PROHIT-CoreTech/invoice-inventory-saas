@@ -9,16 +9,20 @@ const calculateTotals = (items: any[]) => {
   let subTotal = 0;
   let taxAmount = 0;
   const processedItems = items.map((item) => {
-    const qty = Number(item.quantity) || 0;
+    const qty = (item.quantity !== undefined && item.quantity !== null) ? Number(item.quantity) : 1;
     const price = Number(item.price) || 0;
     const taxRate = Number(item.taxRate) || 0;
-    const itemSubtotal = qty * price;
+    const discountPercent = Number(item.discountPercent) || 0;
+    const baseValue = qty * price;
+    const discountAmt = baseValue * (discountPercent / 100);
+    const itemSubtotal = baseValue - discountAmt;
     const itemTax = itemSubtotal * (taxRate / 100);
     const itemTotal = itemSubtotal + itemTax;
     subTotal += itemSubtotal;
     taxAmount += itemTax;
     return {
       ...item,
+      discountPercent,
       taxAmount: Number(itemTax.toFixed(2)),
       total: Number(itemTotal.toFixed(2)),
     };
@@ -110,6 +114,20 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
       { new: true }
     );
     res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE: Delete a final invoice by ID
+router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const deleted = await InvoiceModel.findOneAndDelete({ _id: req.params.id, documentType: 'FINAL_INVOICE' });
+    if (!deleted) {
+      res.status(404).json({ message: 'Final Invoice not found' });
+      return;
+    }
+    res.json({ message: 'Final Invoice deleted successfully' });
   } catch (error) {
     next(error);
   }

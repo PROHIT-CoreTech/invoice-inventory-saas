@@ -10,10 +10,11 @@ export interface Client {
 
 export interface LineItem {
   description: string;
-  quantity: number;
+  quantity?: number;
   price: number;
   taxRate: number; // Percentage, e.g. 18 for 18%
   hsnSac?: string;   // HSN/SAC Code
+  discountPercent?: number; // Discount percentage, defaults to 0
   taxAmount?: number; // (Price * Quantity) * (TaxRate / 100)
   total?: number; // (Price * Quantity) + TaxAmount
 }
@@ -30,6 +31,7 @@ export interface BaseDocument {
   notes?: string;
   issueDate: Date | string;
   dueDate?: Date | string;
+  logoUrl?: string;
 }
 
 export type BillingDocumentType = 'QUOTATION' | 'PROFORMA' | 'FINAL_INVOICE';

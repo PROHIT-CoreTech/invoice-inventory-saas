@@ -63,3 +63,16 @@ export const useConvertProformaToInvoice = () => {
     },
   });
 };
+
+export const useDeleteProformaInvoice = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, Error, string>({
+    mutationFn: async (id) => {
+      const response = await apiClient.delete(`/proforma-invoices/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proformaInvoices'] });
+    },
+  });
+};

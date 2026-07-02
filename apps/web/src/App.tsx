@@ -10,10 +10,14 @@ import {
   useGetClients,
   useCreateClient,
   useConvertQuoteToProforma,
+  useConvertQuoteToInvoice,
   useConvertProformaToInvoice,
   useUpdateQuotation,
   useUpdateProformaInvoice,
   useUpdateFinalInvoice,
+  useDeleteQuotation,
+  useDeleteProformaInvoice,
+  useDeleteFinalInvoice,
 } from '@my-billing/api-client';
 import { type Quotation, type ProformaInvoice, type FinalInvoice } from '@my-billing/database';
 import { generateDocumentHtml } from '@my-billing/document-templates';
@@ -30,12 +34,15 @@ export default function App() {
   const createQuotation = useCreateQuotation();
   const createProforma = useCreateProformaInvoice();
   const createInvoice = useCreateFinalInvoice();
-  const createClient = useCreateClient();
   const convertQuote = useConvertQuoteToProforma();
+  const convertQuoteToInvoice = useConvertQuoteToInvoice();
   const convertProforma = useConvertProformaToInvoice();
   const updateQuotation = useUpdateQuotation();
   const updateProforma = useUpdateProformaInvoice();
   const updateInvoice = useUpdateFinalInvoice();
+  const deleteQuotation = useDeleteQuotation();
+  const deleteProforma = useDeleteProformaInvoice();
+  const deleteInvoice = useDeleteFinalInvoice();
 
   const isApiError = errorQuotes || errorProformas || errorInvoices;
 
@@ -43,8 +50,18 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [docType, setDocType] = useState<'QUOTATION' | 'PROFORMA' | 'FINAL_INVOICE'>('QUOTATION');
   const [printDoc, setPrintDoc] = useState<Quotation | ProformaInvoice | FinalInvoice | null>(null);
+  const [editingDoc, setEditingDoc] = useState<Quotation | ProformaInvoice | FinalInvoice | null>(null);
+  const [logoUrl, setLogoUrl] = useState('');
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const getFinancialYear = (date: Date = new Date()) => {
+    const currentYear = date.getFullYear();
+    const currentMonth = date.getMonth(); // 0-indexed, April is 3
+    const startYear = currentMonth >= 3 ? currentYear : currentYear - 1;
+    const endYear = (startYear + 1) % 100;
+    return `${startYear}-${String(endYear).padStart(2, '0')}`;
+  };
 
   const getDocumentData = (doc: Quotation | ProformaInvoice | FinalInvoice) => {
     return {
@@ -74,16 +91,38 @@ export default function App() {
       notes: doc.notes,
       currency: doc.currency,
       applyGst: (doc as any).applyGst !== false,
-      logoUrl: `${window.location.origin}/website_icon.png`,
+      logoUrl: (doc as any).logoUrl || `${window.location.origin}/website_icon.png`,
     };
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    if (printDoc) {
+      const docNum = printDoc.documentNumber || (printDoc as any).quoteNumber || (printDoc as any).proformaNumber || (printDoc as any).invoiceNumber || '';
+      // Replace '/' with '-' to avoid path issues on macOS/Linux
+      const safeNum = docNum.replace(/\//g, '-');
+      if (safeNum) {
+        document.title = safeNum;
+      }
+    }
+
     if (iframeRef.current && iframeRef.current.contentWindow) {
+      try {
+        const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document;
+        if (iframeDoc) {
+          iframeDoc.title = document.title;
+        }
+      } catch (e) {
+        console.error(e);
+      }
       iframeRef.current.contentWindow.print();
     } else {
       window.print();
     }
+
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   // Daily Mode & History States
@@ -106,9 +145,11 @@ export default function App() {
   const [currency, setCurrency] = useState('INR');
   const [notes, setNotes] = useState('');
   const [dateVal, setDateVal] = useState('');
-  const [items, setItems] = useState<Array<{ description: string; quantity: number; price: number; taxRate: number; hsnSac: string }>>([
-    { description: '', quantity: 1, price: 0, taxRate: 18, hsnSac: '998311' }
+  const [items, setItems] = useState<Array<{ description: string; quantity: number | undefined; price: number; taxRate: number; hsnSac: string; discountPercent?: number }>>([
+    { description: '', quantity: 1, price: 0, taxRate: 18, hsnSac: '998311', discountPercent: 0 }
   ]);
+  const [quotationRef, setQuotationRef] = useState('');
+  const [proformaRef, setProformaRef] = useState('');
 
   // Date and Search Helpers
   const isToday = (dateStr?: Date | string) => {
@@ -244,7 +285,7 @@ export default function App() {
 
   // Form Handlers
   const handleAddItem = () => {
-    setItems([...items, { description: '', quantity: 1, price: 0, taxRate: 18, hsnSac: '998311' }]);
+    setItems([...items, { description: '', quantity: 1, price: 0, taxRate: 18, hsnSac: '998311', discountPercent: 0 }]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -262,8 +303,21 @@ export default function App() {
     setItems(updated);
   };
 
-  const formSubTotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-  const formTaxAmount = items.reduce((sum, item) => sum + (item.quantity * item.price * (item.taxRate / 100)), 0);
+  const getItemQty = (qty: number | undefined) => {
+    return qty !== undefined && qty !== null ? qty : 1;
+  };
+
+  const formSubTotal = items.reduce((sum, item) => {
+    const base = getItemQty(item.quantity) * item.price;
+    const disc = base * ((Number(item.discountPercent) || 0) / 100);
+    return sum + (base - disc);
+  }, 0);
+  const formTaxAmount = items.reduce((sum, item) => {
+    const base = getItemQty(item.quantity) * item.price;
+    const disc = base * ((Number(item.discountPercent) || 0) / 100);
+    const taxable = base - disc;
+    return sum + (taxable * (item.taxRate / 100));
+  }, 0);
   const formTotalAmount = formSubTotal + formTaxAmount;
 
   const resetForm = () => {
@@ -273,7 +327,11 @@ export default function App() {
     setCurrency('INR');
     setNotes('');
     setDateVal('');
-    setItems([{ description: '', quantity: 1, price: 0, taxRate: 18, hsnSac: '998311' }]);
+    setLogoUrl('');
+    setEditingDoc(null);
+    setQuotationRef('');
+    setProformaRef('');
+    setItems([{ description: '', quantity: 1, price: 0, taxRate: 18, hsnSac: '998311', discountPercent: 0 }]);
     setNewClientData({
       name: '',
       email: '',
@@ -287,16 +345,132 @@ export default function App() {
   const openModal = (type: 'QUOTATION' | 'PROFORMA' | 'FINAL_INVOICE') => {
     setDocType(type);
     resetForm();
+    setEditingDoc(null);
+    setLogoUrl('');
     
-    // Auto-generate some sequential mock number based on current list length
-    const nextNum = String(
-      (type === 'QUOTATION' ? quotations.length : type === 'PROFORMA' ? proformas.length : invoices.length) + 1
-    ).padStart(4, '0');
-    
-    const prefix = type === 'QUOTATION' ? 'QT' : type === 'PROFORMA' ? 'PRO' : 'INV';
-    const year = new Date().getFullYear();
-    setDocNumber(`${prefix}-${year}-${nextNum}`);
+    // Auto-generate financial year format Document Number (e.g. 2026-27/CFS-QT-001)
+    const listLen = type === 'QUOTATION' ? quotations.length : type === 'PROFORMA' ? proformas.length : invoices.length;
+    const nextNum = String(listLen + 1).padStart(3, '0');
+    const fy = getFinancialYear();
+    const prefix = type === 'QUOTATION' ? 'CFS-QT' : type === 'PROFORMA' ? 'CFS-PRO' : 'CFS-INV';
+    setDocNumber(`${fy}/${prefix}-${nextNum}`);
     setIsModalOpen(true);
+  };
+
+  const handleImportQuotation = (qId: string) => {
+    setQuotationRef(qId);
+    if (!qId) return;
+    const q = quotations.find(item => (item.id || (item as any)._id) === qId);
+    if (q) {
+      setSelectedClientId(q.clientRef?.id || q.clientRef || '');
+      setCurrency(q.currency);
+      setNotes(q.notes || '');
+      setLogoUrl((q as any).logoUrl || '');
+      setProformaRef('');
+      setItems((q.items || []).map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        price: item.price,
+        taxRate: item.taxRate,
+        hsnSac: (item as any).hsnSac || '998311',
+        discountPercent: (item as any).discountPercent || 0
+      })));
+    }
+  };
+
+  const handleImportProforma = (pId: string) => {
+    setProformaRef(pId);
+    if (!pId) return;
+    const p = proformas.find(item => (item.id || (item as any)._id) === pId);
+    if (p) {
+      setSelectedClientId(p.clientRef?.id || p.clientRef || '');
+      setCurrency(p.currency);
+      setNotes(p.notes || '');
+      setLogoUrl((p as any).logoUrl || '');
+      setQuotationRef(p.quotationRef || '');
+      setItems((p.items || []).map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        price: item.price,
+        taxRate: item.taxRate,
+        hsnSac: (item as any).hsnSac || '998311',
+        discountPercent: (item as any).discountPercent || 0
+      })));
+    }
+  };
+
+  const openEditModal = (doc: Quotation | ProformaInvoice | FinalInvoice) => {
+    setEditingDoc(doc);
+    setDocType(doc.documentType);
+    setSelectedClientId(doc.clientRef?.id || doc.clientRef || '');
+    setDocNumber(doc.documentNumber || (doc as any).quoteNumber || (doc as any).proformaNumber || (doc as any).invoiceNumber || '');
+    setCurrency(doc.currency);
+    setNotes(doc.notes || '');
+    setLogoUrl((doc as any).logoUrl || '');
+    setQuotationRef(doc.quotationRef || '');
+    setProformaRef((doc as any).proformaRef || '');
+    
+    const dateLimit = doc.documentType === 'FINAL_INVOICE' ? (doc as any).dueDate : (doc as any).validUntil;
+    if (dateLimit) {
+      const d = new Date(dateLimit);
+      const formattedDate = d.toISOString().split('T')[0];
+      setDateVal(formattedDate);
+    } else {
+      setDateVal('');
+    }
+    
+    setItems((doc.items || []).map(item => ({
+      description: item.description,
+      quantity: item.quantity,
+      price: item.price,
+      taxRate: item.taxRate,
+      hsnSac: (item as any).hsnSac || '998311',
+      discountPercent: (item as any).discountPercent || 0
+    })));
+    
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteDoc = async (id: string, type: 'QUOTATION' | 'PROFORMA' | 'FINAL_INVOICE') => {
+    if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
+    try {
+      if (type === 'QUOTATION') {
+        await deleteQuotation.mutateAsync(id);
+      } else if (type === 'PROFORMA') {
+        await deleteProforma.mutateAsync(id);
+      } else {
+        await deleteInvoice.mutateAsync(id);
+      }
+      alert('Document deleted successfully!');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to delete document.');
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = (reader.result as string).split(',')[1];
+      try {
+        const response = await fetch('http://localhost:5001/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: file.name, data: base64Data }),
+        });
+        if (!response.ok) throw new Error('Upload failed');
+        const result = await response.json();
+        setLogoUrl(result.url);
+        alert('Logo uploaded successfully!');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to upload logo.');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCreateClient = async (e: React.MouseEvent) => {
@@ -321,6 +495,18 @@ export default function App() {
     try {
       await convertQuote.mutateAsync(id);
       alert('Quotation successfully converted to Proforma Invoice!');
+      setPrintDoc(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to convert Quotation.');
+    }
+  };
+
+  const handleConvertQuoteToInvoiceDirect = async (id: string) => {
+    if (!confirm('Are you sure you want to convert this quotation directly to a Final Invoice (bypassing Proforma)?')) return;
+    try {
+      await convertQuoteToInvoice.mutateAsync(id);
+      alert('Quotation successfully converted directly to Final Invoice!');
       setPrintDoc(null);
     } catch (err: any) {
       console.error(err);
@@ -388,97 +574,164 @@ export default function App() {
     const selectedClient = clients.find(c => c.id === selectedClientId || (c as any)._id === selectedClientId);
     if (!selectedClient) return;
 
+    const mappedItems = items.map(item => ({
+      description: item.description,
+      quantity: item.quantity !== undefined && item.quantity !== null && String(item.quantity) !== '' ? Number(item.quantity) : undefined,
+      price: Number(item.price) || 0,
+      taxRate: Number(item.taxRate) || 0,
+      hsnSac: item.hsnSac || '998311',
+      discountPercent: Number(item.discountPercent) || 0,
+    }));
+
     try {
-      if (docType === 'QUOTATION') {
-        const payload = {
-          documentType: 'QUOTATION' as const,
-          documentNumber: docNumber,
-          quoteNumber: docNumber,
-          clientRef: selectedClientId,
-          clientInfo: {
-            name: selectedClient.name,
-            email: selectedClient.email,
-            billingAddress: selectedClient.billingAddress || '',
-            taxId: selectedClient.taxId || '',
-            gstin: selectedClient.gstin || '',
-            pan: selectedClient.pan || '',
-          },
-          items: items.map(item => ({
-            description: item.description,
-            quantity: Number(item.quantity) || 0,
-            price: Number(item.price) || 0,
-            taxRate: Number(item.taxRate) || 0,
-            hsnSac: item.hsnSac || '998311',
-          })),
-          currency: currency,
-          notes: notes,
-          status: 'DRAFT' as const,
-          issueDate: new Date(),
-          validUntil: new Date(dateVal),
-        };
-        await createQuotation.mutateAsync(payload);
-      } else if (docType === 'PROFORMA') {
-        const payload = {
-          documentType: 'PROFORMA' as const,
-          documentNumber: docNumber,
-          proformaNumber: docNumber,
-          clientRef: selectedClientId,
-          clientInfo: {
-            name: selectedClient.name,
-            email: selectedClient.email,
-            billingAddress: selectedClient.billingAddress || '',
-            taxId: selectedClient.taxId || '',
-            gstin: selectedClient.gstin || '',
-            pan: selectedClient.pan || '',
-          },
-          items: items.map(item => ({
-            description: item.description,
-            quantity: Number(item.quantity) || 0,
-            price: Number(item.price) || 0,
-            taxRate: Number(item.taxRate) || 0,
-            hsnSac: item.hsnSac || '998311',
-          })),
-          currency: currency,
-          notes: notes,
-          status: 'DRAFT' as const,
-          issueDate: new Date(),
-          validUntil: new Date(dateVal),
-        };
-        await createProforma.mutateAsync(payload);
+      if (editingDoc) {
+        const docId = editingDoc.id || (editingDoc as any)._id;
+        if (docType === 'QUOTATION') {
+          const payload = {
+            documentNumber: docNumber,
+            quoteNumber: docNumber,
+            clientRef: selectedClientId,
+            clientInfo: {
+              name: selectedClient.name,
+              email: selectedClient.email,
+              billingAddress: selectedClient.billingAddress || '',
+              taxId: selectedClient.taxId || '',
+              gstin: selectedClient.gstin || '',
+              pan: selectedClient.pan || '',
+            },
+            items: mappedItems,
+            currency: currency,
+            notes: notes,
+            validUntil: new Date(dateVal),
+            logoUrl: logoUrl || undefined,
+          };
+          await updateQuotation.mutateAsync({ id: docId, data: payload as any });
+        } else if (docType === 'PROFORMA') {
+          const payload = {
+            documentNumber: docNumber,
+            proformaNumber: docNumber,
+            clientRef: selectedClientId,
+            clientInfo: {
+              name: selectedClient.name,
+              email: selectedClient.email,
+              billingAddress: selectedClient.billingAddress || '',
+              taxId: selectedClient.taxId || '',
+              gstin: selectedClient.gstin || '',
+              pan: selectedClient.pan || '',
+            },
+            items: mappedItems,
+            currency: currency,
+            notes: notes,
+            validUntil: new Date(dateVal),
+            logoUrl: logoUrl || undefined,
+            quotationRef: quotationRef || undefined,
+          };
+          await updateProforma.mutateAsync({ id: docId, data: payload as any });
+        } else {
+          const payload = {
+            documentNumber: docNumber,
+            invoiceNumber: docNumber,
+            clientRef: selectedClientId,
+            clientInfo: {
+              name: selectedClient.name,
+              email: selectedClient.email,
+              billingAddress: selectedClient.billingAddress || '',
+              taxId: selectedClient.taxId || '',
+              gstin: selectedClient.gstin || '',
+              pan: selectedClient.pan || '',
+            },
+            items: mappedItems,
+            currency: currency,
+            notes: notes,
+            dueDate: new Date(dateVal),
+            logoUrl: logoUrl || undefined,
+            quotationRef: quotationRef || undefined,
+            proformaRef: proformaRef || undefined,
+          };
+          await updateInvoice.mutateAsync({ id: docId, data: payload as any });
+        }
+        alert('Document updated successfully!');
       } else {
-        const payload = {
-          documentType: 'FINAL_INVOICE' as const,
-          documentNumber: docNumber,
-          invoiceNumber: docNumber,
-          clientRef: selectedClientId,
-          clientInfo: {
-            name: selectedClient.name,
-            email: selectedClient.email,
-            billingAddress: selectedClient.billingAddress || '',
-            taxId: selectedClient.taxId || '',
-            gstin: selectedClient.gstin || '',
-            pan: selectedClient.pan || '',
-          },
-          items: items.map(item => ({
-            description: item.description,
-            quantity: Number(item.quantity) || 0,
-            price: Number(item.price) || 0,
-            taxRate: Number(item.taxRate) || 0,
-            hsnSac: item.hsnSac || '998311',
-          })),
-          currency: currency,
-          notes: notes,
-          status: 'DRAFT' as const,
-          issueDate: new Date(),
-          dueDate: new Date(dateVal),
-          paymentStatus: 'UNPAID' as const,
-        };
-        await createInvoice.mutateAsync(payload);
+        if (docType === 'QUOTATION') {
+          const payload = {
+            documentType: 'QUOTATION' as const,
+            documentNumber: docNumber,
+            quoteNumber: docNumber,
+            clientRef: selectedClientId,
+            clientInfo: {
+              name: selectedClient.name,
+              email: selectedClient.email,
+              billingAddress: selectedClient.billingAddress || '',
+              taxId: selectedClient.taxId || '',
+              gstin: selectedClient.gstin || '',
+              pan: selectedClient.pan || '',
+            },
+            items: mappedItems,
+            currency: currency,
+            notes: notes,
+            status: 'DRAFT' as const,
+            issueDate: new Date(),
+            validUntil: new Date(dateVal),
+            logoUrl: logoUrl || undefined,
+          };
+          await createQuotation.mutateAsync(payload);
+        } else if (docType === 'PROFORMA') {
+          const payload = {
+            documentType: 'PROFORMA' as const,
+            documentNumber: docNumber,
+            proformaNumber: docNumber,
+            clientRef: selectedClientId,
+            clientInfo: {
+              name: selectedClient.name,
+              email: selectedClient.email,
+              billingAddress: selectedClient.billingAddress || '',
+              taxId: selectedClient.taxId || '',
+              gstin: selectedClient.gstin || '',
+              pan: selectedClient.pan || '',
+            },
+            items: mappedItems,
+            currency: currency,
+            notes: notes,
+            status: 'DRAFT' as const,
+            issueDate: new Date(),
+            validUntil: new Date(dateVal),
+            logoUrl: logoUrl || undefined,
+            quotationRef: quotationRef || undefined,
+          };
+          await createProforma.mutateAsync(payload);
+        } else {
+          const payload = {
+            documentType: 'FINAL_INVOICE' as const,
+            documentNumber: docNumber,
+            invoiceNumber: docNumber,
+            clientRef: selectedClientId,
+            clientInfo: {
+              name: selectedClient.name,
+              email: selectedClient.email,
+              billingAddress: selectedClient.billingAddress || '',
+              taxId: selectedClient.taxId || '',
+              gstin: selectedClient.gstin || '',
+              pan: selectedClient.pan || '',
+            },
+            items: mappedItems,
+            currency: currency,
+            notes: notes,
+            status: 'DRAFT' as const,
+            issueDate: new Date(),
+            dueDate: new Date(dateVal),
+            paymentStatus: 'UNPAID' as const,
+            logoUrl: logoUrl || undefined,
+            quotationRef: quotationRef || undefined,
+            proformaRef: proformaRef || undefined,
+          };
+          await createInvoice.mutateAsync(payload);
+        }
+        alert('Document created successfully!');
       }
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
-      alert('Failed to create document.');
+      alert('Failed to save document.');
     }
   };
 
@@ -597,13 +850,9 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <button className="btn-print" title="Print Quotation" onClick={() => setPrintDoc(q)}>🖨️</button>
-                      {q.status === 'DRAFT' && (
-                        <>
-                          <button className="btn-status-action text-info" title="Mark Sent" onClick={() => handleUpdateQuoteStatus(q.id || (q as any)._id, 'SENT')}>✉️</button>
-                          <button className="btn-status-action text-success" title="Accept & Convert to Proforma" onClick={() => handleConvertQuote(q.id || (q as any)._id)}>✅</button>
-                        </>
-                      )}
-                      {q.status === 'SENT' && (
+                      <button className="btn-status-action text-info" title="Edit Quotation" onClick={() => openEditModal(q)}>✏️</button>
+                      <button className="btn-status-action text-danger" title="Delete Quotation" onClick={() => handleDeleteDoc(q.id || (q as any)._id, 'QUOTATION')}>🗑️</button>
+                      {q.status !== 'CONVERTED' && q.status !== 'DECLINED' && (
                         <>
                           <button className="btn-status-action text-success" title="Accept & Convert to Proforma" onClick={() => handleConvertQuote(q.id || (q as any)._id)}>✅</button>
                           <button className="btn-status-action text-danger" title="Decline Quote" onClick={() => handleUpdateQuoteStatus(q.id || (q as any)._id, 'DECLINED')}>❌</button>
@@ -652,13 +901,9 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <button className="btn-print" title="Print Proforma" onClick={() => setPrintDoc(p)}>🖨️</button>
-                      {p.status === 'DRAFT' && (
-                        <>
-                          <button className="btn-status-action text-info" title="Mark Sent" onClick={() => handleUpdateProformaStatus(p.id || (p as any)._id, 'SENT')}>✉️</button>
-                          <button className="btn-status-action text-success" title="Confirm Payment & Convert to Invoice" onClick={() => handleConvertProforma(p.id || (p as any)._id)}>✅</button>
-                        </>
-                      )}
-                      {p.status === 'SENT' && (
+                      <button className="btn-status-action text-info" title="Edit Proforma" onClick={() => openEditModal(p)}>✏️</button>
+                      <button className="btn-status-action text-danger" title="Delete Proforma" onClick={() => handleDeleteDoc(p.id || (p as any)._id, 'PROFORMA')}>🗑️</button>
+                      {p.status !== 'CONVERTED' && (
                         <button className="btn-status-action text-success" title="Confirm Payment & Convert to Invoice" onClick={() => handleConvertProforma(p.id || (p as any)._id)}>✅</button>
                       )}
                     </div>
@@ -704,6 +949,8 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <button className="btn-print" title="Print Invoice" onClick={() => setPrintDoc(i)}>🖨️</button>
+                      <button className="btn-status-action text-info" title="Edit Invoice" onClick={() => openEditModal(i)}>✏️</button>
+                      <button className="btn-status-action text-danger" title="Delete Invoice" onClick={() => handleDeleteDoc(i.id || (i as any)._id, 'FINAL_INVOICE')}>🗑️</button>
                       {i.status !== 'PAID' && (
                         <button className="btn-status-action text-success" title="Mark Paid" onClick={() => handleMarkInvoicePaid(i.id || (i as any)._id)}>💰</button>
                       )}
@@ -716,15 +963,72 @@ export default function App() {
         </div>
       </section>
 
-      {/* FLOATING CREATION MODAL */}
+      {/* FLOATING CREATION/EDIT MODAL */}
       {isModalOpen && (
         <div className="modal-overlay">
           <form onSubmit={handleSubmit} className="modal-card">
             <div className="modal-header">
-              <h3>Create New {docType === 'QUOTATION' ? 'Quotation' : docType === 'PROFORMA' ? 'Proforma Invoice' : 'Final Invoice'}</h3>
+              <h3>{editingDoc ? 'Edit' : 'Create New'} {docType === 'QUOTATION' ? 'Quotation' : docType === 'PROFORMA' ? 'Proforma Invoice' : 'Final Invoice'}</h3>
               <button type="button" className="btn-close" onClick={() => setIsModalOpen(false)}>&times;</button>
             </div>
             <div className="modal-body">
+                {/* Import from existing documents (Only on creation) */}
+                {!editingDoc && (docType === 'PROFORMA' || docType === 'FINAL_INVOICE') && (
+                  <div className="form-row" style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
+                    {docType === 'PROFORMA' && (
+                      <div className="form-group">
+                        <label>Import details from Quotation</label>
+                        <select
+                          className="form-select"
+                          value={quotationRef}
+                          onChange={(e) => handleImportQuotation(e.target.value)}
+                        >
+                          <option value="">-- Select Quotation to Import --</option>
+                          {quotations.map(q => (
+                            <option key={q.id || (q as any)._id} value={q.id || (q as any)._id}>
+                              {q.documentNumber || (q as any).quoteNumber} - {q.clientInfo.name} ({formatCurrency(q.totalAmount, q.currency)})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {docType === 'FINAL_INVOICE' && (
+                      <>
+                        <div className="form-group">
+                          <label>Import details from Quotation</label>
+                          <select
+                            className="form-select"
+                            value={quotationRef}
+                            onChange={(e) => handleImportQuotation(e.target.value)}
+                          >
+                            <option value="">-- Select Quotation to Import --</option>
+                            {quotations.map(q => (
+                              <option key={q.id || (q as any)._id} value={q.id || (q as any)._id}>
+                                {q.documentNumber || (q as any).quoteNumber} - {q.clientInfo.name} ({formatCurrency(q.totalAmount, q.currency)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Import details from Proforma</label>
+                          <select
+                            className="form-select"
+                            value={proformaRef}
+                            onChange={(e) => handleImportProforma(e.target.value)}
+                          >
+                            <option value="">-- Select Proforma to Import --</option>
+                            {proformas.map(p => (
+                              <option key={p.id || (p as any)._id} value={p.id || (p as any)._id}>
+                                {p.documentNumber || (p as any).proformaNumber} - {p.clientInfo.name} ({formatCurrency(p.totalAmount, p.currency)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {/* Client selection row */}
                 <div className="form-group">
                   <label>Client</label>
@@ -872,24 +1176,28 @@ export default function App() {
                   </div>
                 </div>
 
+
                 {/* Items Section */}
                 <div className="items-section-title">Line Items</div>
                 <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', marginBottom: '1.25rem' }}>
                   <table className="items-table" style={{ minWidth: '700px', margin: 0 }}>
                     <thead>
                       <tr>
-                        <th style={{ width: '35%' }}>Description *</th>
-                        <th style={{ width: '15%' }}>HSN/SAC</th>
-                        <th style={{ width: '12%' }}>Qty *</th>
-                        <th style={{ width: '13%' }}>Price *</th>
-                        <th style={{ width: '12%' }}>Tax (%)</th>
+                        <th style={{ width: '32%' }}>Description *</th>
+                        <th style={{ width: '13%' }}>HSN/SAC</th>
+                        <th style={{ width: '10%' }}>Qty</th>
+                        <th style={{ width: '12%' }}>Price *</th>
+                        <th style={{ width: '10%' }}>Disc (%)</th>
+                        <th style={{ width: '10%' }}>Tax (%)</th>
                         <th style={{ width: '10%', textAlign: 'right' }}>Total</th>
                         <th style={{ width: '3%' }}></th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((item, idx) => {
-                        const itemSubTotal = item.quantity * item.price;
+                        const baseVal = getItemQty(item.quantity) * item.price;
+                        const discAmt = baseVal * ((Number(item.discountPercent) || 0) / 100);
+                        const itemSubTotal = baseVal - discAmt;
                         const itemTax = itemSubTotal * (item.taxRate / 100);
                         const itemTotal = itemSubTotal + itemTax;
                         return (
@@ -914,7 +1222,7 @@ export default function App() {
                             <td>
                               <input
                                 type="text"
-                                value={item.quantity === 0 ? '' : item.quantity}
+                                value={item.quantity === undefined || item.quantity === null ? '' : item.quantity}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   if (val === '' || /^\d*$/.test(val)) {
@@ -922,10 +1230,9 @@ export default function App() {
                                     if (/^0\d+/.test(val)) {
                                       cleaned = val.replace(/^0+/, '');
                                     }
-                                    handleItemChange(idx, 'quantity', cleaned === '' ? 0 : Number(cleaned));
+                                    handleItemChange(idx, 'quantity', cleaned === '' ? undefined : Number(cleaned));
                                   }
                                 }}
-                                required
                               />
                             </td>
                             <td>
@@ -944,6 +1251,23 @@ export default function App() {
                                 }}
                                 placeholder="0.00"
                                 required
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={item.discountPercent === 0 ? '' : item.discountPercent}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                    let cleaned = val;
+                                    if (/^0\d+/.test(val) && !val.startsWith('0.')) {
+                                      cleaned = val.replace(/^0+/, '');
+                                    }
+                                    handleItemChange(idx, 'discountPercent', cleaned === '' ? 0 : Number(cleaned));
+                                  }
+                                }}
+                                placeholder="0"
                               />
                             </td>
                             <td>
@@ -999,9 +1323,9 @@ export default function App() {
                 <button
                   type="submit"
                   className="btn-primary-action"
-                  disabled={createQuotation.isPending || createProforma.isPending || createInvoice.isPending}
+                  disabled={createQuotation.isPending || createProforma.isPending || createInvoice.isPending || updateQuotation.isPending || updateProforma.isPending || updateInvoice.isPending}
                 >
-                  {createQuotation.isPending || createProforma.isPending || createInvoice.isPending ? 'Creating...' : 'Create Document'}
+                  {createQuotation.isPending || createProforma.isPending || createInvoice.isPending || updateQuotation.isPending || updateProforma.isPending || updateInvoice.isPending ? 'Saving...' : editingDoc ? 'Save Changes' : 'Create Document'}
                 </button>
               </div>
           </form>
@@ -1029,9 +1353,14 @@ export default function App() {
             <div className="modal-footer no-print">
               <button type="button" className="btn-secondary-action" onClick={() => setPrintDoc(null)}>Close</button>
               {printDoc.documentType === 'QUOTATION' && printDoc.status !== 'CONVERTED' && (
-                <button type="button" className="btn-primary-action" style={{ background: '#eab308', borderColor: '#eab308' }} onClick={() => handleConvertQuote(printDoc.id || (printDoc as any)._id)}>
-                  Convert to Proforma
-                </button>
+                <>
+                  <button type="button" className="btn-primary-action" style={{ background: '#eab308', borderColor: '#eab308' }} onClick={() => handleConvertQuote(printDoc.id || (printDoc as any)._id)}>
+                    Convert to Proforma
+                  </button>
+                  <button type="button" className="btn-primary-action" style={{ background: '#3b82f6', borderColor: '#3b82f6' }} onClick={() => handleConvertQuoteToInvoiceDirect(printDoc.id || (printDoc as any)._id)}>
+                    Convert to Final Invoice
+                  </button>
+                </>
               )}
               {printDoc.documentType === 'PROFORMA' && printDoc.status !== 'CONVERTED' && (
                 <button type="button" className="btn-primary-action" style={{ background: '#f97316', borderColor: '#f97316' }} onClick={() => handleConvertProforma(printDoc.id || (printDoc as any)._id)}>

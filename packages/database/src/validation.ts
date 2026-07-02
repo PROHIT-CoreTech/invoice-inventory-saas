@@ -13,10 +13,11 @@ export const clientInfoSchema = clientSchema; // Same shape, used for embedded s
 
 export const lineItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
-  quantity: z.number().positive('Quantity must be greater than 0'),
+  quantity: z.number().nonnegative('Quantity must be greater than or equal to 0').optional(),
   price: z.number().nonnegative('Price must be greater than or equal to 0'),
   taxRate: z.number().nonnegative('Tax rate must be greater than or equal to 0').default(0),
   hsnSac: z.string().optional().default('998311'),
+  discountPercent: z.number().nonnegative('Discount percent must be greater than or equal to 0').optional().default(0),
   taxAmount: z.number().nonnegative().default(0),
   total: z.number().nonnegative().default(0),
 });
@@ -35,6 +36,7 @@ export const invoiceSchema = z.object({
   issueDate: z.union([z.date(), z.string()]).default(() => new Date()),
   dueDate: z.union([z.date(), z.string()]).optional(),
   status: z.string().default('DRAFT'),
+  logoUrl: z.string().optional(),
   
   // Tracing references
   quotationRef: z.string().optional(),

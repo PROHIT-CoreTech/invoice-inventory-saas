@@ -1,5 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import quotationRoutes from './routes/quotations';
 import proformaRoutes from './routes/proformaInvoices';
 import finalInvoiceRoutes from './routes/finalInvoices';
@@ -9,7 +11,37 @@ import conversionRoutes from './routes/conversions';
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+// Set JSON limit higher to support base64 image uploads
+app.use(express.json({ limit: '10mb' }));
+
+// Ensure uploads folder exists
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Expose static uploads route
+app.use('/uploads', express.static(uploadsDir));
+
+// POST: upload raw base64 image
+app.post('/api/upload', (req: Request, res: Response) => {
+  try {
+    const { name, data } = req.body;
+    if (!name || !data) {
+      res.status(400).json({ message: 'Missing name or data' });
+      return;
+    }
+    const buffer = Buffer.from(data, 'base64');
+    const filename = `${Date.now()}-${name}`;
+    const filePath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filePath, buffer);
+    const host = req.get('host') || 'localhost:5001';
+    const protocol = req.protocol || 'http';
+    res.json({ url: `${protocol}://${host}/uploads/${filename}` });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // Root Landing Route
 app.get('/', (req: Request, res: Response) => {

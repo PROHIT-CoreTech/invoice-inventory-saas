@@ -49,3 +49,16 @@ export const useUpdateFinalInvoice = () => {
     },
   });
 };
+
+export const useDeleteFinalInvoice = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, Error, string>({
+    mutationFn: async (id) => {
+      const response = await apiClient.delete(`/final-invoices/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finalInvoices'] });
+    },
+  });
+};

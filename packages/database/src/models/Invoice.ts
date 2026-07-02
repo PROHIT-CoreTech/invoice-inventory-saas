@@ -3,10 +3,11 @@ import { Invoice, LineItem } from '../types.js';
 
 export const LineItemSchema = new Schema<LineItem>({
   description: { type: String, required: true },
-  quantity: { type: Number, required: true, min: 0 },
+  quantity: { type: Number, required: false, min: 0 },
   price: { type: Number, required: true, min: 0 },
   taxRate: { type: Number, default: 0, min: 0 },
   hsnSac: { type: String, default: '998311' },
+  discountPercent: { type: Number, default: 0, min: 0 },
   taxAmount: { type: Number, default: 0, min: 0 },
   total: { type: Number, default: 0, min: 0 },
 });
@@ -86,6 +87,7 @@ const InvoiceSchema = new Schema<InvoiceDocument>({
     index: true,
   },
   paymentDate: { type: Date },
+  logoUrl: { type: String },
 }, { timestamps: true });
 
 export const InvoiceModel = model<InvoiceDocument>('Invoice', InvoiceSchema);
