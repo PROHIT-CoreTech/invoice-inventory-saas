@@ -13,6 +13,14 @@ export const getSubdomain = () => {
     return null;
   }
 
+  // Special handling for Vercel default domains (*.vercel.app)
+  if (hostname.endsWith('.vercel.app')) {
+    if (parts.length > 3) {
+      return parts[0];
+    }
+    return null;
+  }
+
   // For <tenant_name>.billing.prohitcoretech.com
   const billingIndex = parts.indexOf('billing');
   if (billingIndex > 0) {
