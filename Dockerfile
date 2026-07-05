@@ -22,9 +22,9 @@ COPY packages/api-client/ ./packages/api-client/
 COPY apps/backend/ ./apps/backend/
 
 # Compile TypeScript code across all workspaces
-RUN npm run build --workspace=@my-billing/database
-RUN npm run build --workspace=@my-billing/api-client
-RUN npm run build --workspace=@my-billing/backend
+RUN npm run build --workspace=@procash-invoices/database
+RUN npm run build --workspace=@procash-invoices/api-client
+RUN npm run build --workspace=@procash-invoices/backend
 
 # Install only production dependencies to reduce image size
 RUN rm -rf node_modules && npm install --omit=dev
