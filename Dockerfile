@@ -4,6 +4,7 @@
 
 # Stage 1: Build the applications
 FROM node:20-alpine AS builder
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 
 # Copy root configurations and package manifests
@@ -32,6 +33,7 @@ RUN npm prune --omit=dev
 
 # Stage 2: Production runner stage (keeps image lightweight)
 FROM node:20-alpine AS runner
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 
 ENV NODE_ENV=production
