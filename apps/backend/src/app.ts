@@ -7,6 +7,8 @@ import proformaRoutes from './routes/proformaInvoices';
 import finalInvoiceRoutes from './routes/finalInvoices';
 import clientRoutes from './routes/clients';
 import conversionRoutes from './routes/conversions';
+import tenantProfileRoutes from './routes/tenantProfile';
+import adminRoutes from './routes/admin';
 
 const app = express();
 
@@ -59,6 +61,8 @@ app.use('/api/proforma-invoices', proformaRoutes);
 app.use('/api/final-invoices', finalInvoiceRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/convert', conversionRoutes);
+app.use('/api/tenant-profile', tenantProfileRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Global Error Handler Middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

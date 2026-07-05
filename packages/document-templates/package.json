@@ -1,5 +1,5 @@
 {
-  "name": "@my-billing/document-templates",
+  "name": "@procash-invoices/document-templates",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "dev": "tsc -w"
   },
   "dependencies": {
-    "@my-billing/database": "*"
+    "@procash-invoices/database": "*"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

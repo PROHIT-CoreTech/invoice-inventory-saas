@@ -1,4 +1,4 @@
-import { BillingDocumentType } from '@my-billing/database';
+import { BillingDocumentType } from '@procash-invoices/database';
 
 export interface TemplateLineItem {
   description: string;
@@ -42,6 +42,21 @@ export interface DocumentData {
   };
   terms?: string[];
   logoUrl?: string;
+  tenantProfile?: {
+    companyName: string;
+    logoUrl?: string;
+    proprietorName?: string;
+    address: string;
+    gstin?: string;
+    pan?: string;
+    bankName?: string;
+    bankAccHolder?: string;
+    bankAccType?: string;
+    bankAccNumber?: string;
+    bankIfsc?: string;
+    bankBranch?: string;
+    signatureUrl?: string;
+  };
 }
 
 /**
@@ -604,18 +619,36 @@ export function generateDocumentHtml(data: DocumentData): string {
     `;
   }
 
+  // Determine dynamic company details
+  const companyName = data.tenantProfile?.companyName || 'PROCASH INVOICES';
+  const proprietorName = data.tenantProfile?.proprietorName || 'Naresh Pandurang Bhuvad';
+  const addressHtml = data.tenantProfile?.address
+    ? escapeHtml(data.tenantProfile.address).replace(/\n/g, '<br />')
+    : `2b/706, 7th Floor, N.G. Suncity Phase II CHS,<br />
+       Thakur Village Road, Kandivali East,<br />
+       Mumbai, Maharashtra - 400101`;
+  const companyGstin = data.tenantProfile?.gstin || '27ALQPB3481K1ZR';
+  
+  // Parse state name & code
+  const isMaharashtra = data.tenantProfile?.address?.toLowerCase().includes('maharashtra') || !data.tenantProfile?.address;
+  const stateName = isMaharashtra ? 'Maharashtra' : (data.clientInfo.stateName || 'Other State');
+  const stateCode = companyGstin.substring(0, 2) || '27';
+
   // Determine standard bank details
   const bank = data.bankDetails || {
-    accountName: 'Cashflow Solutions',
-    bankName: 'YES BANK',
-    accountType: 'Current A/C',
-    accountNumber: '021261900003481',
-    ifscCode: 'YESB0000212',
-    branch: 'Kandivali East, Thakur Village'
+    accountName: data.tenantProfile?.bankAccHolder || 'PROCash Invoices',
+    bankName: data.tenantProfile?.bankName || 'YES BANK',
+    accountType: data.tenantProfile?.bankAccType || 'Current A/C',
+    accountNumber: data.tenantProfile?.bankAccNumber || '021261900003481',
+    ifscCode: data.tenantProfile?.bankIfsc || 'YESB0000212',
+    branch: data.tenantProfile?.bankBranch || 'Kandivali East, Thakur Village'
   };
 
   // Determine standard PAN from GSTIN (GSTIN structure: 27ALQPB3481K1ZR, PAN is characters 3 to 12 -> ALQPB3481K)
-  const companyPan = 'ALQPB3481K'; 
+  const companyPan = data.tenantProfile?.pan || (companyGstin.length >= 12 ? companyGstin.substring(2, 12) : 'ALQPB3481K'); 
+
+  // Dynamic signature URL source resolution
+  const signatureSrc = data.tenantProfile?.signatureUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/images/signature.png`;
 
   // Dynamic Terms & Declarations
   const termsList = data.terms || [
@@ -698,18 +731,16 @@ export function generateDocumentHtml(data: DocumentData): string {
           <!-- Primary Issuer Details (Tally style top left) -->
           <div class="tally-issuer-details">
             <div class="tally-company-name" style="font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 5px;">
-              ${data.logoUrl ? `<img src="${data.logoUrl}" alt="Logo" style="height: 16px; width: 16px; object-fit: contain; display: inline-block; vertical-align: middle;" onError="this.style.display='none';" />` : ''}
-              CASHFLOW SOLUTIONS
+              ${(data.tenantProfile?.logoUrl || data.logoUrl) ? `<img src="${data.tenantProfile?.logoUrl || data.logoUrl}" alt="Logo" style="height: 16px; width: 16px; object-fit: contain; display: inline-block; vertical-align: middle;" onError="this.style.display='none';" />` : ''}
+              ${companyName}
             </div>
-            <div class="tally-small-text">Proprietor: Naresh Pandurang Bhuvad</div>
+            <div class="tally-small-text">Proprietor: ${proprietorName}</div>
             <div>
-              2b/706, 7th Floor, N.G. Suncity Phase II CHS,<br>
-              Thakur Village Road, Kandivali East,<br>
-              Mumbai, Maharashtra - 400101
+              ${addressHtml}
             </div>
             <div style="margin-top: 4px;">
-              <strong>GSTIN/UIN:</strong> 27ALQPB3481K1ZR<br>
-              <strong>State Name:</strong> Maharashtra, <strong>Code:</strong> 27
+              <strong>GSTIN/UIN:</strong> ${companyGstin}<br>
+              <strong>State Name:</strong> ${stateName}, <strong>Code:</strong> ${stateCode}
             </div>
           </div>
         </td>
@@ -973,8 +1004,8 @@ export function generateDocumentHtml(data: DocumentData): string {
                 <div class="tally-small-text">Customer's Seal and Signature</div>
               </td>
               <td style="border-bottom: none; border-right: none; text-align: right; position: relative;">
-                <div class="tally-bold" style="font-size: 9px; margin-bottom: 45px;">for CASHFLOW SOLUTIONS</div>
-                <img src="${typeof window !== 'undefined' ? window.location.origin : ''}/images/signature.png" alt="" style="position: absolute; bottom: 15px; right: 20px; height: 48px; max-width: 180px; object-fit: contain; pointer-events: none;" onerror="if(this.src.indexOf('.png')!==-1){this.src=this.src.replace('.png','.svg');}else{this.style.display='none';}" />
+                <div class="tally-bold" style="font-size: 9px; margin-bottom: 45px;">for ${companyName.toUpperCase()}</div>
+                ${signatureSrc ? `<img src="${signatureSrc}" alt="" style="position: absolute; bottom: 15px; right: 20px; height: 48px; max-width: 180px; object-fit: contain; pointer-events: none;" onerror="if(this.src.indexOf('.png')!==-1){this.src=this.src.replace('.png','.svg');}else{this.style.display='none';}" />` : ''}
                 <div style="position: absolute; bottom: 5px; right: 10px;" class="tally-bold">Authorised Signatory</div>
               </td>
             </tr>

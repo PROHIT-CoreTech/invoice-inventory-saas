@@ -1,5 +1,36 @@
 import axios from 'axios';
 
+export const getSubdomain = () => {
+  if (typeof window === 'undefined') return null;
+  const hostname = window.location.hostname;
+  const parts = hostname.split('.');
+
+  // Local development fallback (e.g., tenant1.localhost:3000)
+  if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
+    if (parts.length > 1) {
+      return parts[0];
+    }
+    return null;
+  }
+
+  // For <tenant_name>.billing.prohitcoretech.com
+  const billingIndex = parts.indexOf('billing');
+  if (billingIndex > 0) {
+    return parts[billingIndex - 1];
+  }
+
+  // Fallback for standard <tenant_name>.domain.com structures
+  if (parts.length > 2) {
+    // Exclude subdomains like 'www' or 'billing' directly if they aren't tenants
+    const sub = parts[0];
+    if (sub !== 'www' && sub !== 'billing') {
+      return sub;
+    }
+  }
+
+  return null;
+};
+
 export const apiClient = axios.create({
   baseURL: 'http://localhost:5001/api', // default base URL
   headers: {
@@ -7,18 +38,22 @@ export const apiClient = axios.create({
   },
 });
 
-// Helper to update the base URL dynamically at runtime (useful for mobile settings or environment switches)
+// Helper to update the base URL dynamically at runtime
 export const setApiBaseUrl = (url: string) => {
   apiClient.defaults.baseURL = url;
 };
 
-// Request interceptor (e.g. for injecting Auth tokens if added in the future)
+// Request interceptor to inject X-Tenant-Id header
 apiClient.interceptors.request.use(
   (config) => {
-    // Modify config before request is sent
+    const tenant = getSubdomain();
+    if (tenant) {
+      config.headers['X-Tenant-Id'] = tenant;
+    }
     return config;
   },
   (error) => {
     return Promise.reject(error);
   }
 );
+

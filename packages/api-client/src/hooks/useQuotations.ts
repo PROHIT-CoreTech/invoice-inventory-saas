@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client.js';
-import { Quotation } from '@my-billing/database';
+import { Quotation } from '@procash-invoices/database';
 
 export const useGetQuotations = () => {
   return useQuery<Quotation[]>({

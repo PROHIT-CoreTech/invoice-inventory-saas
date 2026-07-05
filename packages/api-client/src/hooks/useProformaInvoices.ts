@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client.js';
-import { ProformaInvoice } from '@my-billing/database';
+import { ProformaInvoice } from '@procash-invoices/database';
 
 export const useGetProformaInvoices = () => {
   return useQuery<ProformaInvoice[]>({

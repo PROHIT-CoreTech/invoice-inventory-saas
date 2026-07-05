@@ -1,6 +1,6 @@
-# Cashflow Billing ERP — User Manual
+# PROCash Invoice ERP — User Manual
 
-Welcome to **Cashflow Billing ERP**, a production-grade invoicing and billing dashboard tailored for **CASHFLOW SOLUTIONS**. This manual will guide you through the layout, document flows, and how to effectively manage your billing lifecycle.
+Welcome to **PROCash Invoice ERP**, a production-grade invoicing and billing dashboard tailored for **PROCASH INVOICES**. This manual will guide you through the layout, document flows, and how to effectively manage your billing lifecycle.
 
 ---
 
@@ -121,7 +121,7 @@ To save your invoice or quotation cleanly as a PDF from Chrome/Safari:
 
 ## 6. Signature Customization
 
-The document template includes an official signature block for **CASHFLOW SOLUTIONS**:
+The document template includes an official signature block for **PROCASH INVOICES**:
 - To display your signature on printed PDFs, upload a signature image file named either `signature.png` or `signature.svg` to the following folder:
   `apps/web/public/images/`
 - The system will automatically detect the file. If both formats are missing, the signature area will remain cleanly hidden without displaying a broken image error.

@@ -1,9 +1,8 @@
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 import { connectDatabase } from './config/db';
-import { ClientModel, InvoiceModel } from '@my-billing/database/server';
+import { prisma } from '@procash-invoices/database/server';
 
 // Parse environment file from command line arguments (e.g. --env staging or --env production)
 const envIndex = process.argv.indexOf('--env');
@@ -24,21 +23,21 @@ if (fs.existsSync(envPath)) {
 }
 
 const cleanDatabase = async () => {
-  const mongoUri = process.env.MONGODB_URI;
-  if (!mongoUri) {
-    console.error(`CRITICAL ERROR: MONGODB_URI is not defined. (Looked in: ${envPath})`);
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl && (process.env.DATABASE_PROVIDER || 'sqlite') !== 'sqlite') {
+    console.error(`CRITICAL ERROR: DATABASE_URL is not defined. (Looked in: ${envPath})`);
     process.exit(1);
   }
 
   // Mask database credentials for safe console logging
-  const maskedUri = mongoUri.replace(/:([^@]+)@/, ':******@');
+  const maskedUrl = dbUrl ? dbUrl.replace(/:([^@]+)@/, ':******@') : 'SQLite local database';
   
   console.log('\n==================================================');
-  console.log(' DATABASE CLEANUP TOOL');
+  console.log(' DATABASE CLEANUP TOOL (PRISMA)');
   console.log('==================================================');
-  console.log(`Target Database: ${maskedUri}`);
+  console.log(`Target Database: ${maskedUrl}`);
   
-  const isProduction = mongoUri.includes('my-billing-production') || process.env.NODE_ENV === 'production' || envFile.includes('production');
+  const isProduction = (dbUrl && dbUrl.includes('production')) || process.env.NODE_ENV === 'production' || envFile.includes('production');
   if (isProduction) {
     console.log('\n⚠️  WARNING: Target database appears to be PRODUCTION!');
   } else {
@@ -51,8 +50,9 @@ const cleanDatabase = async () => {
     console.log('\n❌ OPERATION ABORTED: Confirmation Required');
     console.log('--------------------------------------------------');
     console.log('This script will permanently delete all data from:');
-    console.log('  - clients collection');
-    console.log('  - invoices / quotations / proforma collection');
+    console.log('  - clients table');
+    console.log('  - invoices / quotations / proforma table');
+    console.log('  - line items table');
     console.log('  - local uploads directory');
     console.log('\nTo execute the cleanup, you MUST pass the --confirm flag:');
     console.log('  npm run db:clear -- --confirm');
@@ -65,15 +65,15 @@ const cleanDatabase = async () => {
   try {
     await connectDatabase();
     
-    // 1. Delete all invoices
+    // 1. Delete all invoices (cascade deletes LineItems)
     console.log('Clearing invoices and related documents...');
-    const invoiceDeleteResult = await InvoiceModel.deleteMany({});
-    console.log(`Successfully deleted ${invoiceDeleteResult.deletedCount} invoice/quotation records.`);
+    const invoiceDeleteResult = await prisma.invoice.deleteMany({});
+    console.log(`Successfully deleted ${invoiceDeleteResult.count} invoice/quotation records.`);
 
     // 2. Delete all clients
     console.log('Clearing clients...');
-    const clientDeleteResult = await ClientModel.deleteMany({});
-    console.log(`Successfully deleted ${clientDeleteResult.deletedCount} client records.`);
+    const clientDeleteResult = await prisma.client.deleteMany({});
+    console.log(`Successfully deleted ${clientDeleteResult.count} client records.`);
 
     // 3. Clear local uploads
     const uploadsDir = path.resolve(__dirname, '../uploads');
@@ -95,7 +95,7 @@ const cleanDatabase = async () => {
     console.error('\n❌ An error occurred during database cleanup:', error.message || error);
     process.exit(1);
   } finally {
-    await mongoose.disconnect();
+    await prisma.$disconnect();
     console.log('Database connection closed.\n');
   }
 };

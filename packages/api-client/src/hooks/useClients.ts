@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client.js';
-import { Client } from '@my-billing/database';
+import { Client } from '@procash-invoices/database';
 
 export const useGetClients = () => {
   return useQuery<Client[]>({

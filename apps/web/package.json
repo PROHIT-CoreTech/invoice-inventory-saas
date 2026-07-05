@@ -1,5 +1,5 @@
 {
-  "name": "@my-billing/web",
+  "name": "@procash-invoices/web",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@my-billing/api-client": "*",
-    "@my-billing/database": "*",
-    "@my-billing/document-templates": "*",
+    "@procash-invoices/api-client": "*",
+    "@procash-invoices/database": "*",
+    "@procash-invoices/document-templates": "*",
     "@tanstack/react-query": "^5.45.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

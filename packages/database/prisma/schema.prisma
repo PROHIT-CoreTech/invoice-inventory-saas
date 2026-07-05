@@ -1,0 +1,87 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Client {
+  id             String @id @default(uuid())
+  name           String
+  email          String   @unique
+  billingAddress String
+  taxId          String
+  gstin          String?
+  pan            String?
+  tenantId       String
+  invoices       Invoice[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Invoice {
+  id             String @id @default(uuid())
+  documentType   String   // 'QUOTATION' | 'PROFORMA' | 'FINAL_INVOICE'
+  documentNumber String   @unique
+  clientRef      String
+  client         Client   @relation(fields: [clientRef], references: [id])
+  clientInfo     String   // JSON-serialized string of Client fields to preserve historical integrity
+  items          LineItem[]
+  subTotal       Float    @default(0)
+  taxAmount      Float    @default(0)
+  totalAmount    Float    @default(0)
+  currency       String   @default("INR")
+  notes          String?
+  issueDate      DateTime @default(now())
+  dueDate        DateTime?
+  status         String   @default("DRAFT")
+
+  // Tracing relationships
+  quotationRef   String?
+  proformaRef    String?
+
+  validUntil     DateTime?
+  paymentStatus  String?  // 'UNPAID' | 'PARTIALLY_PAID' | 'PAID'
+  paymentDate    DateTime?
+  logoUrl        String?
+  tenantId       String
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model LineItem {
+  id              String @id @default(uuid())
+  description     String
+  quantity        Float?
+  price           Float
+  taxRate         Float    @default(0)
+  hsnSac          String?  @default("998311")
+  discountPercent Float    @default(0)
+  taxAmount       Float    @default(0)
+  total           Float    @default(0)
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model TenantProfile {
+  id             String @id @default(uuid())
+  tenantId       String   @unique
+  companyName    String
+  logoUrl        String?
+  proprietorName String?
+  address        String
+  gstin          String?
+  pan            String?
+  bankName       String?
+  bankAccHolder  String?
+  bankAccType    String?
+  bankAccNumber  String?
+  bankIfsc       String?
+  bankBranch     String?
+  signatureUrl   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

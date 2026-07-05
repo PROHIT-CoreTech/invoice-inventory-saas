@@ -1,17 +1,17 @@
 {
-  "name": "@my-billing/backend",
+  "name": "@procash-invoices/backend",
   "version": "1.0.0",
   "private": true,
   "main": "./dist/index.js",
   "scripts": {
-    "build": "cd ../.. && npm run build --workspace=@my-billing/database && cd apps/backend && tsc",
+    "build": "cd ../.. && npm run build --workspace=@procash-invoices/database && cd apps/backend && tsc",
     "dev": "nodemon src/index.ts",
     "start": "node dist/index.js",
     "migrate": "node dist/migrate.js",
     "db:clear": "node dist/clean-db.js"
   },
   "dependencies": {
-    "@my-billing/database": "file:../../packages/database",
+    "@procash-invoices/database": "file:../../packages/database",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",

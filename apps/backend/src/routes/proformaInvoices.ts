@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { InvoiceModel } from '@my-billing/database/server';
-import { invoiceSchema } from '@my-billing/database';
+import { invoiceSchema } from '@procash-invoices/database';
+import { tenantMiddleware } from '../middleware/tenantMiddleware';
 
 const router = Router();
+router.use(tenantMiddleware);
 
 // Helper to calculate totals based on line items
 const calculateTotals = (items: any[]) => {
@@ -21,7 +22,11 @@ const calculateTotals = (items: any[]) => {
     subTotal += itemSubtotal;
     taxAmount += itemTax;
     return {
-      ...item,
+      description: item.description,
+      quantity: item.quantity !== undefined ? Number(item.quantity) : null,
+      price: Number(item.price),
+      taxRate: Number(item.taxRate) || 0,
+      hsnSac: item.hsnSac || '998311',
       discountPercent,
       taxAmount: Number(itemTax.toFixed(2)),
       total: Number(itemTotal.toFixed(2)),
@@ -36,13 +41,23 @@ const calculateTotals = (items: any[]) => {
   };
 };
 
+const mapInvoice = (inv: any) => {
+  if (!inv) return null;
+  return {
+    ...inv,
+    clientInfo: typeof inv.clientInfo === 'string' ? JSON.parse(inv.clientInfo) : inv.clientInfo,
+  };
+};
+
 // GET: List all proformas
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const proformas = await InvoiceModel.find({ documentType: 'PROFORMA' })
-      .populate('quotationRef')
-      .sort({ createdAt: -1 });
-    res.json(proformas);
+    const proformas = await req.db.invoice.findMany({
+      where: { documentType: 'PROFORMA' },
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(proformas.map(mapInvoice));
   } catch (error) {
     next(error);
   }
@@ -51,12 +66,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // GET: Fetch proforma by ID
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const proforma = await InvoiceModel.findOne({ _id: req.params.id, documentType: 'PROFORMA' }).populate('quotationRef');
+    const proforma = await req.db.invoice.findFirst({
+      where: { id: req.params.id, documentType: 'PROFORMA' },
+      include: { items: true },
+    });
     if (!proforma) {
       res.status(404).json({ message: 'Proforma Invoice not found' });
       return;
     }
-    res.json(proforma);
+    res.json(mapInvoice(proforma));
   } catch (error) {
     next(error);
   }
@@ -68,15 +86,35 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const validatedData = invoiceSchema.parse(req.body);
     const totals = calculateTotals(validatedData.items);
     
-    const newProforma = new InvoiceModel({
-      ...validatedData,
-      ...totals,
-      documentType: 'PROFORMA',
-      status: validatedData.status || 'DRAFT',
+    const newProforma = await req.db.invoice.create({
+      data: {
+        documentType: 'PROFORMA',
+        documentNumber: validatedData.documentNumber,
+        clientRef: validatedData.clientRef,
+        clientInfo: JSON.stringify(validatedData.clientInfo),
+        subTotal: totals.subTotal,
+        taxAmount: totals.taxAmount,
+        totalAmount: totals.totalAmount,
+        currency: validatedData.currency,
+        notes: validatedData.notes || null,
+        issueDate: validatedData.issueDate ? new Date(validatedData.issueDate) : new Date(),
+        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+        status: validatedData.status || 'DRAFT',
+        quotationRef: validatedData.quotationRef || null,
+        proformaRef: validatedData.proformaRef || null,
+        validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : null,
+        paymentStatus: validatedData.paymentStatus || null,
+        paymentDate: validatedData.paymentDate ? new Date(validatedData.paymentDate) : null,
+        logoUrl: validatedData.logoUrl || null,
+        tenantId: req.tenantId!,
+        items: {
+          create: totals.items,
+        },
+      },
+      include: { items: true },
     });
     
-    await newProforma.save();
-    res.status(201).json(newProforma);
+    res.status(201).json(mapInvoice(newProforma));
   } catch (error) {
     next(error);
   }
@@ -85,23 +123,50 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 // PUT: Update an existing proforma
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const existing = await InvoiceModel.findOne({ _id: req.params.id, documentType: 'PROFORMA' });
+    const existing = await req.db.invoice.findFirst({
+      where: { id: req.params.id, documentType: 'PROFORMA' },
+    });
     if (!existing) {
       res.status(404).json({ message: 'Proforma Invoice not found' });
       return;
     }
 
-    const existingPlain = JSON.parse(JSON.stringify(existing.toObject()));
-    const merged = { ...existingPlain, ...req.body };
-    const validatedData = invoiceSchema.parse(merged);
+    const validatedData = invoiceSchema.parse(req.body);
     const totals = calculateTotals(validatedData.items);
     
-    const updated = await InvoiceModel.findOneAndUpdate(
-      { _id: req.params.id, documentType: 'PROFORMA' },
-      { ...validatedData, ...totals },
-      { new: true }
-    );
-    res.json(updated);
+    // Delete existing line items
+    await req.db.lineItem.deleteMany({
+      where: { invoiceId: req.params.id },
+    });
+
+    const updated = await req.db.invoice.update({
+      where: { id: req.params.id },
+      data: {
+        documentNumber: validatedData.documentNumber,
+        clientRef: validatedData.clientRef,
+        clientInfo: JSON.stringify(validatedData.clientInfo),
+        subTotal: totals.subTotal,
+        taxAmount: totals.taxAmount,
+        totalAmount: totals.totalAmount,
+        currency: validatedData.currency,
+        notes: validatedData.notes || null,
+        issueDate: validatedData.issueDate ? new Date(validatedData.issueDate) : new Date(),
+        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+        status: validatedData.status || 'DRAFT',
+        quotationRef: validatedData.quotationRef || null,
+        proformaRef: validatedData.proformaRef || null,
+        validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : null,
+        paymentStatus: validatedData.paymentStatus || null,
+        paymentDate: validatedData.paymentDate ? new Date(validatedData.paymentDate) : null,
+        logoUrl: validatedData.logoUrl || null,
+        items: {
+          create: totals.items,
+        },
+      },
+      include: { items: true },
+    });
+    
+    res.json(mapInvoice(updated));
   } catch (error) {
     next(error);
   }
@@ -110,11 +175,18 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 // DELETE: Delete a proforma invoice by ID
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const deleted = await InvoiceModel.findOneAndDelete({ _id: req.params.id, documentType: 'PROFORMA' });
-    if (!deleted) {
+    const existing = await req.db.invoice.findFirst({
+      where: { id: req.params.id, documentType: 'PROFORMA' },
+    });
+    if (!existing) {
       res.status(404).json({ message: 'Proforma Invoice not found' });
       return;
     }
+
+    await req.db.invoice.delete({
+      where: { id: req.params.id },
+    });
+    
     res.json({ message: 'Proforma Invoice deleted successfully' });
   } catch (error) {
     next(error);
