@@ -21,13 +21,14 @@ COPY packages/database/ ./packages/database/
 COPY packages/api-client/ ./packages/api-client/
 COPY apps/backend/ ./apps/backend/
 
-# Compile TypeScript code across all workspaces
+# Generate Prisma Client and Compile TypeScript code across all workspaces
+RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
 RUN npm run build --workspace=@procash-invoices/database
 RUN npm run build --workspace=@procash-invoices/api-client
 RUN npm run build --workspace=@procash-invoices/backend
 
-# Install only production dependencies to reduce image size
-RUN rm -rf node_modules && npm install --omit=dev
+# Prune devDependencies to reduce image size
+RUN npm prune --omit=dev
 
 # Stage 2: Production runner stage (keeps image lightweight)
 FROM node:20-alpine AS runner
