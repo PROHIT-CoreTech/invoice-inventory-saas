@@ -21,17 +21,17 @@ export const getSubdomain = () => {
     return null;
   }
 
-  // For <tenant_name>.billing.prohitcoretech.com
-  const billingIndex = parts.indexOf('billing');
+  // For <tenant_name>.billing.prohitcoretech.com or <tenant_name>.biling.prohitcoretech.com
+  const billingIndex = parts.findIndex(p => p === 'billing' || p === 'biling');
   if (billingIndex > 0) {
     return parts[billingIndex - 1];
   }
 
   // Fallback for standard <tenant_name>.domain.com structures
   if (parts.length > 2) {
-    // Exclude subdomains like 'www' or 'billing' directly if they aren't tenants
+    // Exclude subdomains like 'www', 'billing', or 'biling' directly if they aren't tenants
     const sub = parts[0];
-    if (sub !== 'www' && sub !== 'billing') {
+    if (sub !== 'www' && sub !== 'billing' && sub !== 'biling') {
       return sub;
     }
   }
