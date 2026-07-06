@@ -611,6 +611,7 @@ export default function Dashboard() {
         const docId = editingDoc.id || (editingDoc as any)._id;
         if (docType === 'QUOTATION') {
           const payload = {
+            documentType: 'QUOTATION' as const,
             documentNumber: docNumber,
             quoteNumber: docNumber,
             clientRef: selectedClientId,
@@ -631,6 +632,7 @@ export default function Dashboard() {
           await updateQuotation.mutateAsync({ id: docId, data: payload as any });
         } else if (docType === 'PROFORMA') {
           const payload = {
+            documentType: 'PROFORMA' as const,
             documentNumber: docNumber,
             proformaNumber: docNumber,
             clientRef: selectedClientId,
@@ -652,6 +654,7 @@ export default function Dashboard() {
           await updateProforma.mutateAsync({ id: docId, data: payload as any });
         } else {
           const payload = {
+            documentType: 'FINAL_INVOICE' as const,
             documentNumber: docNumber,
             invoiceNumber: docNumber,
             clientRef: selectedClientId,
