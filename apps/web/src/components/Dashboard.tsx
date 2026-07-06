@@ -21,6 +21,7 @@ import {
 } from '@procash-invoices/api-client';
 import { type Quotation, type ProformaInvoice, type FinalInvoice } from '@procash-invoices/database';
 import { generateDocumentHtml } from '@procash-invoices/document-templates';
+import ExcelJS from 'exceljs';
 
 export default function Dashboard() {
   // Querying using shared TanStack Query hooks from @procash-invoices/api-client
@@ -239,9 +240,30 @@ export default function Dashboard() {
     }, 1000);
   };
 
+  const handleDownloadHtml = (doc: any) => {
+    const docData = getDocumentData(doc);
+    const htmlContent = generateDocumentHtml(docData);
+    const docNum = doc.documentNumber || doc.quoteNumber || doc.proformaNumber || doc.invoiceNumber || 'document';
+    const safeNum = docNum.replace(/\//g, '-');
+    
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${doc.documentType || 'document'}_${safeNum}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // Daily Mode & History States
   const [viewMode, setViewMode] = useState<'daily' | 'history'>('daily');
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [isExcelPreviewOpen, setIsExcelPreviewOpen] = useState(false);
+  const [excelPreviewTab, setExcelPreviewTab] = useState<'Quotations' | 'Proformas' | 'Final Invoices'>('Quotations');
 
   // Form State
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -275,33 +297,221 @@ export default function Dashboard() {
       date.getFullYear() === today.getFullYear();
   };
 
-  const filterBySearch = (list: any[]) => {
-    if (!searchQuery) return list;
-    const query = searchQuery.toLowerCase();
-    return list.filter(item => {
-      const docNum = (item.documentNumber || item.quoteNumber || item.proformaNumber || item.invoiceNumber || '').toLowerCase();
-      const clientName = (item.clientInfo?.name || '').toLowerCase();
-      const clientEmail = (item.clientInfo?.email || '').toLowerCase();
-      return docNum.includes(query) || clientName.includes(query) || clientEmail.includes(query);
-    });
+  const filterBySearchAndDate = (list: any[]) => {
+    let filtered = list;
+    
+    // Search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(item => {
+        const docNum = (item.documentNumber || item.quoteNumber || item.proformaNumber || item.invoiceNumber || '').toLowerCase();
+        const clientName = (item.clientInfo?.name || '').toLowerCase();
+        const clientEmail = (item.clientInfo?.email || '').toLowerCase();
+        return docNum.includes(query) || clientName.includes(query) || clientEmail.includes(query);
+      });
+    }
+    
+    // Date range filter
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.createdAt || item.issueDate);
+        return itemDate >= start;
+      });
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.createdAt || item.issueDate);
+        return itemDate <= end;
+      });
+    }
+    
+    return filtered;
   };
 
   const filteredQuotes = viewMode === 'daily'
     ? quotations.filter((q: any) => isToday(q.createdAt || q.issueDate))
-    : filterBySearch(quotations);
+    : filterBySearchAndDate(quotations);
 
   const filteredProformas = viewMode === 'daily'
     ? proformas.filter((p: any) => isToday(p.createdAt || p.issueDate))
-    : filterBySearch(proformas);
+    : filterBySearchAndDate(proformas);
 
   const filteredInvoices = viewMode === 'daily'
     ? invoices.filter((i: any) => isToday(i.createdAt || i.issueDate))
-    : filterBySearch(invoices);
+    : filterBySearchAndDate(invoices);
 
   // Aggregate values for display
   const totalQuoteVolume = (quotations as Quotation[]).reduce((sum: number, q: Quotation) => sum + (q.totalAmount || 0), 0);
   const totalProformaVolume = (proformas as ProformaInvoice[]).reduce((sum: number, p: ProformaInvoice) => sum + (p.totalAmount || 0), 0);
   const totalInvoiceVolume = (invoices as FinalInvoice[]).reduce((sum: number, i: FinalInvoice) => sum + (i.totalAmount || 0), 0);
+
+  const handleExportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    
+    // Configure default properties
+    workbook.creator = 'PROCash Invoices';
+    workbook.lastModifiedBy = 'PROCash Invoices';
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    const generateSheet = (sheetName: string, title: string, headers: string[], rows: any[]) => {
+      const sheet = workbook.addWorksheet(sheetName, {
+        views: [{ showGridLines: true }] // Ensure grid lines are visible
+      });
+
+      // 1. Add Title row
+      sheet.addRow([title]);
+      const titleCell = sheet.getCell('A1');
+      titleCell.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: 'FF4F46E5' } };
+      sheet.getRow(1).height = 35;
+      sheet.mergeCells(1, 1, 1, headers.length); // Merge across header length
+
+      // Blank space
+      sheet.addRow([]);
+      sheet.getRow(2).height = 15;
+
+      // 2. Add Header row
+      sheet.addRow(headers);
+      const headerRow = sheet.getRow(3);
+      headerRow.height = 25;
+      
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4F46E5' }
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF312E81' } },
+          bottom: { style: 'thin', color: { argb: 'FF312E81' } },
+          left: { style: 'thin', color: { argb: 'FF312E81' } },
+          right: { style: 'thin', color: { argb: 'FF312E81' } }
+        };
+      });
+
+      // 3. Add Data rows
+      if (rows.length === 0) {
+        sheet.addRow(['No records found']);
+        sheet.mergeCells(4, 1, 4, headers.length);
+        const emptyCell = sheet.getCell('A4');
+        emptyCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        emptyCell.font = { name: 'Segoe UI', italic: true };
+        sheet.getRow(4).height = 22;
+      } else {
+        rows.forEach((rowData) => {
+          const r = sheet.addRow(rowData);
+          r.height = 22;
+          
+          r.eachCell((cell, colNumber) => {
+            cell.font = { name: 'Segoe UI', size: 10, color: { argb: 'FF1E293B' } };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+            };
+
+            // Format numbers to align Right
+            if (typeof cell.value === 'number') {
+              cell.alignment = { horizontal: 'right', vertical: 'middle' };
+              if (colNumber >= 6 && colNumber <= 8) {
+                cell.numFmt = '"₹"#,##0.00'; // Format as INR Currency
+              }
+            } else {
+              cell.alignment = { horizontal: 'left', vertical: 'middle' };
+            }
+          });
+        });
+      }
+
+      // 4. Set Column Widths dynamically
+      const colWidths = [20, 25, 25, 15, 15, 18, 18, 18, 15];
+      colWidths.forEach((width, index) => {
+        const col = sheet.getColumn(index + 1);
+        if (col) col.width = width;
+      });
+    };
+
+    // 1. Prepare data rows for Quotations
+    const quotesData = filteredQuotes.map((q: any) => [
+      q.quoteNumber || q.documentNumber || '',
+      q.clientInfo?.name || '',
+      q.clientInfo?.email || '',
+      q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '',
+      q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '',
+      q.subtotal || 0,
+      q.taxAmount || 0,
+      q.totalAmount || 0,
+      q.status || ''
+    ]);
+
+    // 2. Prepare data rows for Proformas
+    const proformasData = filteredProformas.map((p: any) => [
+      p.proformaNumber || p.documentNumber || '',
+      p.clientInfo?.name || '',
+      p.clientInfo?.email || '',
+      p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '',
+      p.dueDate ? new Date(p.dueDate).toLocaleDateString() : '',
+      p.subtotal || 0,
+      p.taxAmount || 0,
+      p.totalAmount || 0,
+      p.status || ''
+    ]);
+
+    // 3. Prepare data rows for Final Invoices
+    const invoicesData = filteredInvoices.map((i: any) => [
+      i.invoiceNumber || i.documentNumber || '',
+      i.clientInfo?.name || '',
+      i.clientInfo?.email || '',
+      i.createdAt ? new Date(i.createdAt).toLocaleDateString() : '',
+      i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '',
+      i.subtotal || 0,
+      i.taxAmount || 0,
+      i.totalAmount || 0,
+      i.status || ''
+    ]);
+
+    // Generate sheets
+    generateSheet(
+      'Quotations',
+      'Quotations Billing Archive Report',
+      ['Quote Number', 'Client Name', 'Client Email', 'Date', 'Valid Until', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
+      quotesData
+    );
+
+    generateSheet(
+      'Proformas',
+      'Proforma Invoices Billing Archive Report',
+      ['Proforma Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
+      proformasData
+    );
+
+    generateSheet(
+      'Final Invoices',
+      'Final Invoices Billing Archive Report',
+      ['Invoice Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
+      invoicesData
+    );
+
+    // Save workbook binary file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Billing_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const todayQuoteVolume = (quotations as Quotation[]).filter((q: any) => isToday(q.createdAt || q.issueDate)).reduce((sum, q) => sum + (q.totalAmount || 0), 0);
   const todayProformaVolume = (proformas as ProformaInvoice[]).filter((p: any) => isToday(p.createdAt || p.issueDate)).reduce((sum, p) => sum + (p.totalAmount || 0), 0);
@@ -927,16 +1137,153 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Global Search Bar (Only in History mode) */}
+      {/* Global Search Bar & Filters (Only in History mode) */}
       {viewMode === 'history' && (
-        <div className="search-bar-container">
-          <input 
-            type="text" 
-            placeholder="🔍 Search history by Document #, Client name or email..." 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
+        <div className="search-bar-container" style={{
+          display: 'flex',
+          gap: '1rem',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          backgroundColor: 'rgba(30, 41, 59, 0.35)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '12px',
+          padding: '1.25rem',
+          marginBottom: '2rem'
+        }}>
+          {/* Search Query */}
+          <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
+              Search Query
+            </label>
+            <input 
+              type="text" 
+              placeholder="🔍 Search history by Document #, Client name or email..." 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(15, 23, 42, 0.55)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '8px',
+                color: '#fff',
+                padding: '0.65rem 1rem',
+                fontSize: '0.9rem',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          {/* Start Date */}
+          <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
+              Start Date
+            </label>
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(15, 23, 42, 0.55)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '8px',
+                color: '#fff',
+                padding: '0.6rem 0.85rem',
+                fontSize: '0.9rem',
+                outline: 'none',
+                boxSizing: 'border-box',
+                colorScheme: 'dark'
+              }}
+            />
+          </div>
+
+          {/* End Date */}
+          <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
+              End Date
+            </label>
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(15, 23, 42, 0.55)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '8px',
+                color: '#fff',
+                padding: '0.6rem 0.85rem',
+                fontSize: '0.9rem',
+                outline: 'none',
+                boxSizing: 'border-box',
+                colorScheme: 'dark'
+              }}
+            />
+          </div>
+
+          {/* Export & Preview Buttons */}
+          <div style={{ alignSelf: 'flex-end', flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button 
+              type="button" 
+              onClick={() => setIsExcelPreviewOpen(true)}
+              style={{
+                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                color: '#fff',
+                border: 'none',
+                padding: '0.65rem 1.5rem',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+              }}
+            >
+              👁️ Preview Excel
+            </button>
+            <button 
+              type="button" 
+              onClick={handleExportToExcel}
+              style={{
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#fff',
+                border: 'none',
+                padding: '0.65rem 1.5rem',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+              }}
+            >
+              📥 Export to Excel
+            </button>
+          </div>
         </div>
       )}
 
@@ -1006,7 +1353,8 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <button className="btn-print" title="Print Quotation" onClick={() => setPrintDoc(q)}>🖨️</button>
+                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Quotation" onClick={() => setPrintDoc(q)}>👁️</button>
+                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(q)}>📥</button>
                       <button className="btn-status-action text-info" title="Edit Quotation" onClick={() => openEditModal(q)}>✏️</button>
                       <button className="btn-status-action text-danger" title="Delete Quotation" onClick={() => handleDeleteDoc(q.id || (q as any)._id, 'QUOTATION')}>🗑️</button>
                       {q.status !== 'CONVERTED' && q.status !== 'DECLINED' && (
@@ -1057,7 +1405,8 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <button className="btn-print" title="Print Proforma" onClick={() => setPrintDoc(p)}>🖨️</button>
+                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Proforma" onClick={() => setPrintDoc(p)}>👁️</button>
+                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(p)}>📥</button>
                       <button className="btn-status-action text-info" title="Edit Proforma" onClick={() => openEditModal(p)}>✏️</button>
                       <button className="btn-status-action text-danger" title="Delete Proforma" onClick={() => handleDeleteDoc(p.id || (p as any)._id, 'PROFORMA')}>🗑️</button>
                       {p.status !== 'CONVERTED' && (
@@ -1105,7 +1454,8 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <button className="btn-print" title="Print Invoice" onClick={() => setPrintDoc(i)}>🖨️</button>
+                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Invoice" onClick={() => setPrintDoc(i)}>👁️</button>
+                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(i)}>📥</button>
                       <button className="btn-status-action text-info" title="Edit Invoice" onClick={() => openEditModal(i)}>✏️</button>
                       <button className="btn-status-action text-danger" title="Delete Invoice" onClick={() => handleDeleteDoc(i.id || (i as any)._id, 'FINAL_INVOICE')}>🗑️</button>
                       {i.status !== 'PAID' && (
@@ -1489,6 +1839,175 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* EXCEL SPREADSHEET PREVIEW MODAL */}
+      {isExcelPreviewOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-card" style={{ width: '90%', maxWidth: '1200px', height: '80vh', display: 'flex', flexDirection: 'column', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', padding: 0 }}>
+            {/* Modal Header */}
+            <div className="modal-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                📊 Excel Spreadsheet Live Preview
+              </h3>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <button 
+                  type="button" 
+                  onClick={handleExportToExcel}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '0.45rem 1rem',
+                    borderRadius: '6px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📥 Export .xlsx
+                </button>
+                <button type="button" className="btn-close" style={{ color: '#94a3b8' }} onClick={() => setIsExcelPreviewOpen(false)}>&times;</button>
+              </div>
+            </div>
+
+            {/* Tab Selection */}
+            <div style={{ display: 'flex', backgroundColor: '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              {(['Quotations', 'Proformas', 'Final Invoices'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setExcelPreviewTab(tab)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    border: 'none',
+                    background: excelPreviewTab === tab ? '#0f172a' : 'transparent',
+                    color: excelPreviewTab === tab ? '#3b82f6' : '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    borderTop: excelPreviewTab === tab ? '3px solid #3b82f6' : '3px solid transparent',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  📁 {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Modal Body / Spreadsheet View */}
+            <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', backgroundColor: '#f8fafc' }}>
+              <div style={{
+                backgroundColor: '#fff',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                border: '1px solid #e2e8f0',
+                fontFamily: '"Segoe UI", sans-serif',
+                overflow: 'hidden',
+                width: 'fit-content',
+                minWidth: '100%'
+              }}>
+                {/* Excel Coordinates Header (A, B, C...) */}
+                <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
+                  <div style={{ width: '40px', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}></div>
+                  {Array.from({ length: 9 }).map((_, i) => (
+                    <div key={i} style={{ width: i === 0 ? '140px' : i === 1 || i === 2 ? '180px' : i === 3 || i === 4 ? '90px' : i === 5 || i === 6 || i === 7 ? '110px' : '100px', borderRight: '1px solid #cbd5e1', padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                      {String.fromCharCode(65 + i)}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Row 1: Merged Title */}
+                <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1' }}>
+                  <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>1</div>
+                  <div style={{ flex: 1, padding: '0.75rem', fontSize: '1.15rem', fontWeight: 700, color: '#4f46e5', textAlign: 'left' }}>
+                    {excelPreviewTab === 'Quotations' ? 'Quotations Billing Archive Report' : excelPreviewTab === 'Proformas' ? 'Proforma Invoices Billing Archive Report' : 'Final Invoices Billing Archive Report'}
+                  </div>
+                </div>
+
+                {/* Row 2: Spacer */}
+                <div style={{ display: 'flex', height: '15px', borderBottom: '1px solid #cbd5e1' }}>
+                  <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>2</div>
+                  <div style={{ flex: 1, backgroundColor: '#fff' }}></div>
+                </div>
+
+                {/* Row 3: Indigo Table Header */}
+                <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1' }}>
+                  <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>3</div>
+                  {(excelPreviewTab === 'Quotations' 
+                    ? ['Quote Number', 'Client Name', 'Client Email', 'Date', 'Valid Until', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status']
+                    : excelPreviewTab === 'Proformas'
+                    ? ['Proforma Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status']
+                    : ['Invoice Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status']
+                  ).map((h, i) => (
+                    <div key={i} style={{
+                      width: i === 0 ? '140px' : i === 1 || i === 2 ? '180px' : i === 3 || i === 4 ? '90px' : i === 5 || i === 6 || i === 7 ? '110px' : '100px',
+                      borderRight: '1px solid #312e81',
+                      backgroundColor: '#4f46e5',
+                      color: '#fff',
+                      padding: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      textAlign: 'center'
+                    }}>
+                      {h}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Row 4+: Data Rows */}
+                {(() => {
+                  const data = excelPreviewTab === 'Quotations' 
+                    ? filteredQuotes.map((q: any) => [q.quoteNumber || q.documentNumber || '', q.clientInfo?.name || '', q.clientInfo?.email || '', q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '', q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '', q.subtotal || 0, q.taxAmount || 0, q.totalAmount || 0, q.status || ''])
+                    : excelPreviewTab === 'Proformas'
+                    ? filteredProformas.map((p: any) => [p.proformaNumber || p.documentNumber || '', p.clientInfo?.name || '', p.clientInfo?.email || '', p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '', p.dueDate ? new Date(p.dueDate).toLocaleDateString() : '', p.subtotal || 0, p.taxAmount || 0, p.totalAmount || 0, p.status || ''])
+                    : filteredInvoices.map((i: any) => [i.invoiceNumber || i.documentNumber || '', i.clientInfo?.name || '', i.clientInfo?.email || '', i.createdAt ? new Date(i.createdAt).toLocaleDateString() : '', i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '', i.subtotal || 0, i.taxAmount || 0, i.totalAmount || 0, i.status || '']);
+
+                  if (data.length === 0) {
+                    return (
+                      <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1' }}>
+                        <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>4</div>
+                        <div style={{ flex: 1, padding: '12px', fontSize: '0.85rem', color: '#cbd5e1', fontStyle: 'italic', textAlign: 'center' }}>No records found</div>
+                      </div>
+                    );
+                  }
+
+                  return data.map((rowVal: any[], rowIndex: number) => (
+                    <div key={rowIndex} style={{ display: 'flex', borderBottom: '1px solid #cbd5e1', backgroundColor: rowIndex % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                      <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>{rowIndex + 4}</div>
+                      {rowVal.map((val: any, cellIdx: number) => {
+                        const isNum = typeof val === 'number';
+                        return (
+                          <div key={cellIdx} style={{
+                            width: cellIdx === 0 ? '140px' : cellIdx === 1 || cellIdx === 2 ? '180px' : cellIdx === 3 || cellIdx === 4 ? '90px' : cellIdx === 5 || cellIdx === 6 || cellIdx === 7 ? '110px' : '100px',
+                            borderRight: '1px solid #cbd5e1',
+                            padding: '6px 8px',
+                            fontSize: '0.8rem',
+                            color: '#334155',
+                            textAlign: isNum ? 'right' : 'left',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {isNum ? `₹${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : val}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Preview matches exact columns, formatting, and row styles exported to .xlsx workbook sheets.
+              </span>
+              <button type="button" className="btn-secondary-action" onClick={() => setIsExcelPreviewOpen(false)}>Close Preview</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* FLOATING PRINT PREVIEW MODAL */}
       {printDoc && (
         <div className="modal-overlay print-overlay">
@@ -1524,6 +2043,7 @@ export default function Dashboard() {
                   Convert to Final Invoice
                 </button>
               )}
+              <button type="button" className="btn-primary-action" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderColor: '#059669' }} onClick={() => handleDownloadHtml(printDoc)}>Download HTML</button>
               <button type="button" className="btn-primary-action" onClick={handlePrint}>Print / Save PDF</button>
             </div>
           </div>

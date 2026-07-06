@@ -220,6 +220,37 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             margin: 0 auto !important;
           }
         }
+        @media (max-width: 768px) {
+          .floating-parallax-1, .floating-parallax-2 {
+            display: none !important;
+          }
+        }
+        @media (max-width: 576px) {
+          .preview-stats-grid {
+            grid-template-columns: 1fr !important;
+            gap: 0.5rem !important;
+          }
+          .hero-right-preview {
+            height: auto !important;
+            min-height: 480px !important;
+          }
+          .preview-dashboard-card {
+            position: relative !important;
+            height: auto !important;
+            padding: 1rem !important;
+          }
+          .preview-table-container {
+            overflow-x: auto !important;
+          }
+          .onboarding-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+          }
+          .onboarding-modal-card {
+            padding: 1.25rem !important;
+            border-radius: 16px !important;
+          }
+        }
       `}</style>
 
       {/* Decorative Background 3D Glowing Orbs */}
@@ -451,7 +482,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           }}
         >
           {/* Main Dashboard Card (Glassmorphic Mock UI matching the provided screenshot) */}
-          <div style={{
+          <div className="preview-dashboard-card" style={{
             position: 'absolute',
             inset: 0,
             backgroundColor: '#0a0d14',
@@ -508,7 +539,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             </div>
 
             {/* Statistics Cards Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+            <div className="preview-stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
               {/* Quotations Card */}
               <div style={{ backgroundColor: 'rgba(30, 41, 59, 0.45)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.58rem', color: '#94a3b8', fontWeight: 700 }}>
@@ -553,7 +584,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
               </div>
 
               {/* Table representation */}
-              <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+              <div className="preview-table-container" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ backgroundColor: 'rgba(15,23,42,0.8)', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#94a3b8' }}>
@@ -592,7 +623,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           </div>
 
           {/* Floating Element 1: 3D Parallax Invoice Card */}
-          <div style={{
+          <div className="floating-parallax-1" style={{
             position: 'absolute',
             bottom: '1.5rem',
             left: '-2.5rem',
@@ -621,7 +652,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           </div>
 
           {/* Floating Element 2: 3D Parallax GST Tax Indicator */}
-          <div style={{
+          <div className="floating-parallax-2" style={{
             position: 'absolute',
             top: '2rem',
             right: '-2.5rem',
@@ -747,7 +778,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           padding: '2rem',
           overflowY: 'auto'
         }}>
-          <div style={{
+          <div className="onboarding-modal-card" style={{
             backgroundColor: '#151c2f',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '24px',
@@ -775,7 +806,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   1. Company Profile
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={labelStyle}>Company Name *</label>
                     <input 
@@ -799,7 +830,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                   </div>
                 </div>
 
-                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '1rem' }}>
+                <div className="onboarding-grid" style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={labelStyle}>Official Billing Address *</label>
                     <textarea 
@@ -847,7 +878,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   2. Tax Details
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={labelStyle}>GSTIN / Tax ID</label>
                     <input 
@@ -875,7 +906,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   3. Bank Account Details (For Invoice Printing)
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={labelStyle}>Account Holder Name</label>
                     <input 
@@ -898,7 +929,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                   </div>
                 </div>
 
-                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="onboarding-grid" style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={labelStyle}>Account Number</label>
                     <input 
@@ -936,7 +967,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   4. Workspace Styling & Subscription Tier
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                   <div>
                     <label style={labelStyle}>Select Dashboard Theme</label>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>

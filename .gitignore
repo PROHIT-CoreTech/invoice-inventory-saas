@@ -1,6 +1,7 @@
 # 1. Dependency & Build caches
 node_modules/
 .npm
+.npm-cache/
 .yarn/
 .turbo/
 dist/
