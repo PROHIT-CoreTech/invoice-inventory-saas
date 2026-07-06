@@ -9,12 +9,12 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
   const [error, setError] = useState('');
 
   const getSuffix = () => {
-    if (typeof window === 'undefined') return '.billing.prohitcoretech.com';
+    if (typeof window === 'undefined') return '.biling.prohitcoretech.com';
     const host = window.location.host;
     if (host.includes('localhost') || host.includes('127.0.0.1')) {
       return `.localhost${window.location.port ? `:${window.location.port}` : ''}`;
     }
-    return '.billing.prohitcoretech.com';
+    return `.${host}`;
   };
 
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -42,8 +42,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
       const port = window.location.port ? `:${window.location.port}` : '';
       return `${currentProtocol}//${tenant}.localhost${port}`;
     } else {
-      const mainDomain = 'billing.prohitcoretech.com';
-      return `${currentProtocol}//${tenant}.${mainDomain}`;
+      return `${currentProtocol}//${tenant}.${currentHost}`;
     }
   };
 

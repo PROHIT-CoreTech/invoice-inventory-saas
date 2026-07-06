@@ -65,7 +65,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       const port = window.location.port ? `:${window.location.port}` : '';
       return `${currentProtocol}//${tenantId}.localhost${port}`;
     }
-    return `${currentProtocol}//${tenantId}.billing.prohitcoretech.com`;
+    return `${currentProtocol}//${tenantId}.${currentHost}`;
   };
 
   const formatDate = (dateStr: string) => {
