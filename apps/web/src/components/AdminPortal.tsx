@@ -16,6 +16,8 @@ interface Tenant {
   bankIfsc?: string;
   bankBranch?: string;
   signatureUrl?: string;
+  theme?: string;
+  tier?: string;
   createdAt: string;
 }
 
@@ -78,6 +80,79 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       });
     } catch {
       return dateStr;
+    }
+  };
+
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [editFormData, setEditFormData] = useState<any>({
+    companyName: '',
+    proprietorName: '',
+    address: '',
+    gstin: '',
+    pan: '',
+    bankName: '',
+    bankAccHolder: '',
+    bankAccType: '',
+    bankAccNumber: '',
+    bankIfsc: '',
+    bankBranch: '',
+    theme: 'DEFAULT',
+    tier: 'FREE'
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  const handleEditClick = (t: Tenant) => {
+    setEditingTenant(t);
+    setEditFormData({
+      companyName: t.companyName || '',
+      proprietorName: t.proprietorName || '',
+      address: t.address || '',
+      gstin: t.gstin || '',
+      pan: t.pan || '',
+      bankName: t.bankName || '',
+      bankAccHolder: t.bankAccHolder || '',
+      bankAccType: t.bankAccType || 'Current A/C',
+      bankAccNumber: t.bankAccNumber || '',
+      bankIfsc: t.bankIfsc || '',
+      bankBranch: t.bankBranch || '',
+      theme: t.theme || 'DEFAULT',
+      tier: t.tier || 'FREE'
+    });
+    setSaveError('');
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTenant) return;
+    setIsSaving(true);
+    setSaveError('');
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/admin/tenants/${editingTenant.tenantId}`;
+      const res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          password,
+          ...editFormData
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to update tenant profile.');
+      }
+
+      const updatedTenant = await res.json();
+      setTenants(prev => prev.map(item => item.tenantId === editingTenant.tenantId ? updatedTenant : item));
+      setEditingTenant(null);
+    } catch (err: any) {
+      setSaveError(err.message || 'Something went wrong while saving workspace.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -374,6 +449,14 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                     <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.35rem', maxWidth: '180px', whiteSpace: 'pre-wrap' }}>
                       {t.address}
                     </div>
+                    <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.7rem', backgroundColor: '#334155', color: '#e2e8f0', padding: '0.15rem 0.4rem', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 600 }}>
+                        🎨 {t.theme || 'DEFAULT'}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', backgroundColor: t.tier === 'PREMIUM' ? '#fbbf24' : '#1e293b', color: t.tier === 'PREMIUM' ? '#000' : '#94a3b8', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                        {t.tier === 'PREMIUM' ? '👑 PREMIUM' : 'FREE'}
+                      </span>
+                    </div>
                   </td>
 
                   {/* Tax Info */}
@@ -441,28 +524,61 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
                   {/* Launch Action */}
                   <td style={{...tdStyle, textAlign: 'center'}}>
-                    <a 
-                      href={getTenantUrl(t.tenantId)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        backgroundColor: '#6366f1',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '0.45rem 1rem',
-                        borderRadius: '6px',
-                        fontWeight: 700,
-                        textDecoration: 'none',
-                        display: 'inline-block',
-                        fontSize: '0.8rem',
-                        boxShadow: '0 4px 10px rgba(99, 102, 241, 0.25)',
-                        transition: 'background-color 0.15s'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6366f1'}
-                    >
-                      Open Workspace ↗
-                    </a>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
+                      <a 
+                        href={getTenantUrl(t.tenantId)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          backgroundColor: '#6366f1',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '0.45rem 1rem',
+                          borderRadius: '6px',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          display: 'inline-block',
+                          fontSize: '0.8rem',
+                          boxShadow: '0 4px 10px rgba(99, 102, 241, 0.25)',
+                          transition: 'background-color 0.15s',
+                          width: '120px',
+                          textAlign: 'center',
+                          boxSizing: 'border-box'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6366f1'}
+                      >
+                        Open ↗
+                      </a>
+                      <button 
+                        type="button"
+                        onClick={() => handleEditClick(t)}
+                        style={{
+                          backgroundColor: '#1e293b',
+                          color: '#e2e8f0',
+                          border: '1px solid #475569',
+                          padding: '0.45rem 1rem',
+                          borderRadius: '6px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          transition: 'all 0.15s',
+                          width: '120px',
+                          textAlign: 'center',
+                          boxSizing: 'border-box'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor = '#334155';
+                          e.currentTarget.style.color = '#fff';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1e293b';
+                          e.currentTarget.style.color = '#e2e8f0';
+                        }}
+                      >
+                        Edit Profile
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -470,6 +586,306 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Edit Workspace Profile Modal */}
+      {editingTenant && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '2rem',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            backgroundColor: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '16px',
+            padding: '2rem',
+            width: '100%',
+            maxWidth: '650px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            fontFamily: "'Outfit', 'Inter', sans-serif",
+            color: '#fff'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #334155', paddingBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#fff', fontWeight: 800, textAlign: 'left' }}>
+                  🏢 Manage Workspace Profile
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 600, display: 'block', textAlign: 'left', marginTop: '0.15rem' }}>
+                  Tenant ID: {editingTenant.tenantId}
+                </span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setEditingTenant(null)}
+                style={{ backgroundColor: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer', outline: 'none' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {saveError && (
+              <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: 600, textAlign: 'left' }}>
+                ⚠️ {saveError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ textAlign: 'left' }}>
+                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  1. Company Branding & Details
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company Registered Name *</label>
+                    <input 
+                      type="text"
+                      required
+                      value={editFormData.companyName}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, companyName: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Proprietor Name</label>
+                    <input 
+                      type="text"
+                      value={editFormData.proprietorName}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, proprietorName: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Billing & Office Address *</label>
+                  <textarea 
+                    required
+                    value={editFormData.address}
+                    onChange={(e) => setEditFormData((prev: any) => ({ ...prev, address: e.target.value }))}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', minHeight: '60px', resize: 'vertical', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  2. Government Tax Identifiers
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>GSTIN Number</label>
+                    <input 
+                      type="text"
+                      value={editFormData.gstin}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, gstin: e.target.value.toUpperCase() }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>PAN Card Number</label>
+                    <input 
+                      type="text"
+                      value={editFormData.pan}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, pan: e.target.value.toUpperCase() }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  3. Settlement Bank Credentials
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Bank Name</label>
+                    <input 
+                      type="text"
+                      value={editFormData.bankName}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankName: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Holder</label>
+                    <input 
+                      type="text"
+                      value={editFormData.bankAccHolder}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankAccHolder: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Type</label>
+                    <select
+                      value={editFormData.bankAccType}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankAccType: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', height: '40px', boxSizing: 'border-box' }}
+                    >
+                      <option value="Current A/C">Current A/C</option>
+                      <option value="Savings A/C">Savings A/C</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Number</label>
+                    <input 
+                      type="text"
+                      value={editFormData.bankAccNumber}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankAccNumber: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>IFSC Code</label>
+                    <input 
+                      type="text"
+                      value={editFormData.bankIfsc}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankIfsc: e.target.value.toUpperCase() }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Branch Name</label>
+                    <input 
+                      type="text"
+                      value={editFormData.bankBranch}
+                      onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankBranch: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  4. Workspace Styling & Subscription Tier
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Select Dashboard Theme</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      {[
+                        { id: 'DEFAULT', name: 'Classic Orange', color: '#fb923c' },
+                        { id: 'EMERALD', name: 'Emerald Green', color: '#10b981' },
+                        { id: 'SAPPHIRE', name: 'Sapphire Blue', color: '#3b82f6' },
+                        { id: 'ROYAL', name: 'Royal Gold', color: '#fbbf24' }
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setEditFormData((prev: any) => ({ ...prev, theme: t.id }))}
+                          style={{
+                            flex: 1,
+                            backgroundColor: editFormData.theme === t.id ? '#1e293b' : '#0f172a',
+                            border: `2px solid ${editFormData.theme === t.id ? t.color : '#334155'}`,
+                            borderRadius: '8px',
+                            padding: '0.5rem',
+                            color: '#fff',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: t.color }} />
+                          {t.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Subscription Tier</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      {[
+                        { id: 'FREE', name: 'Free Tier', badge: 'Standard Features' },
+                        { id: 'PREMIUM', name: 'Premium Tier 👑', badge: 'Advanced Layouts' }
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setEditFormData((prev: any) => ({ ...prev, tier: p.id }))}
+                          style={{
+                            flex: 1,
+                            backgroundColor: editFormData.tier === p.id ? '#1e293b' : '#0f172a',
+                            border: `2px solid ${editFormData.tier === p.id ? '#818cf8' : '#334155'}`,
+                            borderRadius: '8px',
+                            padding: '0.5rem',
+                            color: '#fff',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <span style={{ fontWeight: editFormData.tier === p.id ? 'bold' : 'normal' }}>{p.name}</span>
+                          <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{p.badge}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setEditingTenant(null)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: '1px solid #475569',
+                    color: '#94a3b8',
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSaving}
+                  style={{
+                    backgroundColor: '#6366f1',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    opacity: isSaving ? 0.7 : 1,
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                  }}
+                >
+                  {isSaving ? 'Saving Changes...' : 'Save Workspace'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

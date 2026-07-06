@@ -5,7 +5,7 @@ datasource db {
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+  binaryTargets = ["native"]
 }
 
 model Client {
@@ -83,6 +83,8 @@ model TenantProfile {
   bankIfsc       String?
   bankBranch     String?
   signatureUrl   String?
+  theme          String?  @default("DEFAULT")
+  tier           String?  @default("FREE")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

@@ -56,6 +56,8 @@ export interface DocumentData {
     bankIfsc?: string;
     bankBranch?: string;
     signatureUrl?: string;
+    theme?: string;
+    tier?: string;
   };
 }
 
@@ -424,6 +426,41 @@ body.tally-billing-body {
  * Generates the fully populated HTML layout matching Tally ERP format
  */
 export function generateDocumentHtml(data: DocumentData): string {
+  const theme = data.tenantProfile?.theme || 'DEFAULT';
+  const tier = data.tenantProfile?.tier || 'FREE';
+  
+  let primaryColor = '#000000'; // Default black border for Tally ERP style
+  if (tier === 'PREMIUM') {
+    if (theme === 'EMERALD') primaryColor = '#10b981';
+    else if (theme === 'SAPPHIRE') primaryColor = '#3b82f6';
+    else if (theme === 'ROYAL') primaryColor = '#fbbf24';
+    else if (theme === 'DEFAULT') primaryColor = '#fb923c'; // classic orange
+  }
+
+  const premiumStyles = tier === 'PREMIUM' ? `
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    body.tally-billing-body {
+      font-family: 'Plus Jakarta Sans', Arial, sans-serif !important;
+    }
+    .tally-invoice-grid {
+      border: 1.5px solid ${primaryColor} !important;
+    }
+    .tally-invoice-grid td {
+      border-color: ${primaryColor} !important;
+    }
+    .tally-main-title {
+      background-color: ${primaryColor} !important;
+      color: ${primaryColor === '#fbbf24' || primaryColor === '#fb923c' ? '#000000' : '#ffffff'} !important;
+      font-size: 13px !important;
+      letter-spacing: 0.1em;
+      padding: 6px 0 !important;
+      border-bottom: 1.5px solid ${primaryColor} !important;
+    }
+    .tally-bold {
+      color: #111827;
+    }
+  ` : '';
+
   // 1. Resolve Dynamic Headings
   let title = 'TAX INVOICE';
   if (data.documentType === 'QUOTATION') {
@@ -716,6 +753,7 @@ export function generateDocumentHtml(data: DocumentData): string {
   <title>${title} - ${escapeHtml(data.documentNumber)}</title>
   <style>
     ${styles}
+    ${premiumStyles}
   </style>
 </head>
 <body class="tally-billing-body">

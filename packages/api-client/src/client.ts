@@ -41,6 +41,7 @@ export const getSubdomain = () => {
 
 export const apiClient = axios.create({
   baseURL: 'http://localhost:5001/api', // default base URL
+  timeout: 120000, // 120 seconds timeout
   headers: {
     'Content-Type': 'application/json',
   },
@@ -51,9 +52,19 @@ export const setApiBaseUrl = (url: string) => {
   apiClient.defaults.baseURL = url;
 };
 
-// Request interceptor to inject X-Tenant-Id header
+const updateActiveRequests = (delta: number) => {
+  if (typeof window !== 'undefined') {
+    (window as any).__activeRequests = Math.max(0, ((window as any).__activeRequests || 0) + delta);
+    window.dispatchEvent(new CustomEvent('active-requests-changed', {
+      detail: (window as any).__activeRequests
+    }));
+  }
+};
+
+// Request interceptor to inject X-Tenant-Id header and track active requests
 apiClient.interceptors.request.use(
   (config) => {
+    updateActiveRequests(1);
     const tenant = getSubdomain();
     if (tenant) {
       config.headers['X-Tenant-Id'] = tenant;
@@ -61,6 +72,19 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
+    updateActiveRequests(-1);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to track request completion/error
+apiClient.interceptors.response.use(
+  (response) => {
+    updateActiveRequests(-1);
+    return response;
+  },
+  (error) => {
+    updateActiveRequests(-1);
     return Promise.reject(error);
   }
 );

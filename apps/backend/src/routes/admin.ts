@@ -25,4 +25,65 @@ router.get('/tenants', async (req: Request, res: Response, next: NextFunction) =
   }
 });
 
+// PUT: Update a tenant profile from admin side (Requires admin password)
+router.put('/tenants/:tenantId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { tenantId } = req.params;
+    const {
+      password,
+      companyName,
+      logoUrl,
+      proprietorName,
+      address,
+      gstin,
+      pan,
+      bankName,
+      bankAccHolder,
+      bankAccType,
+      bankAccNumber,
+      bankIfsc,
+      bankBranch,
+      signatureUrl,
+      theme,
+      tier
+    } = req.body;
+
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    if (password !== expectedPassword) {
+      res.status(401).json({ message: 'Invalid Admin Password.' });
+      return;
+    }
+
+    if (!companyName || !address) {
+      res.status(400).json({ message: 'Company Name and Address are required fields.' });
+      return;
+    }
+
+    const updated = await prisma.tenantProfile.update({
+      where: { tenantId },
+      data: {
+        companyName,
+        logoUrl: logoUrl || null,
+        proprietorName: proprietorName || null,
+        address,
+        gstin: gstin || null,
+        pan: pan || null,
+        bankName: bankName || null,
+        bankAccHolder: bankAccHolder || null,
+        bankAccType: bankAccType || null,
+        bankAccNumber: bankAccNumber || null,
+        bankIfsc: bankIfsc || null,
+        bankBranch: bankBranch || null,
+        signatureUrl: signatureUrl || null,
+        theme: theme || 'DEFAULT',
+        tier: tier || 'FREE',
+      }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

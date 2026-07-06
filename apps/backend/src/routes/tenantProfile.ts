@@ -34,7 +34,9 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       bankAccNumber,
       bankIfsc,
       bankBranch,
-      signatureUrl
+      signatureUrl,
+      theme,
+      tier
     } = req.body;
 
     if (!companyName || !address) {
@@ -42,40 +44,54 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
-    const profile = await req.db.tenantProfile.upsert({
-      where: { tenantId: req.tenantId! },
-      update: {
-        companyName,
-        logoUrl: logoUrl || null,
-        proprietorName: proprietorName || null,
-        address,
-        gstin: gstin || null,
-        pan: pan || null,
-        bankName: bankName || null,
-        bankAccHolder: bankAccHolder || null,
-        bankAccType: bankAccType || null,
-        bankAccNumber: bankAccNumber || null,
-        bankIfsc: bankIfsc || null,
-        bankBranch: bankBranch || null,
-        signatureUrl: signatureUrl || null,
-      },
-      create: {
-        tenantId: req.tenantId!,
-        companyName,
-        logoUrl: logoUrl || null,
-        proprietorName: proprietorName || null,
-        address,
-        gstin: gstin || null,
-        pan: pan || null,
-        bankName: bankName || null,
-        bankAccHolder: bankAccHolder || null,
-        bankAccType: bankAccType || null,
-        bankAccNumber: bankAccNumber || null,
-        bankIfsc: bankIfsc || null,
-        bankBranch: bankBranch || null,
-        signatureUrl: signatureUrl || null,
-      }
+    const existingProfile = await req.db.tenantProfile.findUnique({
+      where: { tenantId: req.tenantId! }
     });
+
+    let profile;
+    if (existingProfile) {
+      // Client-side update: Do not allow updating theme and tier
+      profile = await req.db.tenantProfile.update({
+        where: { tenantId: req.tenantId! },
+        data: {
+          companyName,
+          logoUrl: logoUrl || null,
+          proprietorName: proprietorName || null,
+          address,
+          gstin: gstin || null,
+          pan: pan || null,
+          bankName: bankName || null,
+          bankAccHolder: bankAccHolder || null,
+          bankAccType: bankAccType || null,
+          bankAccNumber: bankAccNumber || null,
+          bankIfsc: bankIfsc || null,
+          bankBranch: bankBranch || null,
+          signatureUrl: signatureUrl || null,
+        }
+      });
+    } else {
+      // First-time onboarding: Theme and tier can be initialized
+      profile = await req.db.tenantProfile.create({
+        data: {
+          tenantId: req.tenantId!,
+          companyName,
+          logoUrl: logoUrl || null,
+          proprietorName: proprietorName || null,
+          address,
+          gstin: gstin || null,
+          pan: pan || null,
+          bankName: bankName || null,
+          bankAccHolder: bankAccHolder || null,
+          bankAccType: bankAccType || null,
+          bankAccNumber: bankAccNumber || null,
+          bankIfsc: bankIfsc || null,
+          bankBranch: bankBranch || null,
+          signatureUrl: signatureUrl || null,
+          theme: theme || 'DEFAULT',
+          tier: tier || 'FREE',
+        }
+      });
+    }
 
     res.json(profile);
   } catch (error) {

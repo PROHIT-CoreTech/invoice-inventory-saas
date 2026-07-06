@@ -45,6 +45,77 @@ export default function Dashboard() {
 
   const [tenantProfile, setTenantProfile] = useState<any>(null);
 
+  // Workspace Settings Modal State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsData, setSettingsData] = useState<any>({
+    companyName: '',
+    proprietorName: '',
+    address: '',
+    gstin: '',
+    pan: '',
+    bankName: '',
+    bankAccHolder: '',
+    bankAccType: 'Current A/C',
+    bankAccNumber: '',
+    bankIfsc: '',
+    bankBranch: '',
+    logoUrl: '',
+    signatureUrl: '',
+    theme: 'DEFAULT',
+    tier: 'FREE'
+  });
+
+  const handleWorkspaceLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSettingsData((prev: any) => ({ ...prev, logoUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleWorkspaceSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSettingsData((prev: any) => ({ ...prev, signatureUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSettingsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/tenant-profile';
+      const tenantId = window.location.hostname.split('.')[0];
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-Id': tenantId
+        },
+        body: JSON.stringify(settingsData)
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to save settings');
+      }
+      const updatedProfile = await res.json();
+      setTenantProfile(updatedProfile);
+      if (updatedProfile.theme) {
+        document.documentElement.setAttribute('data-theme', updatedProfile.theme);
+      }
+      setIsSettingsOpen(false);
+      alert('Workspace settings updated successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Something went wrong while saving settings.');
+    }
+  };
+
   useEffect(() => {
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/tenant-profile';
     const tenantId = window.location.hostname.split('.')[0];
@@ -61,6 +132,26 @@ export default function Dashboard() {
       .then(data => {
         if (data) {
           setTenantProfile(data);
+          setSettingsData({
+            companyName: data.companyName || '',
+            proprietorName: data.proprietorName || '',
+            address: data.address || '',
+            gstin: data.gstin || '',
+            pan: data.pan || '',
+            bankName: data.bankName || '',
+            bankAccHolder: data.bankAccHolder || '',
+            bankAccType: data.bankAccType || 'Current A/C',
+            bankAccNumber: data.bankAccNumber || '',
+            bankIfsc: data.bankIfsc || '',
+            bankBranch: data.bankBranch || '',
+            logoUrl: data.logoUrl || '',
+            signatureUrl: data.signatureUrl || '',
+            theme: data.theme || 'DEFAULT',
+            tier: data.tier || 'FREE'
+          });
+          if (data.theme) {
+            document.documentElement.setAttribute('data-theme', data.theme);
+          }
         }
       })
       .catch(err => console.log('No tenant profile active yet:', err.message));
@@ -769,6 +860,46 @@ export default function Dashboard() {
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <img src={tenantProfile?.logoUrl || "/images/hero.png"} alt="Logo" style={{ height: '36px', width: '36px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.src = "/images/hero.png"; }} />
             {tenantProfile?.companyName || "PROCash Invoice ERP"}
+            {tenantProfile?.tier === 'PREMIUM' && (
+              <span style={{
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                color: '#fbbf24',
+                backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                border: '1px solid rgba(251, 191, 36, 0.3)',
+                padding: '2px 8px',
+                borderRadius: '9999px',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px'
+              }}>
+                👑 Premium
+              </span>
+            )}
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.1rem',
+                color: 'var(--text-secondary)',
+                padding: '4px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background-color 0.2s',
+                marginLeft: '5px'
+              }}
+              title="Workspace Settings"
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+            >
+              ⚙️
+            </button>
           </h1>
           <p>{tenantProfile?.companyName ? `Invoicing & Billing Dashboard for ${tenantProfile.companyName}` : "Production-Grade Invoicing & Billing Dashboard"}</p>
         </div>
@@ -1395,6 +1526,330 @@ export default function Dashboard() {
               )}
               <button type="button" className="btn-primary-action" onClick={handlePrint}>Print / Save PDF</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace Settings Modal */}
+      {isSettingsOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            backgroundColor: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '750px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '2.5rem',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            position: 'relative',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ marginBottom: '1.75rem', textAlign: 'left' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                ⚙️ Workspace Profile Settings
+              </h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                Update branding, tax details, bank account, and UI styling for your workspace.
+              </p>
+            </div>
+
+            <form onSubmit={handleSettingsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '1.25rem', textAlign: 'left' }}>
+                <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  1. Company Profile
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company Name *</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={settingsData.companyName}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, companyName: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. Acme Corp"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Proprietor / Owner Name</label>
+                    <input 
+                      type="text"
+                      value={settingsData.proprietorName}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, proprietorName: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. John Doe"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Official Billing Address *</label>
+                    <textarea 
+                      required
+                      value={settingsData.address}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, address: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box', height: '70px', resize: 'none' }}
+                      placeholder="e.g. 2b/706, 7th Floor..."
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company Logo</label>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleWorkspaceLogoUpload}
+                      style={{ width: '100%', padding: '0.35rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                    {settingsData.logoUrl && (
+                      <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <img src={settingsData.logoUrl} alt="Preview" style={{ height: '24px', width: '24px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px' }} />
+                        <span style={{ fontSize: '0.75rem', color: '#10b981' }}>✓ Logo Uploaded</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Digital Signature (Optional)</label>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleWorkspaceSignatureUpload}
+                      style={{ width: '100%', padding: '0.35rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                    {settingsData.signatureUrl && (
+                      <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <img src={settingsData.signatureUrl} alt="Preview" style={{ height: '24px', width: '24px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px' }} />
+                        <span style={{ fontSize: '0.75rem', color: '#10b981' }}>✓ Signature Uploaded</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '1.25rem', textAlign: 'left' }}>
+                <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  2. Tax Details
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>GSTIN / Tax ID</label>
+                    <input 
+                      type="text" 
+                      value={settingsData.gstin}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, gstin: e.target.value.toUpperCase() }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. 27ALQPB3481K1ZR"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>PAN Number</label>
+                    <input 
+                      type="text" 
+                      value={settingsData.pan}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, pan: e.target.value.toUpperCase() }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. ALQPB3481K"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '1.25rem', textAlign: 'left' }}>
+                <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  3. Bank Account Details
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Holder Name</label>
+                    <input 
+                      type="text"
+                      value={settingsData.bankAccHolder}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankAccHolder: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. Acme Corp Invoices"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Bank Name</label>
+                    <input 
+                      type="text"
+                      value={settingsData.bankName}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankName: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. YES BANK"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Number</label>
+                    <input 
+                      type="text"
+                      value={settingsData.bankAccNumber}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankAccNumber: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. 021261900003481"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>IFSC Code</label>
+                    <input 
+                      type="text"
+                      value={settingsData.bankIfsc}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankIfsc: e.target.value.toUpperCase() }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. YESB0000212"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Branch Name</label>
+                    <input 
+                      type="text"
+                      value={settingsData.bankBranch}
+                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankBranch: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      placeholder="e.g. Kandivali East"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    4. Workspace Styling & Subscription Tier
+                  </h4>
+                  <span style={{ color: '#94a3b8', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#1e293b', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid #334155' }}>
+                    🔒 Managed by Administrator only
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Theme</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      {[
+                        { id: 'DEFAULT', name: 'Classic Orange', color: '#fb923c' },
+                        { id: 'EMERALD', name: 'Emerald Green', color: '#10b981' },
+                        { id: 'SAPPHIRE', name: 'Sapphire Blue', color: '#3b82f6' },
+                        { id: 'ROYAL', name: 'Royal Gold', color: '#fbbf24' }
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          disabled
+                          style={{
+                            flex: 1,
+                            backgroundColor: settingsData.theme === t.id ? '#1e293b' : '#0f172a',
+                            border: `2px solid ${settingsData.theme === t.id ? t.color : '#334155'}`,
+                            borderRadius: '8px',
+                            padding: '0.5rem',
+                            color: '#fff',
+                            fontSize: '0.75rem',
+                            cursor: 'not-allowed',
+                            opacity: settingsData.theme === t.id ? 1 : 0.4,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: t.color }} />
+                          {t.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Subscription Tier</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      {[
+                        { id: 'FREE', name: 'Free Tier', badge: 'Standard Features' },
+                        { id: 'PREMIUM', name: 'Premium Tier 👑', badge: 'Advanced Layouts' }
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          disabled
+                          style={{
+                            flex: 1,
+                            backgroundColor: settingsData.tier === p.id ? '#1e293b' : '#0f172a',
+                            border: `2px solid ${settingsData.tier === p.id ? '#818cf8' : '#334155'}`,
+                            borderRadius: '8px',
+                            padding: '0.5rem',
+                            color: '#fff',
+                            fontSize: '0.75rem',
+                            cursor: 'not-allowed',
+                            opacity: settingsData.tier === p.id ? 1 : 0.4,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <span style={{ fontWeight: settingsData.tier === p.id ? 'bold' : 'normal' }}>{p.name}</span>
+                          <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{p.badge}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsSettingsOpen(false)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: '1px solid #475569',
+                    color: '#94a3b8',
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  style={{
+                    backgroundColor: 'var(--primary)',
+                    border: 'none',
+                    color: '#000',
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px var(--primary-glow)'
+                  }}
+                >
+                  Save Settings
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
