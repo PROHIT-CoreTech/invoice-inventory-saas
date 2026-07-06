@@ -131,6 +131,22 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
+    // Support partial status/payment status updates (e.g., from table action dropdowns)
+    if (Object.keys(req.body).length <= 3 && (req.body.status || req.body.paymentStatus)) {
+      const updateData: any = {};
+      if (req.body.status) updateData.status = req.body.status;
+      if (req.body.paymentStatus) updateData.paymentStatus = req.body.paymentStatus;
+      if (req.body.paymentDate) updateData.paymentDate = new Date(req.body.paymentDate);
+
+      const updated = await req.db.invoice.update({
+        where: { id: req.params.id },
+        data: updateData,
+        include: { items: true },
+      });
+      res.json(mapInvoice(updated));
+      return;
+    }
+
     const validatedData = invoiceSchema.parse(req.body);
     const totals = calculateTotals(validatedData.items);
     
