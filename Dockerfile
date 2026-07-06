@@ -3,8 +3,8 @@
 # ===================================================
 
 # Stage 1: Build the applications
-FROM node:20-alpine AS builder
-RUN apk add --no-cache openssl libc6-compat
+FROM node:20-slim AS builder
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copy root configurations and package manifests
@@ -32,8 +32,8 @@ RUN npm run build --workspace=@procash-invoices/backend
 RUN npm prune --omit=dev
 
 # Stage 2: Production runner stage (keeps image lightweight)
-FROM node:20-alpine AS runner
-RUN apk add --no-cache openssl libc6-compat
+FROM node:20-slim AS runner
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production
