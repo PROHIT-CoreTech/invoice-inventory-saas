@@ -48,6 +48,8 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
+      refetchInterval: 120000, // Sync database in the background every 120 seconds
+      refetchIntervalInBackground: true, // Keep syncing when tab/window is in background
     },
   },
 });
