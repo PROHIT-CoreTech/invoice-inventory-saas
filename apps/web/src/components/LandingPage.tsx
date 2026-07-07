@@ -443,14 +443,35 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             transform: none !important; /* Disable 3D tilt on mobile to prevent overflow clipping */
           }
         }
+        .hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.4rem 1rem;
+          border-radius: 999px;
+          background: rgba(99, 102, 241, 0.08);
+          border: 1px solid rgba(99, 102, 241, 0.25);
+          font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+          font-weight: 600;
+          color: #a5b4fc;
+          margin-bottom: 1.5rem;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
         .hero-heading {
           font-size: clamp(1.8rem, 8vw, 3.75rem) !important;
           line-height: 1.15 !important;
+          font-weight: 800;
+          letter-spacing: -0.035em;
+          color: #fff;
+          margin-bottom: 1.25rem;
         }
         .hero-subtitle {
           font-size: clamp(0.95rem, 3.5vw, 1.15rem) !important;
           line-height: 1.6 !important;
           color: #94a3b8;
+          margin-bottom: 2.5rem;
+          max-width: 560px;
         }
         .logo-title {
           font-size: clamp(1.05rem, 4vw, 1.25rem);
@@ -489,7 +510,15 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           padding: 0 2rem !important;
         }
         .hero-form-container {
+          max-width: 520px;
+          background: rgba(30, 41, 59, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.07);
+          backdrop-filter: blur(16px);
+          border-radius: 16px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
           padding: 1.75rem !important;
+          width: 100%;
+          box-sizing: border-box;
         }
         .subdomain-input-container {
           display: flex !important;
@@ -506,8 +535,6 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           .floating-parallax-1, .floating-parallax-2 {
             display: none !important;
           }
-        }
-        @media (max-width: 576px) {
           .landing-header {
             padding: 1.5rem 1rem !important;
           }
@@ -517,7 +544,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           }
           .hero-form-container {
             padding: 1.25rem !important;
-            margin: 0 auto !important; /* Center the form container on mobile */
+            margin: 0 auto !important;
           }
           .subdomain-input-container {
             flex-direction: column !important;
@@ -533,6 +560,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             font-size: 0.75rem !important;
             color: #94a3b8 !important;
           }
+        }
+        @media (max-width: 576px) {
           .preview-stats-grid {
             grid-template-columns: 1fr !important;
             gap: 0.5rem !important;
@@ -629,30 +658,13 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
         {/* Left Column: Hero badge, heading, subtitle and workspace access */}
         <div className="hero-left-content">
           {/* Glowing Premium Badge */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.4rem 1rem',
-            borderRadius: '999px',
-            background: 'rgba(99, 102, 241, 0.08)',
-            border: '1px solid rgba(99, 102, 241, 0.25)',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            color: '#a5b4fc',
-            marginBottom: '1.5rem'
-          }}>
+          <div className="hero-badge">
             <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#818cf8', animation: 'pulse 1.8s infinite' }} />
             Enterprise Quotation & Billing Engine
           </div>
 
           {/* Heading */}
-          <h1 className="hero-heading" style={{
-            fontWeight: 800,
-            letterSpacing: '-0.035em',
-            color: '#fff',
-            marginBottom: '1.25rem'
-          }}>
+          <h1 className="hero-heading">
             The Automated Billing <br />
             <span style={{
               background: 'linear-gradient(90deg, #818cf8 0%, #c084fc 50%, #fb923c 100%)',
@@ -670,14 +682,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           </p>
 
           {/* Interactive Workspace Redirection Form */}
-          <div className="hero-form-container" style={{
-            maxWidth: '520px',
-            background: 'rgba(30, 41, 59, 0.4)',
-            border: '1px solid rgba(255, 255, 255, 0.07)',
-            backdropFilter: 'blur(16px)',
-            borderRadius: '16px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1)'
-          }}>
+          <div className="hero-form-container">
             <h3 className="form-title">
               Launch or Access Workspace
             </h3>
