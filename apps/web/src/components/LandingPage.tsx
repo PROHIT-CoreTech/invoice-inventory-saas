@@ -409,6 +409,15 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           background-color: rgba(30, 41, 59, 0.65) !important;
           box-shadow: 0 30px 50px -15px rgba(0, 0, 0, 0.7), 0 0 35px rgba(129, 140, 248, 0.25) !important;
         }
+        .hero-grid {
+          max-width: 1200px;
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: 1.05fr 0.95fr;
+          gap: 4.5rem;
+          align-items: center;
+        }
         .hero-left-content {
           text-align: left;
         }
@@ -616,15 +625,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
       </header>
 
       {/* Hero Section */}
-      <section className="hero-grid hero-section" style={{
-        maxWidth: '1200px',
-        position: 'relative',
-        zIndex: 1,
-        display: 'grid',
-        gridTemplateColumns: '1.05fr 0.95fr',
-        gap: '4.5rem',
-        alignItems: 'center'
-      }}>
+      <section className="hero-grid hero-section">
         {/* Left Column: Hero badge, heading, subtitle and workspace access */}
         <div className="hero-left-content">
           {/* Glowing Premium Badge */}
