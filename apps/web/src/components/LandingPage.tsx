@@ -435,8 +435,42 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           }
         }
         .hero-heading {
-          font-size: 3.75rem !important;
-          line-height: 1.1 !important;
+          font-size: clamp(1.8rem, 8vw, 3.75rem) !important;
+          line-height: 1.15 !important;
+        }
+        .hero-subtitle {
+          font-size: clamp(0.95rem, 3.5vw, 1.15rem) !important;
+          line-height: 1.6 !important;
+          color: #94a3b8;
+        }
+        .logo-title {
+          font-size: clamp(1.05rem, 4vw, 1.25rem);
+          font-weight: 800;
+          letter-spacing: -0.025em;
+          color: #fff;
+        }
+        .form-title {
+          font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+          font-weight: 700;
+          color: #e2e8f0;
+          margin-bottom: 1rem;
+          text-align: left;
+        }
+        .subdomain-input {
+          flex: 1;
+          background-color: transparent;
+          border: none;
+          color: #fff;
+          font-size: clamp(0.85rem, 3.5vw, 1rem);
+          outline: none;
+          font-weight: 600;
+          font-family: inherit;
+        }
+        .subdomain-suffix {
+          color: #818cf8;
+          font-size: clamp(0.75rem, 3vw, 0.875rem);
+          font-weight: 700;
+          letter-spacing: 0.02em;
         }
         .landing-header {
           padding: 1.5rem 2rem !important;
@@ -460,10 +494,6 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           box-shadow: inset 0 2px 4px rgba(0,0,0,0.6) !important;
         }
         @media (max-width: 768px) {
-          .hero-heading {
-            font-size: 2.25rem !important;
-            line-height: 1.2 !important;
-          }
           .floating-parallax-1, .floating-parallax-2 {
             display: none !important;
           }
@@ -579,7 +609,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           }}>
             <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fff' }}>P</span>
           </div>
-          <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.025em', color: '#fff' }}>
+          <span className="logo-title">
             PROCash <span style={{ color: '#818cf8' }}>Invoices</span>
           </span>
         </div>
@@ -634,13 +664,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           </h1>
 
           {/* Subtitle */}
-          <p style={{
-            fontSize: '1.15rem',
-            color: '#94a3b8',
-            lineHeight: 1.6,
-            marginBottom: '2.5rem',
-            maxWidth: '560px'
-          }}>
+          <p className="hero-subtitle">
             Automate your quotation-to-invoice lifecycle, generate Tally-compliant GST reports, and isolate workflows under client-specific subdomains.
           </p>
 
@@ -653,7 +677,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             borderRadius: '16px',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1)'
           }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '1rem', textAlign: 'left' }}>
+            <h3 className="form-title">
               Launch or Access Workspace
             </h3>
             <form onSubmit={handleLaunch} style={{
@@ -669,18 +693,9 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                   placeholder="your-company-name"
                   value={tenantName}
                   onChange={(e) => setTenantName(e.target.value)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '1rem',
-                    outline: 'none',
-                    fontWeight: 600,
-                    fontFamily: 'inherit'
-                  }}
+                  className="subdomain-input"
                 />
-                <span style={{ color: '#818cf8', fontSize: '0.875rem', fontWeight: 700, letterSpacing: '0.02em' }}>
+                <span className="subdomain-suffix">
                   {getSuffix()}
                 </span>
               </div>
