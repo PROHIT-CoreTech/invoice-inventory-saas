@@ -835,8 +835,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
               </div>
 
               {/* Table representation */}
-              <div className="preview-table-container" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem', textAlign: 'left' }}>
+              <div className="preview-table-container" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: '580px', borderCollapse: 'collapse', fontSize: '0.65rem', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ backgroundColor: 'rgba(15,23,42,0.8)', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#94a3b8' }}>
                       <th style={{ padding: '0.5rem 0.75rem' }}>QUOTE #</th>
