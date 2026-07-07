@@ -769,7 +769,7 @@ export function generateDocumentHtml(data: DocumentData): string {
           <!-- Primary Issuer Details (Tally style top left) -->
           <div class="tally-issuer-details">
             <div class="tally-company-name" style="font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 5px;">
-              ${(data.tenantProfile?.logoUrl || data.logoUrl) ? `<img src="${data.tenantProfile?.logoUrl || data.logoUrl}" alt="Logo" style="height: 16px; width: 16px; object-fit: contain; display: inline-block; vertical-align: middle;" onError="this.style.display='none';" />` : ''}
+              ${(data.tenantProfile?.logoUrl || data.logoUrl) ? `<img src="${data.tenantProfile?.logoUrl || data.logoUrl}" alt="Logo" style="height: 36px; max-width: 100px; object-fit: contain; display: inline-block; vertical-align: middle; margin-right: 6px;" onError="this.style.display='none';" />` : ''}
               ${companyName}
             </div>
             <div class="tally-small-text">Proprietor: ${proprietorName}</div>

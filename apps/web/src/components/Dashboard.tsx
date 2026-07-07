@@ -1251,7 +1251,7 @@ export default function Dashboard() {
       <header className="header">
         <div className="logo-section">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src={tenantProfile?.logoUrl || "/images/hero.png"} alt="Logo" style={{ height: '36px', width: '36px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.src = "/images/hero.png"; }} />
+            <img src={tenantProfile?.logoUrl || "/images/hero.png"} alt="Logo" style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.src = "/images/hero.png"; }} />
             {tenantProfile?.companyName || "PROCash Invoice ERP"}
             <button
               onClick={() => setIsSettingsOpen(true)}
@@ -2296,7 +2296,7 @@ export default function Dashboard() {
                     />
                     {settingsData.logoUrl && (
                       <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <img src={settingsData.logoUrl} alt="Preview" style={{ height: '24px', width: '24px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px' }} />
+                        <img src={settingsData.logoUrl} alt="Preview" style={{ height: '24px', maxWidth: '80px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px' }} />
                         <span style={{ fontSize: '0.75rem', color: '#10b981' }}>✓ Logo Uploaded</span>
                       </div>
                     )}
@@ -2311,7 +2311,7 @@ export default function Dashboard() {
                     />
                     {settingsData.signatureUrl && (
                       <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <img src={settingsData.signatureUrl} alt="Preview" style={{ height: '24px', width: '24px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px' }} />
+                        <img src={settingsData.signatureUrl} alt="Preview" style={{ height: '24px', maxWidth: '80px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px' }} />
                         <span style={{ fontSize: '0.75rem', color: '#10b981' }}>✓ Signature Uploaded</span>
                       </div>
                     )}
