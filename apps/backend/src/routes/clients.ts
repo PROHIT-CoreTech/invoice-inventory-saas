@@ -1,11 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { clientSchema } from '@procash-invoices/database';
 import { tenantMiddleware } from '../middleware/tenantMiddleware';
+import { subscriptionGuard } from '../middleware/subscriptionGuard';
 
 const router = Router();
 
 // Apply the tenantMiddleware to all client routes
 router.use(tenantMiddleware);
+router.use(subscriptionGuard);
 
 // POST: Register a new Client in the master list
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {

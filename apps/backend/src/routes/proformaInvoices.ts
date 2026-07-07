@@ -1,9 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { invoiceSchema } from '@procash-invoices/database';
 import { tenantMiddleware } from '../middleware/tenantMiddleware';
+import { subscriptionGuard } from '../middleware/subscriptionGuard';
 
 const router = Router();
 router.use(tenantMiddleware);
+router.use(subscriptionGuard);
 
 // Helper to calculate totals based on line items
 const calculateTotals = (items: any[]) => {

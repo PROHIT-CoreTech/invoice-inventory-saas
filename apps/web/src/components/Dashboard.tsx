@@ -48,6 +48,97 @@ export default function Dashboard() {
 
   // Workspace Settings Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Expiration Renewal Modal States
+  const [isRenewalOpen, setIsRenewalOpen] = useState(false);
+  const [renewalUtr, setRenewalUtr] = useState('');
+  const [renewalLoading, setRenewalLoading] = useState(false);
+  const [renewalStatus, setRenewalStatus] = useState('');
+
+  const getPlanPriceNum = (planId: string) => {
+    switch (planId) {
+      case '1_MONTH': return 999;
+      case '6_MONTHS': return 4999;
+      case '1_YEAR': return 9999;
+      case 'LIFETIME': return 20000;
+      default: return 999;
+    }
+  };
+
+  const getRenewalUpiUrl = () => {
+    if (!tenantProfile) return '';
+    const formattedTenant = tenantProfile.tenantId.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    const planId = tenantProfile.subscriptionPlan || '1_MONTH';
+    
+    let planCode = 'MON';
+    if (planId === '6_MONTHS') planCode = 'PRO';
+    else if (planId === '1_YEAR') planCode = 'ENT';
+    else if (planId === 'LIFETIME') planCode = 'LIF';
+
+    const tn = `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
+    const amount = getPlanPriceNum(planId);
+    
+    return `upi://pay?pa=rohitbarge22-3@okaxis&pn=ROHIT%20BARGE&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`;
+  };
+
+  const getRenewalUpiNote = () => {
+    if (!tenantProfile) return '';
+    const formattedTenant = tenantProfile.tenantId.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    const planId = tenantProfile.subscriptionPlan || '1_MONTH';
+    let planCode = 'MON';
+    if (planId === '6_MONTHS') planCode = 'PRO';
+    else if (planId === '1_YEAR') planCode = 'ENT';
+    else if (planId === 'LIFETIME') planCode = 'LIF';
+    return `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
+  };
+
+  const handleRenewalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanUtr = renewalUtr.trim();
+    if (!cleanUtr || cleanUtr.length !== 12) {
+      alert('Please enter a valid 12-digit numeric UPI Ref / UTR number.');
+      return;
+    }
+
+    setRenewalLoading(true);
+    setRenewalStatus('Submitting renewal UTR reference for verification...');
+    const tenantId = window.location.hostname.split('.')[0];
+
+    try {
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/subscriptions/submit-payment';
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-Id': tenantId
+        },
+        body: JSON.stringify({
+          planTier: tenantProfile?.subscriptionPlan || '1_MONTH',
+          amountPaid: getPlanPriceNum(tenantProfile?.subscriptionPlan || '1_MONTH'),
+          utrNumber: cleanUtr
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Renewal submission failed.');
+      }
+
+      const responseData = await res.json();
+      setRenewalStatus(`🎉 ${responseData.message || 'Payment submitted successfully!'}`);
+      
+      setTimeout(() => {
+        setIsRenewalOpen(false);
+        setRenewalUtr('');
+        setRenewalStatus('');
+      }, 4000);
+
+    } catch (err: any) {
+      console.error(err);
+      setRenewalStatus(`❌ Error: ${err.message || 'UTR submission failed.'}`);
+      setRenewalLoading(false);
+    }
+  };
   const [settingsData, setSettingsData] = useState<any>({
     companyName: '',
     proprietorName: '',
@@ -65,6 +156,40 @@ export default function Dashboard() {
     theme: 'DEFAULT',
     tier: 'FREE'
   });
+
+  const getPlanLabel = (planId: string | undefined | null) => {
+    switch (planId) {
+      case 'TRIAL': return '10-Day Free Trial';
+      case '1_MONTH': return 'Monthly Starter';
+      case '6_MONTHS': return '6 Months Pro';
+      case '1_YEAR': return '1 Year Enterprise';
+      case 'LIFETIME': return 'Lifetime Unlimited';
+      case 'FREE': return 'Free Tier';
+      default: return 'Free Tier';
+    }
+  };
+
+  const getPlanPrice = (planId: string | undefined | null) => {
+    switch (planId) {
+      case 'TRIAL': return '₹0';
+      case '1_MONTH': return '₹999';
+      case '6_MONTHS': return '₹4,999';
+      case '1_YEAR': return '₹9,999';
+      case 'LIFETIME': return '₹20,000';
+      case 'FREE': return '₹0';
+      default: return '₹0';
+    }
+  };
+
+  const formatDateTime = (dateStr: string | null | undefined) => {
+    if (!dateStr) return 'N/A';
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return 'N/A';
+    }
+  };
 
   const handleWorkspaceLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -755,7 +880,16 @@ export default function Dashboard() {
     setIsModalOpen(true);
   };
 
+  const checkSubscriptionStatus = () => {
+    if (tenantProfile?.subscriptionStatus === 'EXPIRED') {
+      alert('Subscription Expired: Your workspace is in Read-Only Mode. Please renew your subscription to perform this action.');
+      return false;
+    }
+    return true;
+  };
+
   const handleDeleteDoc = async (id: string, type: 'QUOTATION' | 'PROFORMA' | 'FINAL_INVOICE') => {
+    if (!checkSubscriptionStatus()) return;
     if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
     try {
       if (type === 'QUOTATION') {
@@ -773,6 +907,7 @@ export default function Dashboard() {
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!checkSubscriptionStatus()) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -799,6 +934,7 @@ export default function Dashboard() {
 
   const handleCreateClient = async (e: React.MouseEvent) => {
     e.preventDefault();
+    if (!checkSubscriptionStatus()) return;
     if (!newClientData.name || !newClientData.email) {
       alert('Name and Email are required.');
       return;
@@ -815,6 +951,7 @@ export default function Dashboard() {
   };
 
   const handleConvertQuote = async (id: string) => {
+    if (!checkSubscriptionStatus()) return;
     if (!confirm('Are you sure you want to convert this quotation to a Proforma Invoice?')) return;
     try {
       await convertQuote.mutateAsync(id);
@@ -827,6 +964,7 @@ export default function Dashboard() {
   };
 
   const handleConvertQuoteToInvoiceDirect = async (id: string) => {
+    if (!checkSubscriptionStatus()) return;
     if (!confirm('Are you sure you want to convert this quotation directly to a Final Invoice (bypassing Proforma)?')) return;
     try {
       await convertQuoteToInvoice.mutateAsync(id);
@@ -839,6 +977,7 @@ export default function Dashboard() {
   };
 
   const handleConvertProforma = async (id: string) => {
+    if (!checkSubscriptionStatus()) return;
     if (!confirm('Are you sure you want to convert this Proforma Invoice to a Final Invoice?')) return;
     try {
       await convertProforma.mutateAsync(id);
@@ -851,6 +990,7 @@ export default function Dashboard() {
   };
 
   const handleUpdateQuoteStatus = async (id: string, status: string) => {
+    if (!checkSubscriptionStatus()) return;
     try {
       await updateQuotation.mutateAsync({ id, data: { status: status as any } });
       alert(`Quotation status updated to ${status}!`);
@@ -861,6 +1001,7 @@ export default function Dashboard() {
   };
 
   const handleUpdateProformaStatus = async (id: string, status: string) => {
+    if (!checkSubscriptionStatus()) return;
     try {
       await updateProforma.mutateAsync({ id, data: { status: status as any } });
       alert(`Proforma status updated to ${status}!`);
@@ -871,6 +1012,7 @@ export default function Dashboard() {
   };
 
   const handleMarkInvoicePaid = async (id: string) => {
+    if (!checkSubscriptionStatus()) return;
     try {
       await updateInvoice.mutateAsync({ id, data: { status: 'PAID' as any, paymentStatus: 'PAID' as any } });
       alert('Invoice successfully marked as PAID!');
@@ -882,6 +1024,7 @@ export default function Dashboard() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkSubscriptionStatus()) return;
     if (!selectedClientId) {
       alert('Please select or register a client.');
       return;
@@ -1064,30 +1207,52 @@ export default function Dashboard() {
 
   return (
     <div className="app-container">
+      {tenantProfile?.subscriptionStatus === 'EXPIRED' && (
+        <div style={{
+          backgroundColor: '#ef4444',
+          color: '#fff',
+          padding: '0.75rem 1.5rem',
+          fontSize: '0.9rem',
+          fontWeight: 700,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)',
+          position: 'relative',
+          zIndex: 100
+        }}>
+          <span>
+            ⚠️ Your workspace subscription has expired. You are in **Read-Only Mode**. All creation and editing actions are locked.
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsRenewalOpen(true)}
+            style={{
+              backgroundColor: '#fff',
+              color: '#ef4444',
+              border: 'none',
+              padding: '0.4rem 1.25rem',
+              borderRadius: '20px',
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+              transition: 'transform 0.15s',
+              fontFamily: 'inherit'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            ⚡ Renew Subscription Now
+          </button>
+        </div>
+      )}
       {/* Top Header */}
       <header className="header">
         <div className="logo-section">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <img src={tenantProfile?.logoUrl || "/images/hero.png"} alt="Logo" style={{ height: '36px', width: '36px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.src = "/images/hero.png"; }} />
             {tenantProfile?.companyName || "PROCash Invoice ERP"}
-            {tenantProfile?.tier === 'PREMIUM' && (
-              <span style={{
-                fontSize: '0.65rem',
-                fontWeight: 800,
-                color: '#fbbf24',
-                backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                border: '1px solid rgba(251, 191, 36, 0.3)',
-                padding: '2px 8px',
-                borderRadius: '9999px',
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px'
-              }}>
-                👑 Premium
-              </span>
-            )}
             <button
               onClick={() => setIsSettingsOpen(true)}
               style={{
@@ -1111,7 +1276,24 @@ export default function Dashboard() {
               ⚙️
             </button>
           </h1>
-          <p>{tenantProfile?.companyName ? `Invoicing & Billing Dashboard for ${tenantProfile.companyName}` : "Production-Grade Invoicing & Billing Dashboard"}</p>
+          <p style={{ margin: 0 }}>{tenantProfile?.companyName ? `Invoicing & Billing Dashboard for ${tenantProfile.companyName}` : "Production-Grade Invoicing & Billing Dashboard"}</p>
+          {tenantProfile && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.3rem 0.75rem',
+              borderRadius: '20px',
+              backgroundColor: 'rgba(99, 102, 241, 0.15)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              fontSize: '0.75rem',
+              color: '#a5b4fc',
+              fontWeight: 700,
+              marginTop: '0.5rem'
+            }}>
+              👑 {getPlanLabel(tenantProfile.subscriptionPlan || 'FREE')} ({tenantProfile.subscriptionPlan === 'LIFETIME' ? 'Lifetime' : (tenantProfile.subscriptionPlan === 'FREE' ? 'Free Tier' : `Expires: ${formatDateTime(tenantProfile.subscriptionExpiresAt)}`)})
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <div className="view-mode-tabs">
@@ -2052,34 +2234,8 @@ export default function Dashboard() {
 
       {/* Workspace Settings Modal */}
       {isSettingsOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.95)',
-          backdropFilter: 'blur(12px)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '2rem',
-          overflowY: 'auto'
-        }}>
-          <div style={{
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '750px',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            padding: '2.5rem',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            position: 'relative',
-            boxSizing: 'border-box'
-          }}>
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: '750px', padding: '1.75rem', overflowY: 'auto' }}>
             <div style={{ marginBottom: '1.75rem', textAlign: 'left' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
                 ⚙️ Workspace Profile Settings
@@ -2300,7 +2456,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Subscription Tier</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', marginBottom: '1.25rem' }}>
                       {[
                         { id: 'FREE', name: 'Free Tier', badge: 'Standard Features' },
                         { id: 'PREMIUM', name: 'Premium Tier 👑', badge: 'Advanced Layouts' }
@@ -2330,6 +2486,47 @@ export default function Dashboard() {
                           <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{p.badge}</span>
                         </button>
                       ))}
+                    </div>
+
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.45rem' }}>Active Subscription Details</label>
+                    <div style={{
+                      backgroundColor: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: '10px',
+                      padding: '1rem 1.25rem',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '1rem',
+                      fontSize: '0.85rem',
+                      boxSizing: 'border-box'
+                    }}>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Plan</span>
+                        <strong style={{ color: '#fff' }}>
+                          {getPlanLabel(tenantProfile?.subscriptionPlan || 'FREE')}
+                        </strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Amount</span>
+                        <strong style={{ color: '#fff' }}>
+                          {getPlanPrice(tenantProfile?.subscriptionPlan || 'FREE')}
+                        </strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Start/Sync Date</span>
+                        <span style={{ color: '#e2e8f0', fontWeight: 500 }}>
+                          {formatDateTime(tenantProfile?.updatedAt)}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Expires On</span>
+                        <span style={{ 
+                          color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#f87171' : '#34d399', 
+                          fontWeight: 700 
+                        }}>
+                          {tenantProfile?.subscriptionPlan === 'LIFETIME' ? 'Never (Lifetime)' : (tenantProfile?.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(tenantProfile?.subscriptionExpiresAt))}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2367,6 +2564,160 @@ export default function Dashboard() {
                   }}
                 >
                   Save Settings
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace Renewal Modal */}
+      {isRenewalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            backgroundColor: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '480px',
+            padding: '2rem',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            position: 'relative',
+            boxSizing: 'border-box',
+            textAlign: 'left'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                ⚡ Renew Subscription
+              </h2>
+              <button 
+                type="button" 
+                onClick={() => setIsRenewalOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.35rem', cursor: 'pointer' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '10px', padding: '0.85rem', marginBottom: '1.25rem' }}>
+              <span style={{ fontSize: '0.75rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>Renewal Plan</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.2rem' }}>
+                <span style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{getPlanLabel(tenantProfile?.subscriptionPlan || '1_MONTH')}</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>₹{getPlanPriceNum(tenantProfile?.subscriptionPlan || '1_MONTH').toLocaleString()}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleRenewalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: '0.85rem', lineHeight: 1.4 }}>
+                  Scan the QR code below via GPay/PhonePe to make your payment, then enter the 12-digit UTR verification code.
+                </p>
+
+                {/* Dynamic UPI QR Code */}
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '0.75rem 0' }}>
+                  <div style={{ backgroundColor: '#fff', padding: '0.85rem', borderRadius: '10px' }}>
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=5&data=${encodeURIComponent(getRenewalUpiUrl())}`} 
+                      alt="UPI QR Code" 
+                      style={{ display: 'block', width: '180px', height: '180px' }} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#0f172a', padding: '0.65rem 0.85rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.75rem', textAlign: 'left' }}>
+                  <div><span style={{ color: '#64748b' }}>Payee Name:</span> <strong style={{ color: '#fff' }}>ROHIT BARGE</strong></div>
+                  <div><span style={{ color: '#64748b' }}>VPA:</span> <strong style={{ color: '#fff', fontFamily: 'monospace' }}>rohitbarge22-3@okaxis</strong></div>
+                  <div><span style={{ color: '#64748b' }}>Transaction Note:</span> <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{getRenewalUpiNote()}</strong></div>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Enter 12-digit UPI Ref / UTR Number *</label>
+                <input 
+                  type="text" 
+                  required
+                  pattern="\d{12}"
+                  maxLength={12}
+                  placeholder="e.g. 123456789012"
+                  value={renewalUtr}
+                  onChange={(e) => setRenewalUtr(e.target.value.replace(/\D/g, '').substring(0, 12))}
+                  style={{
+                    width: '100%',
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    padding: '0.65rem 0.85rem',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {renewalStatus && (
+                <div style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  fontSize: '0.8rem',
+                  color: '#e2e8f0',
+                  lineHeight: 1.4
+                }}>
+                  {renewalStatus}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsRenewalOpen(false)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: 'transparent',
+                    border: '1px solid #475569',
+                    color: '#94a3b8',
+                    padding: '0.65rem',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={renewalLoading}
+                  style={{
+                    flex: 2,
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '0.65rem',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    cursor: renewalLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                  }}
+                >
+                  {renewalLoading ? 'Submitting...' : 'Submit Payment'}
                 </button>
               </div>
             </form>

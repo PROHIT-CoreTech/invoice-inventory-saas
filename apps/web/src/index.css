@@ -118,7 +118,7 @@ body {
 /* Stats Cards */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.5rem;
   margin-bottom: 3.5rem;
 }
@@ -916,14 +916,15 @@ body {
   .modal-card {
     max-height: 96vh;
     border-radius: 8px;
+    padding: 1.25rem !important;
   }
   
   .modal-body {
-    padding: 1rem;
+    padding: 0.75rem 0;
   }
   
   .modal-footer {
-    padding: 1rem;
+    padding: 1rem 0 0 0;
     flex-direction: column;
     gap: 0.5rem;
   }
@@ -931,6 +932,22 @@ body {
   .modal-footer button {
     width: 100%;
     margin: 0 !important;
+  }
+
+  .client-selection-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .print-preview-card iframe {
+    height: 50vh !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-container {
+    padding: 1rem 0.5rem;
   }
 }
 

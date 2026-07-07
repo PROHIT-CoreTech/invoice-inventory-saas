@@ -1,8 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { tenantMiddleware } from '../middleware/tenantMiddleware';
+import { subscriptionGuard } from '../middleware/subscriptionGuard';
 
 const router = Router();
 router.use(tenantMiddleware);
+router.use(subscriptionGuard);
 
 const mapInvoice = (inv: any) => {
   if (!inv) return null;

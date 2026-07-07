@@ -17,6 +17,210 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
     return `.${host}`;
   };
 
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<{ id: string; name: string; price: number } | null>(null);
+  const [checkoutForm, setCheckoutForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    tenant: ''
+  });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentStatusMessage, setPaymentStatusMessage] = useState('');
+  
+  // Custom UPI QR Step States
+  const [checkoutStep, setCheckoutStep] = useState<'FORM' | 'UPI_QR'>('FORM');
+  const [utrNumber, setUtrNumber] = useState('');
+
+  const getUpiUrl = () => {
+    if (!selectedPlan) return '';
+    const formattedTenant = checkoutForm.tenant.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    
+    // Plan code mapping
+    let planCode = 'MON';
+    if (selectedPlan.id === '6_MONTHS') planCode = 'PRO';
+    else if (selectedPlan.id === '1_YEAR') planCode = 'ENT';
+    else if (selectedPlan.id === 'LIFETIME') planCode = 'LIF';
+
+    // Strict 35 character max transaction note: SUB-[TIER_CODE]-[TENANT_ID]
+    const tn = `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
+    
+    return `upi://pay?pa=rohitbarge22-3@okaxis&pn=ROHIT%20BARGE&am=${selectedPlan.price.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`;
+  };
+
+  const getUpiNote = () => {
+    if (!selectedPlan) return '';
+    const formattedTenant = checkoutForm.tenant.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    let planCode = 'MON';
+    if (selectedPlan.id === '6_MONTHS') planCode = 'PRO';
+    else if (selectedPlan.id === '1_YEAR') planCode = 'ENT';
+    else if (selectedPlan.id === 'LIFETIME') planCode = 'LIF';
+    return `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
+  };
+
+  const handleOpenCheckout = (planId: string, planName: string, price: number) => {
+    setSelectedPlan({ id: planId, name: planName, price: price });
+    setCheckoutForm({
+      name: '',
+      email: '',
+      phone: '',
+      tenant: tenantName
+    });
+    setCheckoutStep('FORM');
+    setUtrNumber('');
+    setPaymentStatusMessage('');
+    setShowCheckoutModal(true);
+  };
+
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checkoutForm.tenant.trim()) {
+      alert('Please enter a workspace/tenant name.');
+      return;
+    }
+    
+    const formattedTenant = checkoutForm.tenant.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+
+    if (selectedPlan?.id === 'TRIAL') {
+      setPaymentLoading(true);
+      setPaymentStatusMessage('Initiating 10-day trial subscription...');
+      try {
+        const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/payments/start-trial';
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Tenant-Id': formattedTenant
+          }
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || 'Failed to activate free trial.');
+        }
+
+        setPaymentStatusMessage('🎉 Trial subscription activated successfully! Opening Onboarding Setup...');
+        setTimeout(() => {
+          setOnboardingTenant(formattedTenant);
+          setFormData(prev => ({
+            ...prev,
+            companyName: formattedTenant.toUpperCase() + ' INVOICES',
+            tier: 'PREMIUM'
+          }));
+          setShowCheckoutModal(false);
+          setShowOnboarding(true);
+        }, 1500);
+      } catch (err: any) {
+        setPaymentStatusMessage(`❌ Error: ${err.message}`);
+        setPaymentLoading(false);
+      }
+      return;
+    }
+
+    // For paid plans, transition to UPI QR step
+    setPaymentStatusMessage('');
+    setCheckoutStep('UPI_QR');
+  };
+
+  const handleUtrSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanUtr = utrNumber.trim();
+    if (!cleanUtr || cleanUtr.length !== 12) {
+      alert('Please enter a valid 12-digit numeric UPI Ref / UTR number.');
+      return;
+    }
+
+    setPaymentLoading(true);
+    setPaymentStatusMessage('Submitting UTR reference code for ledger validation...');
+    const formattedTenant = checkoutForm.tenant.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+
+    try {
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/subscriptions/submit-payment';
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-Id': formattedTenant
+        },
+        body: JSON.stringify({
+          planTier: selectedPlan?.id,
+          amountPaid: selectedPlan?.price,
+          utrNumber: cleanUtr
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Verification submission failed.');
+      }
+
+      const responseData = await res.json();
+      setPaymentStatusMessage(`🎉 ${responseData.message || 'Payment submitted successfully!'}`);
+      
+      // Auto-open onboarding setup after UTR submission
+      setTimeout(() => {
+        setOnboardingTenant(formattedTenant);
+        setFormData(prev => ({
+          ...prev,
+          companyName: formattedTenant.toUpperCase() + ' INVOICES',
+          tier: 'PREMIUM'
+        }));
+        setShowCheckoutModal(false);
+        setShowOnboarding(true);
+      }, 3000);
+
+    } catch (err: any) {
+      console.error(err);
+      setPaymentStatusMessage(`❌ Error: ${err.message || 'UTR submission failed.'}`);
+      setPaymentLoading(false);
+    }
+  };
+
+  const handleSimulatedSuccess = async () => {
+    if (!selectedPlan) return;
+    if (!checkoutForm.tenant.trim()) {
+      alert('Please enter a workspace/tenant name.');
+      return;
+    }
+    setPaymentLoading(true);
+    setPaymentStatusMessage('Simulating successful transaction...');
+    const formattedTenant = checkoutForm.tenant.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+
+    try {
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/payments/simulate-success';
+      const saveRes = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-Id': formattedTenant
+        },
+        body: JSON.stringify({
+          planId: selectedPlan.id
+        })
+      });
+
+      if (!saveRes.ok) {
+        const errData = await saveRes.json();
+        throw new Error(errData.message || 'Failed to update tenant subscription.');
+      }
+
+      setPaymentStatusMessage('🎉 Simulated payment success! Opening Onboarding Setup...');
+      setTimeout(() => {
+        setOnboardingTenant(formattedTenant);
+        setFormData(prev => ({
+          ...prev,
+          companyName: formattedTenant.toUpperCase() + ' INVOICES',
+          tier: 'PREMIUM'
+        }));
+        setShowCheckoutModal(false);
+        setShowOnboarding(true);
+      }, 1500);
+    } catch (err: any) {
+      setPaymentStatusMessage(`❌ Error: ${err.message}`);
+      setPaymentLoading(false);
+    }
+  };
+
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingTenant, setOnboardingTenant] = useState('');
   const [formData, setFormData] = useState({
@@ -190,7 +394,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           50% { transform: translateY(-10px); }
           100% { transform: translateY(0px); }
         }
-        .feature-card {
+        .feature-card, .pricing-card {
           transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }
         .feature-card:hover {
@@ -198,6 +402,12 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           border-color: rgba(99, 102, 241, 0.4) !important;
           background-color: rgba(30, 41, 59, 0.6) !important;
           box-shadow: 0 30px 40px -15px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.15) !important;
+        }
+        .pricing-card:hover {
+          transform: translateY(-8px) scale(1.025) !important;
+          border-color: rgba(129, 140, 248, 0.5) !important;
+          background-color: rgba(30, 41, 59, 0.65) !important;
+          box-shadow: 0 30px 50px -15px rgba(0, 0, 0, 0.7), 0 0 35px rgba(129, 140, 248, 0.25) !important;
         }
         @media (max-width: 992px) {
           .hero-grid {
@@ -220,12 +430,66 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             margin: 0 auto !important;
           }
         }
+        .hero-heading {
+          font-size: 3.75rem !important;
+          line-height: 1.1 !important;
+        }
+        .landing-header {
+          padding: 1.5rem 2rem !important;
+        }
+        .hero-section {
+          margin: 4rem auto 4rem auto !important;
+          padding: 0 2rem !important;
+        }
+        .hero-form-container {
+          padding: 1.75rem !important;
+        }
+        .subdomain-input-container {
+          display: flex !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          background-color: #0a0d16 !important;
+          border: 1px solid rgba(255, 255, 255, 0.15) !important;
+          border-radius: 10px !important;
+          padding: 0.65rem 1.15rem !important;
+          transition: border-color 0.2s !important;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.6) !important;
+        }
         @media (max-width: 768px) {
+          .hero-heading {
+            font-size: 2.25rem !important;
+            line-height: 1.2 !important;
+          }
           .floating-parallax-1, .floating-parallax-2 {
             display: none !important;
           }
         }
         @media (max-width: 576px) {
+          .landing-header {
+            padding: 1.5rem 1rem !important;
+          }
+          .hero-section {
+            margin: 2rem auto 2rem auto !important;
+            padding: 0 1rem !important;
+          }
+          .hero-form-container {
+            padding: 1.25rem !important;
+            margin: 0 !important;
+          }
+          .subdomain-input-container {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.5rem !important;
+            padding: 0.85rem !important;
+          }
+          .subdomain-input-container input {
+            text-align: center !important;
+          }
+          .subdomain-input-container span {
+            text-align: center !important;
+            font-size: 0.75rem !important;
+            color: #94a3b8 !important;
+          }
           .preview-stats-grid {
             grid-template-columns: 1fr !important;
             gap: 0.5rem !important;
@@ -289,11 +553,10 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
       }} />
 
       {/* Header */}
-      <header style={{
+      <header className="landing-header" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '1.5rem 2rem',
         maxWidth: '1200px',
         margin: '0 auto',
         position: 'relative',
@@ -319,10 +582,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
       </header>
 
       {/* Hero Section */}
-      <section className="hero-grid" style={{
+      <section className="hero-grid hero-section" style={{
         maxWidth: '1200px',
-        margin: '4rem auto 4rem auto',
-        padding: '0 2rem',
         position: 'relative',
         zIndex: 1,
         display: 'grid',
@@ -351,11 +612,9 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           </div>
 
           {/* Heading */}
-          <h1 style={{
-            fontSize: '3.75rem',
+          <h1 className="hero-heading" style={{
             fontWeight: 800,
             letterSpacing: '-0.035em',
-            lineHeight: 1.1,
             color: '#fff',
             marginBottom: '1.25rem'
           }}>
@@ -382,13 +641,12 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           </p>
 
           {/* Interactive Workspace Redirection Form */}
-          <div style={{
+          <div className="hero-form-container" style={{
             maxWidth: '520px',
             background: 'rgba(30, 41, 59, 0.4)',
             border: '1px solid rgba(255, 255, 255, 0.07)',
             backdropFilter: 'blur(16px)',
             borderRadius: '16px',
-            padding: '1.75rem',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1)'
           }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '1rem', textAlign: 'left' }}>
@@ -399,15 +657,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
               flexDirection: 'column',
               gap: '0.85rem'
             }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: '#0a0d16',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: '10px',
-                padding: '0.65rem 1.15rem',
-                transition: 'border-color 0.2s',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.6)'
+              <div className="subdomain-input-container" style={{
+                transition: 'border-color 0.2s'
               }}>
                 <input 
                   type="text"
@@ -725,6 +976,221 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             <p style={{ fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.5 }}>
               Robust tenant multi-tenancy verification. Subdomain mapping isolates customer data structures securely.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" style={{
+        maxWidth: '1100px',
+        margin: '6rem auto 4rem auto',
+        padding: '0 2rem',
+        position: 'relative',
+        zIndex: 1,
+        textAlign: 'center'
+      }}>
+        <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>
+          Flexible Plans for Fast-Growing Teams
+        </h2>
+        <p style={{ color: '#94a3b8', fontSize: '1.05rem', marginBottom: '2rem', maxWidth: '600px', margin: '0 auto 2rem auto', lineHeight: 1.6 }}>
+          Upgrade your workspace in seconds. All plans feature secure routing, automatic offline capability, and instant client synchronization.
+        </p>
+
+        {/* Free Trial Button Option */}
+        <div style={{ marginBottom: '3.5rem' }}>
+          <button 
+            type="button" 
+            onClick={() => handleOpenCheckout('TRIAL', '10-Day Free Trial', 0)}
+            style={{
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              color: '#fff',
+              border: 'none',
+              padding: '0.85rem 2.5rem',
+              borderRadius: '30px',
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',
+              transition: 'all 0.2s',
+              fontFamily: 'inherit'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 24px rgba(16, 185, 129, 0.5)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0px)';
+              e.currentTarget.style.boxShadow = '0 4px 20px rgba(16, 185, 129, 0.4)';
+            }}
+          >
+            ⚡ Start 10-Day Free Trial
+          </button>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1.75rem',
+          alignItems: 'stretch'
+        }}>
+          {/* Plan 1: Monthly Starter */}
+          <div className="pricing-card" style={{
+            ...cardStyle,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            height: '100%',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            boxSizing: 'border-box'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>1 Month Plan</span>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', backgroundColor: 'rgba(255,255,255,0.06)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 600 }}>Standard</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', marginBottom: '1.5rem' }}>
+                <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>₹999</span>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ month</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                <li>✓ Full Quotation & Billing Engine</li>
+                <li>✓ Auto CGST / SGST Splitting</li>
+                <li>✓ Custom Branding & Signature</li>
+                <li>✓ Subdomain Isolation</li>
+                <li>✓ PDF Export & Print Templates</li>
+              </ul>
+            </div>
+            <button 
+              type="button"
+              onClick={() => handleOpenCheckout('1_MONTH', '1 Month Plan', 999)}
+              style={pricingBtnStyle}
+            >
+              Subscribe Starter
+            </button>
+          </div>
+
+          {/* Plan 2: Bi-Annual Pro */}
+          <div className="pricing-card" style={{
+            ...cardStyle,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            height: '100%',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            position: 'relative',
+            backgroundColor: 'rgba(21, 28, 47, 0.6)',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: '#6366f1', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Popular
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>6 Months Plan</span>
+                <span style={{ fontSize: '0.7rem', color: '#818cf8', backgroundColor: 'rgba(99, 102, 241, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>Save ~10%</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem' }}>
+                  <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>₹4,999</span>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ 6 months</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
+                  Original Price: ₹5,599
+                </div>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                <li>✓ <strong>All Starter features included</strong></li>
+                <li>✓ Priority Database Syncing</li>
+                <li>✓ Multi-device Workspace Session</li>
+                <li>✓ Premium Document Layouts</li>
+                <li>✓ Dedicated Developer Support</li>
+              </ul>
+            </div>
+            <button 
+              type="button"
+              onClick={() => handleOpenCheckout('6_MONTHS', '6 Months Plan', 4999)}
+              style={{...pricingBtnStyle, background: 'linear-gradient(135deg, #6366f1, #4f46e5)'}}
+            >
+              Subscribe Pro
+            </button>
+          </div>
+
+          {/* Plan 3: Annual Enterprise */}
+          <div className="pricing-card" style={{
+            ...cardStyle,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            height: '100%',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            boxSizing: 'border-box'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>1 Year Plan</span>
+                <span style={{ fontSize: '0.7rem', color: '#fb923c', backgroundColor: 'rgba(251, 146, 60, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>Save ~10%</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem' }}>
+                  <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>₹9,999</span>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ year</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
+                  Original Price: ₹11,099
+                </div>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                <li>✓ <strong>All Pro features included</strong></li>
+                <li>✓ Zero Transaction Limits</li>
+                <li>✓ Advanced Analytics Dashboard</li>
+                <li>✓ Tally & ERP Compliant Exports</li>
+                <li>✓ Premium 24/7 SLA Service</li>
+              </ul>
+            </div>
+            <button 
+              type="button"
+              onClick={() => handleOpenCheckout('1_YEAR', '1 Year Plan', 9999)}
+              style={pricingBtnStyle}
+            >
+              Subscribe Enterprise
+            </button>
+          </div>
+
+          {/* Plan 4: Lifetime Unlimited */}
+          <div className="pricing-card" style={{
+            ...cardStyle,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            height: '100%',
+            border: '1px solid rgba(168, 85, 247, 0.3)',
+            backgroundColor: 'rgba(26, 21, 47, 0.55)',
+            boxSizing: 'border-box'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>Lifetime</span>
+                <span style={{ fontSize: '0.7rem', color: '#c084fc', backgroundColor: 'rgba(168, 85, 247, 0.2)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>Best Value</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', marginBottom: '1.5rem' }}>
+                <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>₹20,000</span>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ lifetime</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                <li>✓ <strong>All Enterprise features included</strong></li>
+                <li>✓ Permanent Lifetime License</li>
+                <li>✓ No Recurring Subscriptions</li>
+                <li>✓ Future Platform Updates Free</li>
+                <li>✓ VIP Priority Line Support</li>
+              </ul>
+            </div>
+            <button 
+              type="button"
+              onClick={() => handleOpenCheckout('LIFETIME', 'Lifetime Plan', 20000)}
+              style={{...pricingBtnStyle, background: 'linear-gradient(135deg, #a855f7, #7c3aed)'}}
+            >
+              Go Lifetime Unlimited
+            </button>
           </div>
         </div>
       </section>
@@ -1077,6 +1543,274 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           </div>
         </div>
       )}
+
+      {/* Checkout Modal Overlay */}
+      {showCheckoutModal && selectedPlan && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(7, 10, 19, 0.9)',
+          backdropFilter: 'blur(16px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+          overflowY: 'auto'
+        }}>
+          <div className="onboarding-modal-card" style={{
+            backgroundColor: '#151c2f',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '520px',
+            padding: '2.5rem',
+            boxShadow: '0 30px 60px rgba(0, 0, 0, 0.6)',
+            position: 'relative',
+            boxSizing: 'border-box',
+            textAlign: 'left'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                💳 Subscription Checkout
+              </h2>
+              <button 
+                type="button" 
+                onClick={() => setShowCheckoutModal(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem' }}>
+              <span style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>Selected Plan</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>{selectedPlan.name}</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>₹{selectedPlan.price.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {checkoutStep === 'FORM' ? (
+              <form onSubmit={handleCheckoutSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                <div>
+                  <label style={labelStyle}>Workspace Subdomain *</label>
+                  <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#0a0d16', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.5rem 0.85rem' }}>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. company-a"
+                      value={checkoutForm.tenant}
+                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, tenant: e.target.value }))}
+                      style={{ flex: 1, backgroundColor: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '0.9rem', fontWeight: 600 }}
+                    />
+                    <span style={{ color: '#818cf8', fontSize: '0.8rem', fontWeight: 700 }}>{getSuffix()}</span>
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
+                    Your subscription will be linked to this workspace.
+                  </span>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Full Name *</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="John Doe"
+                    value={checkoutForm.name}
+                    onChange={(e) => setCheckoutForm(prev => ({ ...prev, name: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Email Address *</label>
+                  <input 
+                    type="email" 
+                    required
+                    placeholder="john@example.com"
+                    value={checkoutForm.email}
+                    onChange={(e) => setCheckoutForm(prev => ({ ...prev, email: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Phone Number *</label>
+                  <input 
+                    type="tel" 
+                    required
+                    placeholder="e.g. 9988776655"
+                    value={checkoutForm.phone}
+                    onChange={(e) => setCheckoutForm(prev => ({ ...prev, phone: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+
+                {paymentStatusMessage && (
+                  <div style={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '10px',
+                    padding: '0.85rem',
+                    fontSize: '0.85rem',
+                    color: '#e2e8f0',
+                    lineHeight: 1.4
+                  }}>
+                    {paymentStatusMessage}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                  <button 
+                    type="submit" 
+                    disabled={paymentLoading}
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      border: 'none',
+                      color: '#fff',
+                      padding: '0.85rem',
+                      borderRadius: '10px',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      cursor: paymentLoading ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)',
+                      opacity: paymentLoading ? 0.7 : 1
+                    }}
+                  >
+                    {paymentLoading 
+                      ? 'Activating...' 
+                      : (selectedPlan.id === 'TRIAL' ? 'Activate 10-Day Free Trial →' : 'Proceed to Payment →')}
+                  </button>
+
+                  {selectedPlan.id !== 'TRIAL' && (
+                    <button 
+                      type="button"
+                      onClick={handleSimulatedSuccess}
+                      disabled={paymentLoading}
+                      style={{
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        color: '#10b981',
+                        padding: '0.85rem',
+                        borderRadius: '10px',
+                        fontSize: '1rem',
+                        fontWeight: 700,
+                        cursor: paymentLoading ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      ⚡ Simulate Payment Success (No Wallet Required)
+                    </button>
+                  )}
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleUtrSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.5 }}>
+                    Open your favorite UPI App (GPay, PhonePe, Paytm, BHIM) on your mobile device and scan the QR code below to complete the transfer.
+                  </p>
+                  
+                  {/* Dynamic UPI QR Code via public API */}
+                  <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+                    <div style={{ backgroundColor: '#fff', padding: '1rem', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}>
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(getUpiUrl())}`} 
+                        alt="UPI QR Code" 
+                        style={{ display: 'block', width: '200px', height: '200px' }} 
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#0a0d16', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8rem', textAlign: 'left' }}>
+                    <div><span style={{ color: '#64748b' }}>Payee Name:</span> <strong style={{ color: '#fff' }}>ROHIT BARGE</strong></div>
+                    <div><span style={{ color: '#64748b' }}>VPA Address:</span> <strong style={{ color: '#fff', fontFamily: 'monospace' }}>rohitbarge22-3@okaxis</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Amount:</span> <strong style={{ color: '#fff' }}>₹{selectedPlan.price.toLocaleString()}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Transaction Note:</span> <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{getUpiNote()}</strong></div>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Enter 12-digit UPI Transaction Ref / UTR Number *</label>
+                  <input 
+                    type="text" 
+                    required
+                    pattern="\d{12}"
+                    maxLength={12}
+                    placeholder="e.g. 123456789012"
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').substring(0, 12))}
+                    style={inputStyle}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
+                    Enter the exact UTR from your bank app statement or payment screen.
+                  </span>
+                </div>
+
+                {paymentStatusMessage && (
+                  <div style={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '10px',
+                    padding: '0.85rem',
+                    fontSize: '0.85rem',
+                    color: '#e2e8f0',
+                    lineHeight: 1.4
+                  }}>
+                    {paymentStatusMessage}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setCheckoutStep('FORM');
+                      setPaymentStatusMessage('');
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#94a3b8',
+                      padding: '0.85rem',
+                      borderRadius: '10px',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ← Back
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={paymentLoading}
+                    style={{
+                      flex: 2,
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      border: 'none',
+                      color: '#fff',
+                      padding: '0.85rem',
+                      borderRadius: '10px',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      cursor: paymentLoading ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',
+                      opacity: paymentLoading ? 0.7 : 1
+                    }}
+                  >
+                    {paymentLoading ? 'Submitting...' : 'Submit Payment for Activation'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1121,4 +1855,19 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
   textAlign: 'left',
   transition: 'border-color 0.2s'
+};
+
+const pricingBtnStyle: React.CSSProperties = {
+  width: '100%',
+  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  border: '1px solid rgba(255, 255, 255, 0.15)',
+  color: '#fff',
+  padding: '0.75rem',
+  borderRadius: '10px',
+  fontWeight: 700,
+  fontSize: '0.9rem',
+  cursor: 'pointer',
+  transition: 'all 0.2s',
+  boxSizing: 'border-box',
+  marginTop: '1.5rem'
 };

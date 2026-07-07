@@ -9,6 +9,8 @@ import clientRoutes from './routes/clients';
 import conversionRoutes from './routes/conversions';
 import tenantProfileRoutes from './routes/tenantProfile';
 import adminRoutes from './routes/admin';
+import paymentRoutes from './routes/payments';
+import subscriptionRoutes from './routes/subscriptions';
 
 const app = express();
 
@@ -63,6 +65,8 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/convert', conversionRoutes);
 app.use('/api/tenant-profile', tenantProfileRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // Global Error Handler Middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

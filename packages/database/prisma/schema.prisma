@@ -85,6 +85,9 @@ model TenantProfile {
   signatureUrl   String?
   theme          String?  @default("DEFAULT")
   tier           String?  @default("FREE")
+  subscriptionPlan      String?  @default("FREE")
+  subscriptionStatus    String?  @default("INACTIVE")
+  subscriptionExpiresAt DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
