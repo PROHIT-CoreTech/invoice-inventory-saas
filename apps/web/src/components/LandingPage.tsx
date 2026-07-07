@@ -409,6 +409,9 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           background-color: rgba(30, 41, 59, 0.65) !important;
           box-shadow: 0 30px 50px -15px rgba(0, 0, 0, 0.7), 0 0 35px rgba(129, 140, 248, 0.25) !important;
         }
+        .hero-left-content {
+          text-align: left;
+        }
         @media (max-width: 992px) {
           .hero-grid {
             grid-template-columns: 1fr !important;
@@ -428,6 +431,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           .hero-right-preview {
             max-width: 500px !important;
             margin: 0 auto !important;
+            transform: none !important; /* Disable 3D tilt on mobile to prevent overflow clipping */
           }
         }
         .hero-heading {
@@ -474,7 +478,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           }
           .hero-form-container {
             padding: 1.25rem !important;
-            margin: 0 !important;
+            margin: 0 auto !important; /* Center the form container on mobile */
           }
           .subdomain-input-container {
             flex-direction: column !important;
@@ -592,7 +596,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
         alignItems: 'center'
       }}>
         {/* Left Column: Hero badge, heading, subtitle and workspace access */}
-        <div className="hero-left-content" style={{ textAlign: 'left' }}>
+        <div className="hero-left-content">
           {/* Glowing Premium Badge */}
           <div style={{
             display: 'inline-flex',
