@@ -441,6 +441,20 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             max-width: 500px !important;
             margin: 0 auto !important;
             transform: none !important; /* Disable 3D tilt on mobile to prevent overflow clipping */
+            height: auto !important;
+            min-height: 480px !important;
+          }
+          .preview-dashboard-card {
+            position: relative !important;
+            height: auto !important;
+            padding: 1rem !important;
+          }
+          .preview-stats-grid {
+            grid-template-columns: 1fr !important;
+            gap: 0.5rem !important;
+          }
+          .preview-table-container {
+            overflow-x: auto !important;
           }
         }
         .hero-badge {
@@ -562,22 +576,6 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           }
         }
         @media (max-width: 576px) {
-          .preview-stats-grid {
-            grid-template-columns: 1fr !important;
-            gap: 0.5rem !important;
-          }
-          .hero-right-preview {
-            height: auto !important;
-            min-height: 480px !important;
-          }
-          .preview-dashboard-card {
-            position: relative !important;
-            height: auto !important;
-            padding: 1rem !important;
-          }
-          .preview-table-container {
-            overflow-x: auto !important;
-          }
           .onboarding-grid {
             grid-template-columns: 1fr !important;
             gap: 1rem !important;
