@@ -87,6 +87,7 @@ body {
   letter-spacing: -0.05em;
   background: linear-gradient(to right, #ffffff, #d4d4d8);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
