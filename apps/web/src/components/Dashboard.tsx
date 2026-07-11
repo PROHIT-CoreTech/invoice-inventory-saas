@@ -23,6 +23,54 @@ import { type Quotation, type ProformaInvoice, type FinalInvoice } from '@procas
 import { generateDocumentHtml } from '@procash-invoices/document-templates';
 import ExcelJS from 'exceljs';
 
+const IframePreview = React.forwardRef<HTMLIFrameElement, { srcDoc: string }>((props, ref) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [scale, setScale] = React.useState(1);
+
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+    const updateScale = () => {
+      const width = containerRef.current?.offsetWidth || 0;
+      if (width > 0 && width < 800) {
+        setScale(width / 800);
+      } else {
+        setScale(1);
+      }
+    };
+    
+    updateScale();
+    const timer = setTimeout(updateScale, 100);
+
+    window.addEventListener('resize', updateScale);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateScale);
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', overflow: 'hidden', height: `${750 * scale}px`, position: 'relative' }}>
+      <iframe
+        ref={ref}
+        title="Print Preview"
+        style={{
+          width: '800px',
+          height: '750px',
+          border: 'none',
+          background: '#fff',
+          display: 'block',
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          position: 'absolute',
+          top: 0,
+          left: 0
+        }}
+        srcDoc={props.srcDoc}
+      />
+    </div>
+  );
+});
+
 export default function Dashboard() {
   // Querying using shared TanStack Query hooks from @procash-invoices/api-client
   const { data: quotations = [], isLoading: loadingQuotes, error: errorQuotes } = useGetQuotations();
@@ -1278,7 +1326,7 @@ export default function Dashboard() {
           </h1>
           <p style={{ margin: 0 }}>{tenantProfile?.companyName ? `Invoicing & Billing Dashboard for ${tenantProfile.companyName}` : "Production-Grade Invoicing & Billing Dashboard"}</p>
           {tenantProfile && (
-            <div style={{
+            <div className="sub-badge" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
@@ -1295,7 +1343,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div className="header-controls">
           <div className="view-mode-tabs">
             <button 
               type="button"
@@ -1321,19 +1369,9 @@ export default function Dashboard() {
 
       {/* Global Search Bar & Filters (Only in History mode) */}
       {viewMode === 'history' && (
-        <div className="search-bar-container" style={{
-          display: 'flex',
-          gap: '1rem',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          backgroundColor: 'rgba(30, 41, 59, 0.35)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '12px',
-          padding: '1.25rem',
-          marginBottom: '2rem'
-        }}>
+        <div className="search-bar-container">
           {/* Search Query */}
-          <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+          <div className="search-field-query">
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               Search Query
             </label>
@@ -1358,7 +1396,7 @@ export default function Dashboard() {
           </div>
 
           {/* Start Date */}
-          <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+          <div className="search-field-date">
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               Start Date
             </label>
@@ -1382,7 +1420,7 @@ export default function Dashboard() {
           </div>
 
           {/* End Date */}
-          <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+          <div className="search-field-date">
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               End Date
             </label>
@@ -1406,7 +1444,7 @@ export default function Dashboard() {
           </div>
 
           {/* Export & Preview Buttons */}
-          <div style={{ alignSelf: 'flex-end', flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+          <div className="search-actions">
             <button 
               type="button" 
               onClick={() => setIsExcelPreviewOpen(true)}
@@ -2200,10 +2238,8 @@ export default function Dashboard() {
             </div>
             <div className="modal-body" style={{ background: '#f8f9fa', padding: 0 }}>
               {renderAuditTrail(printDoc)}
-              <iframe
+              <IframePreview
                 ref={iframeRef}
-                title="Print Preview"
-                style={{ width: '100%', height: '700px', border: 'none', background: '#fff', display: 'block' }}
                 srcDoc={generateDocumentHtml(getDocumentData(printDoc))}
               />
               <div className="print-area" style={{ display: 'none' }} dangerouslySetInnerHTML={{ __html: generateDocumentHtml(getDocumentData(printDoc)) }} />
@@ -2251,7 +2287,7 @@ export default function Dashboard() {
                 <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   1. Company Profile
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-2">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company Name *</label>
                     <input 
@@ -2275,7 +2311,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-3" style={{ marginTop: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Official Billing Address *</label>
                     <textarea 
@@ -2323,7 +2359,7 @@ export default function Dashboard() {
                 <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   2. Tax Details
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-2">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>GSTIN / Tax ID</label>
                     <input 
@@ -2351,7 +2387,7 @@ export default function Dashboard() {
                 <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   3. Bank Account Details
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-2">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Holder Name</label>
                     <input 
@@ -2374,7 +2410,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-3" style={{ marginTop: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Number</label>
                     <input 
@@ -2417,10 +2453,10 @@ export default function Dashboard() {
                     🔒 Managed by Administrator only
                   </span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div className="grid-col-2" style={{ gap: '1.5rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Theme</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div className="theme-selection-container" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                       {[
                         { id: 'DEFAULT', name: 'Classic Orange', color: '#fb923c' },
                         { id: 'EMERALD', name: 'Emerald Green', color: '#10b981' },
@@ -2489,14 +2525,11 @@ export default function Dashboard() {
                     </div>
 
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.45rem' }}>Active Subscription Details</label>
-                    <div style={{
+                    <div className="grid-col-2" style={{
                       backgroundColor: '#0f172a',
                       border: '1px solid #334155',
                       borderRadius: '10px',
                       padding: '1rem 1.25rem',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '1rem',
                       fontSize: '0.85rem',
                       boxSizing: 'border-box'
                     }}>
@@ -2532,7 +2565,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <div className="settings-footer" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                 <button 
                   type="button" 
                   onClick={() => setIsSettingsOpen(false)}
@@ -2573,33 +2606,8 @@ export default function Dashboard() {
 
       {/* Workspace Renewal Modal */}
       {isRenewalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.95)',
-          backdropFilter: 'blur(12px)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '2rem',
-          overflowY: 'auto'
-        }}>
-          <div style={{
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '480px',
-            padding: '2rem',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            position: 'relative',
-            boxSizing: 'border-box',
-            textAlign: 'left'
-          }}>
+        <div className="renewal-overlay">
+          <div className="renewal-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', margin: 0 }}>
                 ⚡ Renew Subscription

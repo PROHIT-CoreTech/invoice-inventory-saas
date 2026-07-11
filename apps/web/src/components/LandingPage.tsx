@@ -377,216 +377,6 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
       position: 'relative',
       overflowX: 'hidden'
     }}>
-      {/* CSS Styles injection for animations and media queries */}
-      <style>{`
-        @keyframes drift {
-          0% { transform: translate(0px, 0px) rotate(0deg); }
-          50% { transform: translate(40px, -60px) rotate(180deg); }
-          100% { transform: translate(0px, 0px) rotate(360deg); }
-        }
-        @keyframes pulse {
-          0% { transform: scale(1); opacity: 0.4; }
-          50% { transform: scale(1.05); opacity: 0.8; }
-          100% { transform: scale(1); opacity: 0.4; }
-        }
-        @keyframes float-subtle {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-          100% { transform: translateY(0px); }
-        }
-        .feature-card, .pricing-card {
-          transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        }
-        .feature-card:hover {
-          transform: translateY(-8px) scale(1.02) !important;
-          border-color: rgba(99, 102, 241, 0.4) !important;
-          background-color: rgba(30, 41, 59, 0.6) !important;
-          box-shadow: 0 30px 40px -15px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.15) !important;
-        }
-        .pricing-card:hover {
-          transform: translateY(-8px) scale(1.025) !important;
-          border-color: rgba(129, 140, 248, 0.5) !important;
-          background-color: rgba(30, 41, 59, 0.65) !important;
-          box-shadow: 0 30px 50px -15px rgba(0, 0, 0, 0.7), 0 0 35px rgba(129, 140, 248, 0.25) !important;
-        }
-        .hero-grid {
-          max-width: 1200px;
-          position: relative;
-          z-index: 1;
-          display: grid;
-          grid-template-columns: 1.05fr 0.95fr;
-          gap: 4.5rem;
-          align-items: center;
-        }
-        .hero-left-content {
-          text-align: left;
-        }
-        @media (max-width: 992px) {
-          .hero-grid {
-            grid-template-columns: 1fr !important;
-            gap: 3rem !important;
-            text-align: center !important;
-          }
-          .hero-left-content {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            text-align: center !important;
-          }
-          .hero-left-content p {
-            margin-left: auto !important;
-            margin-right: auto !important;
-          }
-          .hero-right-preview {
-            max-width: 500px !important;
-            margin: 0 auto !important;
-            transform: none !important; /* Disable 3D tilt on mobile to prevent overflow clipping */
-            height: auto !important;
-            min-height: 480px !important;
-          }
-          .preview-dashboard-card {
-            position: relative !important;
-            height: auto !important;
-            padding: 1rem !important;
-          }
-          .preview-stats-grid {
-            grid-template-columns: 1fr !important;
-            gap: 0.5rem !important;
-          }
-          .preview-table-container {
-            overflow-x: auto !important;
-          }
-        }
-        .hero-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.4rem 1rem;
-          border-radius: 999px;
-          background: rgba(99, 102, 241, 0.08);
-          border: 1px solid rgba(99, 102, 241, 0.25);
-          font-size: clamp(0.7rem, 2.5vw, 0.85rem);
-          font-weight: 600;
-          color: #a5b4fc;
-          margin-bottom: 1.5rem;
-          max-width: 100%;
-          box-sizing: border-box;
-        }
-        .hero-heading {
-          font-size: clamp(1.8rem, 8vw, 3.75rem) !important;
-          line-height: 1.15 !important;
-          font-weight: 800;
-          letter-spacing: -0.035em;
-          color: #fff;
-          margin-bottom: 1.25rem;
-        }
-        .hero-subtitle {
-          font-size: clamp(0.95rem, 3.5vw, 1.15rem) !important;
-          line-height: 1.6 !important;
-          color: #94a3b8;
-          margin-bottom: 2.5rem;
-          max-width: 560px;
-        }
-        .logo-title {
-          font-size: clamp(1.05rem, 4vw, 1.25rem);
-          font-weight: 800;
-          letter-spacing: -0.025em;
-          color: #fff;
-        }
-        .form-title {
-          font-size: clamp(0.9rem, 3.5vw, 1.1rem);
-          font-weight: 700;
-          color: #e2e8f0;
-          margin-bottom: 1rem;
-          text-align: left;
-        }
-        .subdomain-input {
-          flex: 1;
-          background-color: transparent;
-          border: none;
-          color: #fff;
-          font-size: clamp(0.85rem, 3.5vw, 1rem);
-          outline: none;
-          font-weight: 600;
-          font-family: inherit;
-        }
-        .subdomain-suffix {
-          color: #818cf8;
-          font-size: clamp(0.75rem, 3vw, 0.875rem);
-          font-weight: 700;
-          letter-spacing: 0.02em;
-        }
-        .landing-header {
-          padding: 1.5rem 2rem !important;
-        }
-        .hero-section {
-          margin: 4rem auto 4rem auto !important;
-          padding: 0 2rem !important;
-        }
-        .hero-form-container {
-          max-width: 520px;
-          background: rgba(30, 41, 59, 0.4);
-          border: 1px solid rgba(255, 255, 255, 0.07);
-          backdrop-filter: blur(16px);
-          border-radius: 16px;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
-          padding: 1.75rem !important;
-          width: 100%;
-          box-sizing: border-box;
-        }
-        .subdomain-input-container {
-          display: flex !important;
-          flex-direction: row !important;
-          align-items: center !important;
-          background-color: #0a0d16 !important;
-          border: 1px solid rgba(255, 255, 255, 0.15) !important;
-          border-radius: 10px !important;
-          padding: 0.65rem 1.15rem !important;
-          transition: border-color 0.2s !important;
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.6) !important;
-        }
-        @media (max-width: 768px) {
-          .floating-parallax-1, .floating-parallax-2 {
-            display: none !important;
-          }
-          .landing-header {
-            padding: 1.5rem 1rem !important;
-          }
-          .hero-section {
-            margin: 2rem auto 2rem auto !important;
-            padding: 0 1rem !important;
-          }
-          .hero-form-container {
-            padding: 1.25rem !important;
-            margin: 0 auto !important;
-          }
-          .subdomain-input-container {
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 0.5rem !important;
-            padding: 0.85rem !important;
-          }
-          .subdomain-input-container input {
-            text-align: center !important;
-          }
-          .subdomain-input-container span {
-            text-align: center !important;
-            font-size: 0.75rem !important;
-            color: #94a3b8 !important;
-          }
-        }
-        @media (max-width: 576px) {
-          .onboarding-grid {
-            grid-template-columns: 1fr !important;
-            gap: 1rem !important;
-          }
-          .onboarding-modal-card {
-            padding: 1.25rem !important;
-            border-radius: 16px !important;
-          }
-        }
-      `}</style>
-
       {/* Decorative Background 3D Glowing Orbs */}
       <div style={{
         position: 'absolute',
@@ -799,7 +589,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
               </div>
               
               {/* Status & Options Pill Buttons */}
-              <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.58rem' }}>
+              <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.58rem', flexWrap: 'wrap' }}>
                 <span style={{ backgroundColor: '#fb923c', color: '#000', padding: '0.25rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
                   📅 Daily Workspace
                 </span>
@@ -858,7 +648,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
               </div>
 
               {/* Table representation */}
-              <div className="preview-table-container" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="preview-table-container" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', minWidth: 0 }}>
                 <table style={{ width: '100%', minWidth: '580px', borderCollapse: 'collapse', fontSize: '0.65rem', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ backgroundColor: 'rgba(15,23,42,0.8)', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#94a3b8' }}>
@@ -1050,7 +840,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           </button>
         </div>
 
-        <div style={{
+        <div className="pricing-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
           gap: '1.75rem',
@@ -1252,7 +1042,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
       {/* Onboarding Overlay Modal */}
       {showOnboarding && (
-        <div style={{
+        <div className="onboarding-overlay" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1459,7 +1249,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                   <div>
                     <label style={labelStyle}>Select Dashboard Theme</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div className="theme-selection-container" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                       {[
                         { id: 'DEFAULT', name: 'Classic Orange', color: '#fb923c' },
                         { id: 'EMERALD', name: 'Emerald Green', color: '#10b981' },
@@ -1494,7 +1284,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                   </div>
                   <div>
                     <label style={labelStyle}>Workspace Subscription Tier</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div className="tier-selection-container" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                       {[
                         { id: 'FREE', name: 'Free Tier', badge: 'Standard Features' },
                         { id: 'PREMIUM', name: 'Premium Tier 👑', badge: 'Advanced Layouts' }
@@ -1569,7 +1359,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
       {/* Checkout Modal Overlay */}
       {showCheckoutModal && selectedPlan && (
-        <div style={{
+        <div className="checkout-overlay" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1621,7 +1411,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
               <form onSubmit={handleCheckoutSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                 <div>
                   <label style={labelStyle}>Workspace Subdomain *</label>
-                  <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#0a0d16', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.5rem 0.85rem' }}>
+                  <div className="checkout-subdomain-container">
                     <input 
                       type="text" 
                       required

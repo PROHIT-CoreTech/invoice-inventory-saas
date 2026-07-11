@@ -338,26 +338,8 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
   // Authentication Gate Layout
   if (!isAuthenticated) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#0f172a',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: "'Outfit', 'Inter', sans-serif",
-        padding: '1.5rem',
-        color: '#f8fafc'
-      }}>
-        <div style={{
-          backgroundColor: '#1e293b',
-          border: '1px solid #334155',
-          borderRadius: '16px',
-          padding: '2.5rem',
-          width: '100%',
-          maxWidth: '420px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          textAlign: 'center'
-        }}>
+      <div className="admin-login-overlay">
+        <div className="admin-login-card">
           <div style={{
             fontSize: '3rem',
             marginBottom: '1rem',
@@ -446,22 +428,9 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
   // Authenticated Portal Dashboard Layout
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#0f172a',
-      color: '#f8fafc',
-      fontFamily: "'Outfit', 'Inter', sans-serif",
-      padding: '2rem'
-    }}>
+    <div className="admin-portal-container">
       {/* Header */}
-      <header style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid #1e293b',
-        paddingBottom: '1.5rem',
-        marginBottom: '2rem'
-      }}>
+      <header className="admin-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img src="/images/hero.png" alt="Logo" style={{ height: '36px', width: '36px' }} />
           <div>
@@ -474,7 +443,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div className="admin-header-actions">
           <button 
             onClick={() => setIsCreateModalOpen(true)}
             style={{
@@ -557,38 +526,18 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       </div>
 
       {/* Tabs Selector */}
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #334155', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
+      <div className="admin-tabs-container">
         <button
           type="button"
           onClick={() => setActiveTab('WORKSPACES')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: activeTab === 'WORKSPACES' ? '#fff' : '#64748b',
-            borderBottom: activeTab === 'WORKSPACES' ? '2px solid #6366f1' : 'none',
-            padding: '0.5rem 1rem',
-            fontSize: '1rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
+          className={`admin-tab-btn ${activeTab === 'WORKSPACES' ? 'active' : ''}`}
         >
           📁 Active Workspaces ({tenants.length})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('PENDING_PAYMENTS')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: activeTab === 'PENDING_PAYMENTS' ? '#fff' : '#64748b',
-            borderBottom: activeTab === 'PENDING_PAYMENTS' ? '2px solid #10b981' : 'none',
-            padding: '0.5rem 1rem',
-            fontSize: '1rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
+          className={`admin-tab-btn pending ${activeTab === 'PENDING_PAYMENTS' ? 'active' : ''}`}
         >
           ⏳ Pending UTR Verification ({pendingPayments.length})
         </button>
@@ -973,7 +922,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   1. Company Branding & Details
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-2">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company Registered Name *</label>
                     <input 
@@ -1009,7 +958,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   2. Government Tax Identifiers
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-2">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>GSTIN Number</label>
                     <input 
@@ -1035,7 +984,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   3. Settlement Bank Credentials
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-3">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Bank Name</label>
                     <input 
@@ -1066,7 +1015,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                     </select>
                   </div>
                 </div>
-                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-3" style={{ marginTop: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Number</label>
                     <input 
@@ -1101,7 +1050,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   4. Workspace Styling & Subscription Tier
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div className="grid-col-2" style={{ gap: '1.5rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Select Dashboard Theme</label>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -1249,7 +1198,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.85rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   1. Workspace Subdomain & Profile
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-2">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Subdomain / ID *</label>
                     <input 
@@ -1278,7 +1227,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <div className="grid-col-2" style={{ marginTop: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company / Business Name *</label>
                     <input 
@@ -1319,7 +1268,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   2. Government Tax Identifiers
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-2">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>GSTIN Number</label>
                     <input 
@@ -1348,7 +1297,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   3. Settlement Bank Credentials
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="grid-col-3">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Bank Name</label>
                     <input 
@@ -1382,7 +1331,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <div className="grid-col-3" style={{ marginTop: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Number</label>
                     <input 
