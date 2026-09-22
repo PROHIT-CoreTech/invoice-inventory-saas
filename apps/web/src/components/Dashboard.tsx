@@ -433,8 +433,8 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
-  // Daily Mode, History & Ledger States
-  const [viewMode, setViewMode] = useState<'daily' | 'history' | 'ledger'>('daily');
+  // Daily Mode, History, Ledger & Subscription States
+  const [viewMode, setViewMode] = useState<'daily' | 'history' | 'ledger' | 'subscription'>('daily');
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -1359,19 +1359,25 @@ export default function Dashboard() {
           </h1>
           <p style={{ margin: 0 }}>{tenantProfile?.companyName ? `Invoicing & Billing Dashboard for ${tenantProfile.companyName}` : "Production-Grade Invoicing & Billing Dashboard"}</p>
           {tenantProfile && (
-            <div className="sub-badge" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.3rem 0.75rem',
-              borderRadius: '20px',
-              backgroundColor: 'rgba(99, 102, 241, 0.15)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              fontSize: '0.75rem',
-              color: '#a5b4fc',
-              fontWeight: 700,
-              marginTop: '0.5rem'
-            }}>
+            <div 
+              className="sub-badge" 
+              onClick={() => setViewMode('subscription')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.3rem 0.75rem',
+                borderRadius: '20px',
+                backgroundColor: tenantProfile.subscriptionStatus === 'EXPIRED' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.15)',
+                border: tenantProfile.subscriptionStatus === 'EXPIRED' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(99, 102, 241, 0.3)',
+                fontSize: '0.75rem',
+                color: tenantProfile.subscriptionStatus === 'EXPIRED' ? '#f87171' : '#a5b4fc',
+                fontWeight: 700,
+                marginTop: '0.5rem',
+                cursor: 'pointer'
+              }}
+              title="Click to view Subscription & Plan Details"
+            >
               👑 {getPlanLabel(tenantProfile.subscriptionPlan || 'FREE')} ({tenantProfile.subscriptionPlan === 'LIFETIME' ? 'Lifetime' : (tenantProfile.subscriptionPlan === 'FREE' ? 'Free Tier' : `Expires: ${formatDateTime(tenantProfile.subscriptionExpiresAt)}`)})
             </div>
           )}
@@ -1403,6 +1409,13 @@ export default function Dashboard() {
               }}
             >
               📒 Client Ledger History
+            </button>
+            <button 
+              type="button"
+              className={`view-mode-btn ${viewMode === 'subscription' ? 'active' : ''}`} 
+              onClick={() => setViewMode('subscription')}
+            >
+              👑 Subscription Details
             </button>
           </div>
           <div className="connection-pill">
@@ -1832,6 +1845,190 @@ export default function Dashboard() {
               Please select a client from the dropdown above to view their complete financial ledger history, advance credits, and transaction timeline.
             </div>
           )}
+        </section>
+      ) : viewMode === 'subscription' ? (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+          {/* Subscription Banner / Title */}
+          <div style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '12px',
+            padding: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem'
+          }}>
+            <div>
+              <h2 style={{ margin: 0, color: '#fff', fontSize: '1.35rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                👑 Workspace Subscription & Billing Details
+              </h2>
+              <p style={{ margin: '0.35rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>
+                Comprehensive overview of your active plan, expiration timeline, and workspace tier settings.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setIsRenewalOpen(true)}
+                style={{
+                  backgroundColor: '#6366f1',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '0.65rem 1.25rem',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)'
+                }}
+              >
+                ⚡ Renew / Upgrade Subscription
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen(true)}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  color: '#cbd5e1',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  padding: '0.65rem 1.25rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ⚙️ Workspace Profile
+              </button>
+            </div>
+          </div>
+
+          {/* Subscription KPI Cards */}
+          <div className="stats-grid">
+            <div className="stat-card" style={{ borderLeft: '4px solid #6366f1' }}>
+              <div className="stat-header">
+                <span>Active Plan</span>
+                <span style={{ color: '#818cf8', fontWeight: 700 }}>
+                  {getPlanPrice(tenantProfile?.subscriptionPlan || 'FREE')}
+                </span>
+              </div>
+              <div className="stat-value" style={{ fontSize: '1.35rem' }}>
+                {getPlanLabel(tenantProfile?.subscriptionPlan || 'FREE')}
+              </div>
+              <div className="stat-footer">Billing Plan Tier</div>
+            </div>
+
+            <div className="stat-card" style={{ borderLeft: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '4px solid #ef4444' : '4px solid #10b981' }}>
+              <div className="stat-header">
+                <span>Subscription Status</span>
+                <span style={{ color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#ef4444' : '#10b981', fontWeight: 700 }}>
+                  {tenantProfile?.subscriptionStatus === 'EXPIRED' ? 'EXPIRED' : 'ACTIVE'}
+                </span>
+              </div>
+              <div className="stat-value" style={{ fontSize: '1.35rem', color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#f87171' : '#34d399' }}>
+                {tenantProfile?.subscriptionStatus === 'EXPIRED' ? 'Read-Only Mode' : 'Full Access'}
+              </div>
+              <div className="stat-footer">Current workspace state</div>
+            </div>
+
+            <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
+              <div className="stat-header">
+                <span>Expiration Date</span>
+                <span style={{ color: '#f59e0b', fontWeight: 700 }}>Timeline</span>
+              </div>
+              <div className="stat-value" style={{ fontSize: '1.25rem' }}>
+                {tenantProfile?.subscriptionPlan === 'LIFETIME' ? 'Never (Lifetime)' : (tenantProfile?.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(tenantProfile?.subscriptionExpiresAt))}
+              </div>
+              <div className="stat-footer">
+                {tenantProfile?.subscriptionPlan === 'LIFETIME' 
+                  ? 'Unlimited validity' 
+                  : (tenantProfile?.subscriptionExpiresAt ? `${Math.max(0, Math.ceil((new Date(tenantProfile.subscriptionExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} Days Remaining` : 'Free Tier')}
+              </div>
+            </div>
+
+            <div className="stat-card" style={{ borderLeft: '4px solid #a855f7' }}>
+              <div className="stat-header">
+                <span>Subdomain Workspace</span>
+                <span style={{ color: '#a855f7', fontWeight: 700 }}>Multi-Tenant</span>
+              </div>
+              <div className="stat-value" style={{ fontSize: '1.25rem', fontFamily: 'monospace', color: '#c084fc' }}>
+                {tenantProfile?.tenantId || 'default'}
+              </div>
+              <div className="stat-footer">Subdomain identifier</div>
+            </div>
+          </div>
+
+          {/* Account Details & Feature Entitlements Card */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '1.5rem'
+          }}>
+            {/* Account Profile Card */}
+            <div style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '12px',
+              padding: '1.5rem'
+            }}>
+              <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>
+                🏢 Tenant Account Profile
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Company Name:</span>
+                  <strong style={{ color: '#fff' }}>{tenantProfile?.companyName || 'Not Set'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Proprietor:</span>
+                  <span style={{ color: '#e2e8f0' }}>{tenantProfile?.proprietorName || 'Not Set'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#94a3b8' }}>GSTIN / Tax ID:</span>
+                  <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{tenantProfile?.gstin || 'None'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#94a3b8' }}>PAN Number:</span>
+                  <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{tenantProfile?.pan || 'None'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Primary Theme:</span>
+                  <span style={{ color: '#818cf8', fontWeight: 600 }}>{tenantProfile?.theme || 'DEFAULT'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Plan Entitlements Card */}
+            <div style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '12px',
+              padding: '1.5rem'
+            }}>
+              <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>
+                🚀 Plan Features & Entitlements
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.85rem' }}>
+                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>Unlimited Quotation & Proforma Generation</span>
+                </div>
+                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>Final Invoices & Advance Payment Tracking</span>
+                </div>
+                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>Client Ledger Statements & Transaction History</span>
+                </div>
+                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>Instant Excel Report & CSV Data Exports</span>
+                </div>
+                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>WhatsApp & Email One-Click Invoice Sharing</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       ) : (
         <>
