@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { getSubdomain } from '@procash-invoices/api-client';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
@@ -109,6 +110,7 @@ export default function App() {
     <>
       {renderContent()}
       <GlobalLoader />
+      <Analytics />
     </>
   );
 }
