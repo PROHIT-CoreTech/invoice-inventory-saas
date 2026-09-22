@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import VercelAnalyticsGuide from './VercelAnalyticsGuide';
 
 interface Tenant {
   id: string;
@@ -39,7 +38,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
   const [error, setError] = useState('');
 
   // Active Tab & Pending Payments states
-  const [activeTab, setActiveTab] = useState<'WORKSPACES' | 'PENDING_PAYMENTS' | 'ANALYTICS_GUIDE'>('WORKSPACES');
+  const [activeTab, setActiveTab] = useState<'WORKSPACES' | 'PENDING_PAYMENTS'>('WORKSPACES');
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
@@ -552,13 +551,6 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
         >
           ⏳ Pending UTR Verification ({pendingPayments.length})
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('ANALYTICS_GUIDE')}
-          className={`admin-tab-btn ${activeTab === 'ANALYTICS_GUIDE' ? 'active' : ''}`}
-        >
-          📈 Vercel Analytics Guide
-        </button>
       </div>
 
       {activeTab === 'WORKSPACES' ? (
@@ -586,11 +578,11 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
           {/* Table grid */}
           <div style={{
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
             borderRadius: '12px',
             overflowX: 'auto',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
           }}>
             <table style={{
               width: '100%',
@@ -599,7 +591,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
               fontSize: '0.875rem'
             }}>
               <thead>
-                <tr style={{ backgroundColor: '#0f172a', color: '#94a3b8', borderBottom: '1px solid #334155' }}>
+                <tr style={{ backgroundColor: '#f8fafc', color: '#475569', borderBottom: '1px solid #cbd5e1' }}>
                   <th style={thStyle}>Workspace / Subdomain</th>
                   <th style={thStyle}>Company Details</th>
                   <th style={thStyle}>Tax Info</th>
@@ -619,11 +611,11 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                   </tr>
                 ) : (
                   filteredTenants.map((t) => (
-                    <tr key={t.id} style={{ borderBottom: '1px solid #334155', transition: 'background-color 0.15s' }} className="table-row">
+                    <tr key={t.id} style={{ borderBottom: '1px solid #e2e8f0', transition: 'background-color 0.15s' }} className="table-row">
                       {/* Subdomain / Workspace ID */}
                       <td style={tdStyle}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontWeight: 800, color: '#818cf8', fontSize: '1rem' }}>
+                          <span style={{ fontWeight: 800, color: '#4f46e5', fontSize: '1rem' }}>
                             {t.tenantId}
                           </span>
                         </div>
@@ -639,9 +631,9 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
                       {/* Company Details */}
                       <td style={tdStyle}>
-                        <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{t.companyName}</div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{t.companyName}</div>
                         {t.proprietorName && (
-                          <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                          <div style={{ color: '#475569', fontSize: '0.8rem', marginTop: '0.15rem' }}>
                             Proprietor: {t.proprietorName}
                           </div>
                         )}
@@ -649,10 +641,10 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                           {t.address}
                         </div>
                         <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '0.7rem', backgroundColor: '#334155', color: '#e2e8f0', padding: '0.15rem 0.4rem', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 600 }}>
+                          <span style={{ fontSize: '0.7rem', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', padding: '0.15rem 0.4rem', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 600 }}>
                             🎨 {t.theme || 'DEFAULT'}
                           </span>
-                          <span style={{ fontSize: '0.7rem', backgroundColor: t.tier === 'PREMIUM' ? '#fbbf24' : '#1e293b', color: t.tier === 'PREMIUM' ? '#000' : '#94a3b8', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '0.7rem', backgroundColor: t.tier === 'PREMIUM' ? '#fef3c7' : '#f1f5f9', border: t.tier === 'PREMIUM' ? '1px solid #fde68a' : '1px solid #cbd5e1', color: t.tier === 'PREMIUM' ? '#92400e' : '#475569', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
                             {t.tier === 'PREMIUM' ? '👑 PREMIUM' : 'FREE'}
                           </span>
                         </div>
@@ -663,13 +655,13 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                         {t.gstin && (
                           <div>
                             <strong style={{ color: '#64748b', fontSize: '0.7rem' }}>GSTIN:</strong>
-                            <div style={{ color: '#fff', fontWeight: 600, fontFamily: 'monospace' }}>{t.gstin}</div>
+                            <div style={{ color: '#0f172a', fontWeight: 600, fontFamily: 'monospace' }}>{t.gstin}</div>
                           </div>
                         )}
                         {t.pan && (
                           <div style={{ marginTop: '0.35rem' }}>
                             <strong style={{ color: '#64748b', fontSize: '0.7rem' }}>PAN:</strong>
-                            <div style={{ color: '#fff', fontWeight: 600, fontFamily: 'monospace' }}>{t.pan}</div>
+                            <div style={{ color: '#0f172a', fontWeight: 600, fontFamily: 'monospace' }}>{t.pan}</div>
                           </div>
                         )}
                       </td>
@@ -678,11 +670,11 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                       <td style={tdStyle}>
                         {t.bankName ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                            <div style={{ fontWeight: 700, color: '#e2e8f0' }}>{t.bankName}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{t.bankName}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#475569' }}>
                               Holder: {t.bankAccHolder}
                             </div>
-                            <div style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600, fontFamily: 'monospace' }}>
+                            <div style={{ fontSize: '0.8rem', color: '#0f172a', fontWeight: 600, fontFamily: 'monospace' }}>
                               A/c: {t.bankAccNumber} ({t.bankAccType})
                             </div>
                             <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
@@ -699,7 +691,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                         <div>
                           <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', marginBottom: '0.2rem' }}>Logo</span>
                           {t.logoUrl ? (
-                            <img src={t.logoUrl} alt="Logo" style={{ height: '28px', width: '28px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px', backgroundColor: '#fff' }} />
+                            <img src={t.logoUrl} alt="Logo" style={{ height: '28px', width: '28px', objectFit: 'contain', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#fff' }} />
                           ) : (
                             <span style={{ color: '#64748b', fontSize: '0.75rem' }}>None</span>
                           )}
@@ -711,13 +703,13 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8rem', textAlign: 'left' }}>
                           <div>
                             <span style={{ color: '#64748b', fontWeight: 600 }}>Plan: </span>
-                            <span style={{ color: '#fff', fontWeight: 700 }}>
+                            <span style={{ color: '#0f172a', fontWeight: 700 }}>
                               {getPlanLabel(t.subscriptionPlan)}
                             </span>
                           </div>
                           <div>
                             <span style={{ color: '#64748b', fontWeight: 600 }}>Amount: </span>
-                            <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
+                            <span style={{ color: '#334155', fontWeight: 600 }}>
                               {getPlanPrice(t.subscriptionPlan)}
                             </span>
                           </div>
@@ -730,8 +722,9 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                                 <div>
                                   <span style={{ color: '#64748b', fontWeight: 600 }}>Status: </span>
                                   <span style={{ 
-                                    backgroundColor: isActive ? 'rgba(16, 185, 129, 0.15)' : isExpired ? 'rgba(239, 68, 68, 0.2)' : 'rgba(148, 163, 184, 0.15)',
-                                    color: isActive ? '#10b981' : isExpired ? '#f87171' : '#94a3b8',
+                                    backgroundColor: isActive ? '#d1fae5' : isExpired ? '#fee2e2' : '#f1f5f9',
+                                    color: isActive ? '#065f46' : isExpired ? '#991b1b' : '#475569',
+                                    border: isActive ? '1px solid #a7f3d0' : isExpired ? '1px solid #fca5a5' : '1px solid #cbd5e1',
                                     padding: '0.1rem 0.4rem',
                                     borderRadius: '4px',
                                     fontSize: '0.7rem',
@@ -742,7 +735,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                                 </div>
                                 <div>
                                   <span style={{ color: '#64748b', fontWeight: 600 }}>Expires: </span>
-                                  <span style={{ color: isExpired ? '#f87171' : '#94a3b8', fontWeight: isExpired ? 600 : 400 }}>
+                                  <span style={{ color: isExpired ? '#dc2626' : '#475569', fontWeight: isExpired ? 600 : 400 }}>
                                     {t.subscriptionPlan === 'LIFETIME' ? 'Never' : (t.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(t.subscriptionExpiresAt))}
                                     {isExpired && ' (Expired)'}
                                   </span>
@@ -766,7 +759,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
-                              backgroundColor: '#6366f1',
+                              backgroundColor: '#4f46e5',
                               color: '#fff',
                               border: 'none',
                               padding: '0.45rem 1rem',
@@ -775,14 +768,14 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                               textDecoration: 'none',
                               display: 'inline-block',
                               fontSize: '0.8rem',
-                              boxShadow: '0 4px 10px rgba(99, 102, 241, 0.25)',
+                              boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
                               transition: 'background-color 0.15s',
                               width: '120px',
                               textAlign: 'center',
                               boxSizing: 'border-box'
                             }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6366f1'}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#4338ca'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
                           >
                             Open ↗
                           </a>
@@ -790,9 +783,9 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                             type="button"
                             onClick={() => handleEditClick(t)}
                             style={{
-                              backgroundColor: '#1e293b',
-                              color: '#e2e8f0',
-                              border: '1px solid #475569',
+                              backgroundColor: '#f1f5f9',
+                              color: '#334155',
+                              border: '1px solid #cbd5e1',
                               padding: '0.45rem 1rem',
                               borderRadius: '6px',
                               fontWeight: 600,
@@ -804,12 +797,12 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                               boxSizing: 'border-box'
                             }}
                             onMouseOver={(e) => {
-                              e.currentTarget.style.backgroundColor = '#334155';
-                              e.currentTarget.style.color = '#fff';
+                              e.currentTarget.style.backgroundColor = '#e2e8f0';
+                              e.currentTarget.style.color = '#0f172a';
                             }}
                             onMouseOut={(e) => {
-                              e.currentTarget.style.backgroundColor = '#1e293b';
-                              e.currentTarget.style.color = '#e2e8f0';
+                              e.currentTarget.style.backgroundColor = '#f1f5f9';
+                              e.currentTarget.style.color = '#334155';
                             }}
                           >
                             Edit Profile
@@ -823,18 +816,18 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
             </table>
           </div>
         </>
-      ) : activeTab === 'PENDING_PAYMENTS' ? (
+      ) : (
         /* Pending Payments Table */
         <div style={{
-          backgroundColor: '#1e293b',
-          border: '1px solid #334155',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e2e8f0',
           borderRadius: '12px',
           overflowX: 'auto',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
         }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
-              <tr style={{ backgroundColor: '#0f172a', color: '#94a3b8', borderBottom: '1px solid #334155' }}>
+              <tr style={{ backgroundColor: '#f8fafc', color: '#475569', borderBottom: '1px solid #cbd5e1' }}>
                 <th style={thStyle}>Workspace Subdomain</th>
                 <th style={thStyle}>Plan Tier</th>
                 <th style={thStyle}>Billed Amount</th>
@@ -852,20 +845,20 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 </tr>
               ) : (
                 pendingPayments.map((p) => (
-                  <tr key={p._id || p.id} style={{ borderBottom: '1px solid #334155' }}>
+                  <tr key={p._id || p.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={tdStyle}>
-                      <strong style={{ color: '#818cf8', fontSize: '1rem' }}>{p.tenantId}</strong>
+                      <strong style={{ color: '#4f46e5', fontSize: '1rem' }}>{p.tenantId}</strong>
                     </td>
                     <td style={tdStyle}>
-                      <span style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                      <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
                         {getPlanLabel(p.planTier)}
                       </span>
                     </td>
                     <td style={tdStyle}>
-                      <strong style={{ color: '#fff', fontFamily: 'monospace' }}>₹{p.amountPaid}</strong>
+                      <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>₹{p.amountPaid}</strong>
                     </td>
                     <td style={tdStyle}>
-                      <strong style={{ color: '#fbbf24', fontSize: '1rem', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{p.utrNumber}</strong>
+                      <strong style={{ color: '#d97706', fontSize: '1rem', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{p.utrNumber}</strong>
                     </td>
                     <td style={tdStyle}>
                       {formatDateTime(p.submittedAt)}
@@ -878,14 +871,15 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                           onClick={() => handleApprovePayment(p._id || p.id)}
                           style={{
                             backgroundColor: '#10b981',
-                            color: '#000',
+                            color: '#ffffff',
                             border: 'none',
                             padding: '0.4rem 0.85rem',
                             borderRadius: '6px',
                             fontSize: '0.8rem',
                             fontWeight: 700,
                             cursor: 'pointer',
-                            transition: 'opacity 0.2s'
+                            transition: 'opacity 0.2s',
+                            boxShadow: '0 2px 4px rgba(16, 185, 129, 0.25)'
                           }}
                         >
                           {actionLoadingId === (p._id || p.id) ? 'Processing...' : 'Approve ✅'}
@@ -916,8 +910,6 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
             </tbody>
           </table>
         </div>
-      ) : (
-        <VercelAnalyticsGuide />
       )}
 
       {/* Edit Workspace Profile Modal */}
@@ -1083,7 +1075,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 </h4>
                 <div className="grid-col-2" style={{ gap: '1.5rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Select Dashboard Theme</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Select Dashboard Theme</label>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                       {[
                         { id: 'DEFAULT', name: 'Classic Orange', color: '#fb923c' },
@@ -1097,18 +1089,20 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                           onClick={() => setEditFormData((prev: any) => ({ ...prev, theme: t.id }))}
                           style={{
                             flex: 1,
-                            backgroundColor: editFormData.theme === t.id ? '#1e293b' : '#0f172a',
-                            border: `2px solid ${editFormData.theme === t.id ? t.color : '#334155'}`,
+                            backgroundColor: editFormData.theme === t.id ? '#ffffff' : '#f8fafc',
+                            border: `2px solid ${editFormData.theme === t.id ? t.color : '#cbd5e1'}`,
                             borderRadius: '8px',
                             padding: '0.5rem',
-                            color: '#fff',
+                            color: '#0f172a',
                             fontSize: '0.75rem',
+                            fontWeight: 700,
                             cursor: 'pointer',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: '0.25rem',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            boxShadow: editFormData.theme === t.id ? '0 2px 4px rgba(0,0,0,0.06)' : 'none'
                           }}
                         >
                           <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: t.color }} />
@@ -1118,7 +1112,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                     </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Subscription Tier</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Workspace Subscription Tier</label>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                       {[
                         { id: 'FREE', name: 'Free Tier', badge: 'Standard Features' },
@@ -1130,11 +1124,11 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                           onClick={() => setEditFormData((prev: any) => ({ ...prev, tier: p.id }))}
                           style={{
                             flex: 1,
-                            backgroundColor: editFormData.tier === p.id ? '#1e293b' : '#0f172a',
-                            border: `2px solid ${editFormData.tier === p.id ? '#818cf8' : '#334155'}`,
+                            backgroundColor: editFormData.tier === p.id ? '#e0e7ff' : '#f8fafc',
+                            border: `2px solid ${editFormData.tier === p.id ? '#4f46e5' : '#cbd5e1'}`,
                             borderRadius: '8px',
                             padding: '0.5rem',
-                            color: '#fff',
+                            color: editFormData.tier === p.id ? '#3730a3' : '#475569',
                             fontSize: '0.75rem',
                             cursor: 'pointer',
                             display: 'flex',
@@ -1145,7 +1139,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                           }}
                         >
                           <span style={{ fontWeight: editFormData.tier === p.id ? 'bold' : 'normal' }}>{p.name}</span>
-                          <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{p.badge}</span>
+                          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{p.badge}</span>
                         </button>
                       ))}
                     </div>
@@ -1464,22 +1458,24 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
 // Styling Constants
 const statCardStyle: React.CSSProperties = {
-  backgroundColor: '#1e293b',
-  border: '1px solid #334155',
+  backgroundColor: '#ffffff',
+  border: '1px solid #e2e8f0',
   borderRadius: '12px',
   padding: '1.5rem',
   display: 'flex',
   flexDirection: 'column',
-  justifyContent: 'center'
+  justifyContent: 'center',
+  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)'
 };
 
 const thStyle: React.CSSProperties = {
   padding: '1rem 1.25rem',
-  fontWeight: 700
+  fontWeight: 700,
+  color: '#475569'
 };
 
 const tdStyle: React.CSSProperties = {
   padding: '1.25rem',
   verticalAlign: 'top',
-  color: '#e2e8f0'
+  color: '#0f172a'
 };

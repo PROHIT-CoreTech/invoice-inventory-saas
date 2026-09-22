@@ -990,35 +990,42 @@ input::placeholder, textarea::placeholder {
 
 .admin-tabs-container {
   display: flex;
-  gap: 1rem;
-  border-bottom: 1px solid #334155;
+  gap: 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
   padding-bottom: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
 .admin-tab-btn {
-  background: none;
-  border: none;
-  color: #64748b;
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
-  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  border-radius: 8px;
 }
 
 .admin-tab-btn:hover {
-  color: #fff;
+  color: #4f46e5;
+  background-color: #e0e7ff;
+  border-color: #a5b4fc;
 }
 
 .admin-tab-btn.active {
-  color: #fff;
-  border-bottom: 2px solid #6366f1;
+  color: #ffffff;
+  background-color: #4f46e5;
+  border-color: #4338ca;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
 }
 
 .admin-tab-btn.pending.active {
-  border-bottom: 2px solid #10b981;
+  color: #ffffff;
+  background-color: #059669;
+  border-color: #047857;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
 }
 
 /* Print CSS Stylesheet */

@@ -3278,16 +3278,16 @@ export default function Dashboard() {
 
               <div style={{ textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                     4. Workspace Styling & Subscription Tier
                   </h4>
-                  <span style={{ color: '#94a3b8', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#1e293b', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid #334155' }}>
+                  <span style={{ color: '#475569', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#f1f5f9', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 600 }}>
                     🔒 Managed by Administrator only
                   </span>
                 </div>
                 <div className="grid-col-2" style={{ gap: '1.5rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Theme</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Workspace Theme</label>
                     <div className="theme-selection-container" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                       {[
                         { id: 'DEFAULT', name: 'Classic Orange', color: '#fb923c' },
@@ -3301,19 +3301,21 @@ export default function Dashboard() {
                           disabled
                           style={{
                             flex: 1,
-                            backgroundColor: settingsData.theme === t.id ? '#1e293b' : '#0f172a',
-                            border: `2px solid ${settingsData.theme === t.id ? t.color : '#334155'}`,
+                            backgroundColor: settingsData.theme === t.id ? '#ffffff' : '#f8fafc',
+                            border: `2px solid ${settingsData.theme === t.id ? t.color : '#cbd5e1'}`,
                             borderRadius: '8px',
                             padding: '0.5rem',
-                            color: '#fff',
+                            color: '#0f172a',
                             fontSize: '0.75rem',
+                            fontWeight: 700,
                             cursor: 'not-allowed',
-                            opacity: settingsData.theme === t.id ? 1 : 0.4,
+                            opacity: settingsData.theme === t.id ? 1 : 0.6,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: '0.25rem',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            boxShadow: settingsData.theme === t.id ? '0 2px 4px rgba(0,0,0,0.06)' : 'none'
                           }}
                         >
                           <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: t.color }} />
@@ -3323,7 +3325,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Subscription Tier</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Workspace Subscription Tier</label>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', marginBottom: '1.25rem' }}>
                       {[
                         { id: 'FREE', name: 'Free Tier', badge: 'Standard Features' },
@@ -3335,14 +3337,14 @@ export default function Dashboard() {
                           disabled
                           style={{
                             flex: 1,
-                            backgroundColor: settingsData.tier === p.id ? '#1e293b' : '#0f172a',
-                            border: `2px solid ${settingsData.tier === p.id ? '#818cf8' : '#334155'}`,
+                            backgroundColor: settingsData.tier === p.id ? '#e0e7ff' : '#f8fafc',
+                            border: `2px solid ${settingsData.tier === p.id ? '#4f46e5' : '#cbd5e1'}`,
                             borderRadius: '8px',
                             padding: '0.5rem',
-                            color: '#fff',
+                            color: settingsData.tier === p.id ? '#3730a3' : '#475569',
                             fontSize: '0.75rem',
                             cursor: 'not-allowed',
-                            opacity: settingsData.tier === p.id ? 1 : 0.4,
+                            opacity: settingsData.tier === p.id ? 1 : 0.6,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
@@ -3351,42 +3353,43 @@ export default function Dashboard() {
                           }}
                         >
                           <span style={{ fontWeight: settingsData.tier === p.id ? 'bold' : 'normal' }}>{p.name}</span>
-                          <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{p.badge}</span>
+                          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{p.badge}</span>
                         </button>
                       ))}
                     </div>
 
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.45rem' }}>Active Subscription Details</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.45rem' }}>Active Subscription Details</label>
                     <div className="grid-col-2" style={{
-                      backgroundColor: '#0f172a',
-                      border: '1px solid #334155',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #cbd5e1',
                       borderRadius: '10px',
                       padding: '1rem 1.25rem',
                       fontSize: '0.85rem',
-                      boxSizing: 'border-box'
+                      boxSizing: 'border-box',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)'
                     }}>
                       <div>
                         <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Plan</span>
-                        <strong style={{ color: '#fff' }}>
+                        <strong style={{ color: '#0f172a' }}>
                           {getPlanLabel(tenantProfile?.subscriptionPlan || 'FREE')}
                         </strong>
                       </div>
                       <div>
                         <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Amount</span>
-                        <strong style={{ color: '#fff' }}>
+                        <strong style={{ color: '#0f172a' }}>
                           {getPlanPrice(tenantProfile?.subscriptionPlan || 'FREE')}
                         </strong>
                       </div>
                       <div>
                         <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Start/Sync Date</span>
-                        <span style={{ color: '#e2e8f0', fontWeight: 500 }}>
+                        <span style={{ color: '#334155', fontWeight: 500 }}>
                           {formatDateTime(tenantProfile?.updatedAt)}
                         </span>
                       </div>
                       <div>
                         <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Expires On</span>
                         <span style={{ 
-                          color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#f87171' : '#34d399', 
+                          color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#dc2626' : '#059669', 
                           fontWeight: 700 
                         }}>
                           {tenantProfile?.subscriptionPlan === 'LIFETIME' ? 'Never (Lifetime)' : (tenantProfile?.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(tenantProfile?.subscriptionExpiresAt))}
