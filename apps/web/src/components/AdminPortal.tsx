@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import VercelAnalyticsGuide from './VercelAnalyticsGuide';
 
 interface Tenant {
   id: string;
@@ -38,7 +39,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
   const [error, setError] = useState('');
 
   // Active Tab & Pending Payments states
-  const [activeTab, setActiveTab] = useState<'WORKSPACES' | 'PENDING_PAYMENTS'>('WORKSPACES');
+  const [activeTab, setActiveTab] = useState<'WORKSPACES' | 'PENDING_PAYMENTS' | 'ANALYTICS_GUIDE'>('WORKSPACES');
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
@@ -551,6 +552,13 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
         >
           ⏳ Pending UTR Verification ({pendingPayments.length})
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('ANALYTICS_GUIDE')}
+          className={`admin-tab-btn ${activeTab === 'ANALYTICS_GUIDE' ? 'active' : ''}`}
+        >
+          📈 Vercel Analytics Guide
+        </button>
       </div>
 
       {activeTab === 'WORKSPACES' ? (
@@ -814,7 +822,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
             </table>
           </div>
         </>
-      ) : (
+      ) : activeTab === 'PENDING_PAYMENTS' ? (
         /* Pending Payments Table */
         <div style={{
           backgroundColor: '#1e293b',
@@ -907,6 +915,8 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
             </tbody>
           </table>
         </div>
+      ) : (
+        <VercelAnalyticsGuide />
       )}
 
       {/* Edit Workspace Profile Modal */}
