@@ -4,7 +4,7 @@ export const clientSchema = z.object({
   name: z.string().min(1, 'Client name is required'),
   email: z.string().email('Invalid email address'),
   billingAddress: z.string().min(1, 'Billing address is required'),
-  taxId: z.string().min(1, 'Tax ID is required'),
+  taxId: z.string().optional().default('N/A'),
   gstin: z.string().optional(),
   pan: z.string().optional(),
 });
@@ -40,8 +40,8 @@ export const invoiceSchema = z.object({
   logoUrl: z.string().optional(),
   
   // Tracing references
-  quotationRef: z.string().optional(),
-  proformaRef: z.string().optional(),
+  quotationRef: z.string().optional().nullable(),
+  proformaRef: z.string().optional().nullable(),
   
   // Optional parameters based on documentType
   validUntil: z.union([z.date(), z.string()]).optional(),

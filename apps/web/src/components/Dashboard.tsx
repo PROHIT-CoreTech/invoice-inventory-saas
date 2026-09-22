@@ -492,6 +492,19 @@ export default function Dashboard() {
   ]);
   const [quotationRef, setQuotationRef] = useState('');
   const [proformaRef, setProformaRef] = useState('');
+  const [importSource, setImportSource] = useState<'NONE' | 'QUOTATION' | 'PROFORMA'>('NONE');
+
+  const handleImportSourceChange = (source: 'NONE' | 'QUOTATION' | 'PROFORMA') => {
+    setImportSource(source);
+    if (source === 'NONE') {
+      setQuotationRef('');
+      setProformaRef('');
+    } else if (source === 'QUOTATION') {
+      setProformaRef('');
+    } else if (source === 'PROFORMA') {
+      setQuotationRef('');
+    }
+  };
 
   // Date and Search Helpers
   const isToday = (dateStr?: Date | string) => {
@@ -861,6 +874,7 @@ export default function Dashboard() {
     setEditingDoc(null);
     setQuotationRef('');
     setProformaRef('');
+    setImportSource('NONE');
     setInitialPayment(0);
     setInitialPaymentMode('CASH');
     setInitialPaymentRef('');
@@ -942,6 +956,13 @@ export default function Dashboard() {
     setLogoUrl((doc as any).logoUrl || '');
     setQuotationRef(doc.quotationRef || '');
     setProformaRef((doc as any).proformaRef || '');
+    if ((doc as any).proformaRef) {
+      setImportSource('PROFORMA');
+    } else if (doc.quotationRef) {
+      setImportSource('QUOTATION');
+    } else {
+      setImportSource('NONE');
+    }
     
     const dateLimit = doc.documentType === 'FINAL_INVOICE' ? (doc as any).dueDate : (doc as any).validUntil;
     if (dateLimit) {
@@ -1024,7 +1045,12 @@ export default function Dashboard() {
       return;
     }
     try {
-      const created = await createClientMutation.mutateAsync(newClientData);
+      const clientPayload = {
+        ...newClientData,
+        taxId: newClientData.taxId || newClientData.gstin || newClientData.pan || 'N/A',
+        billingAddress: newClientData.billingAddress || 'N/A'
+      };
+      const created = await createClientMutation.mutateAsync(clientPayload);
       const createdId = created.id || created._id;
       setSelectedClientId(createdId);
       setIsCreatingClient(false);
@@ -2357,38 +2383,85 @@ export default function Dashboard() {
                       </div>
                     )}
                     {docType === 'FINAL_INVOICE' && (
-                      <>
-                        <div className="form-group">
-                          <label>Import details from Quotation</label>
-                          <select
-                            className="form-select"
-                            value={quotationRef}
-                            onChange={(e) => handleImportQuotation(e.target.value)}
-                          >
-                            <option value="">-- Select Quotation to Import --</option>
-                            {quotations.map(q => (
-                              <option key={q.id || (q as any)._id} value={q.id || (q as any)._id}>
-                                {q.documentNumber || (q as any).quoteNumber} - {q.clientInfo.name} ({formatCurrency(q.totalAmount, q.currency)})
-                              </option>
-                            ))}
-                          </select>
+                      <div style={{ width: '100%', backgroundColor: 'var(--bg-card, #f8fafc)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)', marginBottom: '0.5rem' }}>
+                        <label style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.6rem', color: 'var(--text-main, #1e293b)' }}>
+                          📥 Import Line Items & Data Source:
+                        </label>
+                        <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: importSource !== 'NONE' ? '1rem' : '0' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+                            <input
+                              type="radio"
+                              name="importSource"
+                              value="NONE"
+                              checked={importSource === 'NONE'}
+                              onChange={() => handleImportSourceChange('NONE')}
+                            />
+                            None (Fresh Invoice)
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+                            <input
+                              type="radio"
+                              name="importSource"
+                              value="QUOTATION"
+                              checked={importSource === 'QUOTATION'}
+                              onChange={() => handleImportSourceChange('QUOTATION')}
+                            />
+                            From Quotation
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+                            <input
+                              type="radio"
+                              name="importSource"
+                              value="PROFORMA"
+                              checked={importSource === 'PROFORMA'}
+                              onChange={() => handleImportSourceChange('PROFORMA')}
+                            />
+                            From Proforma Invoice
+                          </label>
                         </div>
-                        <div className="form-group">
-                          <label>Import details from Proforma</label>
-                          <select
-                            className="form-select"
-                            value={proformaRef}
-                            onChange={(e) => handleImportProforma(e.target.value)}
-                          >
-                            <option value="">-- Select Proforma to Import --</option>
-                            {proformas.map(p => (
-                              <option key={p.id || (p as any)._id} value={p.id || (p as any)._id}>
-                                {p.documentNumber || (p as any).proformaNumber} - {p.clientInfo.name} ({formatCurrency(p.totalAmount, p.currency)})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </>
+
+                        {importSource === 'QUOTATION' && (
+                          <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                            <label style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Select Quotation to Import</label>
+                            <select
+                              className="form-select"
+                              value={quotationRef}
+                              onChange={(e) => {
+                                setQuotationRef(e.target.value);
+                                handleImportQuotation(e.target.value);
+                              }}
+                            >
+                              <option value="">-- Select Quotation to Import --</option>
+                              {quotations.map(q => (
+                                <option key={q.id || (q as any)._id} value={q.id || (q as any)._id}>
+                                  {q.documentNumber || (q as any).quoteNumber} - {q.clientInfo.name} ({formatCurrency(q.totalAmount, q.currency)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {importSource === 'PROFORMA' && (
+                          <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                            <label style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Select Proforma Invoice to Import</label>
+                            <select
+                              className="form-select"
+                              value={proformaRef}
+                              onChange={(e) => {
+                                setProformaRef(e.target.value);
+                                handleImportProforma(e.target.value);
+                              }}
+                            >
+                              <option value="">-- Select Proforma to Import --</option>
+                              {proformas.map(p => (
+                                <option key={p.id || (p as any)._id} value={p.id || (p as any)._id}>
+                                  {p.documentNumber || (p as any).proformaNumber} - {p.clientInfo.name} ({formatCurrency(p.totalAmount, p.currency)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -2416,22 +2489,24 @@ export default function Dashboard() {
                       </button>
                     </div>
                   ) : (
-                    <div className="inline-client-card">
-                      <h4>Register New Client inline</h4>
+                    <div className="inline-client-card" style={{ padding: '1.25rem', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', marginTop: '0.5rem' }}>
+                      <h4 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontWeight: 700, fontSize: '1rem' }}>✨ Register New Client Inline</h4>
                       <div className="form-row">
                         <div className="form-group">
+                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Client Name *</label>
                           <input
                             type="text"
-                            placeholder="Client Name *"
+                            placeholder="e.g. Acme Corp"
                             className="form-input"
                             value={newClientData.name}
                             onChange={(e) => setNewClientData({ ...newClientData, name: e.target.value })}
                           />
                         </div>
                         <div className="form-group">
+                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Client Email *</label>
                           <input
                             type="email"
-                            placeholder="Client Email *"
+                            placeholder="billing@acme.com"
                             className="form-input"
                             value={newClientData.email}
                             onChange={(e) => setNewClientData({ ...newClientData, email: e.target.value })}
@@ -2440,41 +2515,64 @@ export default function Dashboard() {
                       </div>
                       <div className="form-row" style={{ marginTop: '0.5rem' }}>
                         <div className="form-group">
+                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>GSTIN (15 Digits - Smart Auto-Fill)</label>
                           <input
                             type="text"
-                            placeholder="Tax ID / Registration Code *"
+                            placeholder="e.g. 27AAAAA0000A1Z5"
+                            className="form-input"
+                            value={newClientData.gstin}
+                            onChange={(e) => {
+                              const gVal = e.target.value.toUpperCase().trim();
+                              let panVal = newClientData.pan;
+                              let taxIdVal = newClientData.taxId;
+                              if (gVal.length >= 10) {
+                                const extPan = gVal.substring(2, 12);
+                                if (/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(extPan)) {
+                                  panVal = extPan;
+                                }
+                              }
+                              if (!taxIdVal || taxIdVal === 'N/A' || taxIdVal === '') {
+                                taxIdVal = gVal || 'N/A';
+                              }
+                              setNewClientData({
+                                ...newClientData,
+                                gstin: gVal,
+                                pan: panVal,
+                                taxId: taxIdVal
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>PAN Number (Auto-Extracted)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. AAAAA0000A"
+                            className="form-input"
+                            value={newClientData.pan}
+                            onChange={(e) => setNewClientData({ ...newClientData, pan: e.target.value.toUpperCase() })}
+                          />
+                        </div>
+                      </div>
+                      <div className="form-row" style={{ marginTop: '0.5rem' }}>
+                        <div className="form-group">
+                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Tax ID / Reg Code *</label>
+                          <input
+                            type="text"
+                            placeholder="Tax ID or Reg Code"
                             className="form-input"
                             value={newClientData.taxId}
                             onChange={(e) => setNewClientData({ ...newClientData, taxId: e.target.value })}
                           />
                         </div>
                         <div className="form-group">
+                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Billing Address *</label>
                           <input
                             type="text"
-                            placeholder="Billing Address"
+                            placeholder="Full Address, City, State"
                             className="form-input"
                             value={newClientData.billingAddress}
                             onChange={(e) => setNewClientData({ ...newClientData, billingAddress: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="form-row" style={{ marginTop: '0.5rem' }}>
-                        <div className="form-group">
-                          <input
-                            type="text"
-                            placeholder="GSTIN"
-                            className="form-input"
-                            value={newClientData.gstin}
-                            onChange={(e) => setNewClientData({ ...newClientData, gstin: e.target.value })}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <input
-                            type="text"
-                            placeholder="PAN"
-                            className="form-input"
-                            value={newClientData.pan}
-                            onChange={(e) => setNewClientData({ ...newClientData, pan: e.target.value })}
                           />
                         </div>
                       </div>
