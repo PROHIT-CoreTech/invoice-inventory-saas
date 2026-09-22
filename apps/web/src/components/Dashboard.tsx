@@ -1633,26 +1633,30 @@ export default function Dashboard() {
                   type="button"
                   onClick={() => {
                     if (!ledgerData) return;
-                    const csvRows = [
-                      ['Date', 'Type', 'Ref/Doc #', 'Notes', 'Debit (Billed)', 'Credit (Paid)', 'Running Balance'],
-                      ...ledgerData.entries.map(e => [
-                        new Date(e.date).toLocaleDateString(),
-                        e.type,
-                        e.documentNumber || e.referenceNo || '-',
-                        `"${(e.notes || '').replace(/"/g, '""')}"`,
-                        e.debit,
-                        e.credit,
-                        e.runningBalance
-                      ])
-                    ];
-                    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(row => row.join(",")).join("\n");
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", encodedUri);
-                    link.setAttribute("download", `Ledger_${ledgerData.client?.name || 'Client'}.csv`);
+                    const headers = ['Date', 'Type', 'Ref / Doc No', 'Notes', 'Debit (+Billed)', 'Credit (-Paid)', 'Running Balance'];
+                    const rows = ledgerData.entries.map(e => [
+                      e.date ? new Date(e.date).toLocaleDateString() : '',
+                      e.type || '',
+                      e.documentNumber || e.referenceNo || '-',
+                      `"${(e.notes || '').replace(/"/g, '""')}"`,
+                      e.debit || 0,
+                      e.credit || 0,
+                      e.runningBalance || 0
+                    ]);
+                    const csvContent = [
+                      headers.join(','),
+                      ...rows.map(row => row.join(','))
+                    ].join('\n');
+                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    const safeClientName = (ledgerData.client?.name || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
+                    link.setAttribute('download', `Ledger_${safeClientName}.csv`);
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
                   }}
                   style={{
                     backgroundColor: 'rgba(255,255,255,0.08)',
