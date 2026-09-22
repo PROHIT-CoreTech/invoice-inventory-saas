@@ -31,6 +31,7 @@ router.get('/:clientId', async (req: Request, res: Response, next: NextFunction)
     // Fetch all Payment Records for this client
     const payments = await req.db.paymentRecord.findMany({
       where: { clientId },
+      include: { invoice: true },
       orderBy: { paymentDate: 'asc' }
     });
 
@@ -75,12 +76,14 @@ router.get('/:clientId', async (req: Request, res: Response, next: NextFunction)
       });
     });
 
-    payments.forEach(p => {
+    payments.forEach((p: any) => {
       const isAdvance = p.type === 'ADVANCE_PAYMENT' || !p.invoiceId;
+      const refOrDoc = p.referenceNo || (p.invoice ? p.invoice.documentNumber : null) || `PAY-${p.id.slice(-6).toUpperCase()}`;
       timeline.push({
         id: p.id,
         date: new Date(p.paymentDate),
         type: isAdvance ? 'ADVANCE_PAYMENT' : 'PAYMENT',
+        documentNumber: refOrDoc,
         referenceNo: p.referenceNo || undefined,
         invoiceId: p.invoiceId || undefined,
         paymentMode: p.paymentMode,
