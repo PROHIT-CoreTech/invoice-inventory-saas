@@ -3100,41 +3100,41 @@ export default function Dashboard() {
       {/* Workspace Settings Modal */}
       {isSettingsOpen && (
         <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: '750px', padding: '1.75rem', overflowY: 'auto' }}>
+          <div className="modal-card" style={{ maxWidth: '750px', padding: '1.75rem', overflowY: 'auto', backgroundColor: '#ffffff', color: '#0f172a' }}>
             <div style={{ marginBottom: '1.75rem', textAlign: 'left' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                 ⚙️ Workspace Profile Settings
               </h2>
-              <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                 Update branding, tax details, bank account, and UI styling for your workspace.
               </p>
             </div>
 
             <form onSubmit={handleSettingsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
-              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '1.25rem', textAlign: 'left' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.25rem', textAlign: 'left' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   1. Company Profile
                 </h4>
                 <div className="grid-col-2">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company Name *</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Company Name *</label>
                     <input 
                       type="text" 
                       required
                       value={settingsData.companyName}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, companyName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. Acme Corp"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Proprietor / Owner Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Proprietor / Owner Name</label>
                     <input 
                       type="text"
                       value={settingsData.proprietorName}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, proprietorName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. John Doe"
                     />
                   </div>
@@ -3142,98 +3142,98 @@ export default function Dashboard() {
 
                 <div className="grid-col-3" style={{ marginTop: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Official Billing Address *</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Official Billing Address *</label>
                     <textarea 
                       required
                       value={settingsData.address}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, address: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box', height: '70px', resize: 'none' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box', height: '70px', resize: 'none' }}
                       placeholder="e.g. 2b/706, 7th Floor..."
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company Logo</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Company Logo</label>
                     <input 
                       type="file" 
                       accept="image/*"
                       onChange={handleWorkspaceLogoUpload}
-                      style={{ width: '100%', padding: '0.35rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.35rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                     {settingsData.logoUrl && (
                       <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <img src={settingsData.logoUrl} alt="Preview" style={{ height: '24px', maxWidth: '80px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px' }} />
-                        <span style={{ fontSize: '0.75rem', color: '#10b981' }}>✓ Logo Uploaded</span>
+                        <img src={settingsData.logoUrl} alt="Preview" style={{ height: '24px', maxWidth: '80px', objectFit: 'contain', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
+                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>✓ Logo Uploaded</span>
                       </div>
                     )}
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Digital Signature (Optional)</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Digital Signature (Optional)</label>
                     <input 
                       type="file" 
                       accept="image/*"
                       onChange={handleWorkspaceSignatureUpload}
-                      style={{ width: '100%', padding: '0.35rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.35rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                     {settingsData.signatureUrl && (
                       <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <img src={settingsData.signatureUrl} alt="Preview" style={{ height: '24px', maxWidth: '80px', objectFit: 'contain', border: '1px solid #475569', borderRadius: '4px' }} />
-                        <span style={{ fontSize: '0.75rem', color: '#10b981' }}>✓ Signature Uploaded</span>
+                        <img src={settingsData.signatureUrl} alt="Preview" style={{ height: '24px', maxWidth: '80px', objectFit: 'contain', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
+                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>✓ Signature Uploaded</span>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '1.25rem', textAlign: 'left' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.25rem', textAlign: 'left' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   2. Tax Details
                 </h4>
                 <div className="grid-col-2">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>GSTIN / Tax ID</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>GSTIN / Tax ID</label>
                     <input 
                       type="text" 
                       value={settingsData.gstin}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, gstin: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. 27ALQPB3481K1ZR"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>PAN Number</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>PAN Number</label>
                     <input 
                       type="text" 
                       value={settingsData.pan}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, pan: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. ALQPB3481K"
                     />
                   </div>
                 </div>
               </div>
 
-              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '1.25rem', textAlign: 'left' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.25rem', textAlign: 'left' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   3. Bank Account Details
                 </h4>
                 <div className="grid-col-2">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Holder Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Holder Name</label>
                     <input 
                       type="text"
                       value={settingsData.bankAccHolder}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankAccHolder: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. Acme Corp Invoices"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Bank Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Bank Name</label>
                     <input 
                       type="text"
                       value={settingsData.bankName}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. YES BANK"
                     />
                   </div>
@@ -3241,32 +3241,32 @@ export default function Dashboard() {
 
                 <div className="grid-col-3" style={{ marginTop: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Number</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Number</label>
                     <input 
                       type="text"
                       value={settingsData.bankAccNumber}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankAccNumber: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. 021261900003481"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>IFSC Code</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>IFSC Code</label>
                     <input 
                       type="text"
                       value={settingsData.bankIfsc}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankIfsc: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. YESB0000212"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Branch Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Branch Name</label>
                     <input 
                       type="text"
                       value={settingsData.bankBranch}
                       onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankBranch: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                       placeholder="e.g. Kandivali East"
                     />
                   </div>
@@ -3603,7 +3603,7 @@ export default function Dashboard() {
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-card" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h3 style={{ color: '#fff', fontSize: '1.15rem' }}>💳 Record Payment / Advance Collection</h3>
+              <h3 style={{ color: '#0f172a', fontSize: '1.15rem' }}>💳 Record Payment / Advance Collection</h3>
               <button type="button" className="btn-close" onClick={() => setIsRecordPaymentModalOpen(false)}>&times;</button>
             </div>
             <form onSubmit={async (e) => {
@@ -3628,21 +3628,21 @@ export default function Dashboard() {
                 alert(err.response?.data?.message || 'Failed to record payment');
               }
             }}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem' }}>
                 {paymentModalData.invoiceNumber && (
-                  <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'rgba(99, 102, 241, 0.15)', borderRadius: '6px', fontSize: '0.85rem', color: '#a5b4fc', fontWeight: 600 }}>
+                  <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#e0e7ff', borderRadius: '6px', fontSize: '0.85rem', color: '#3730a3', fontWeight: 600 }}>
                     Linked Invoice #: {paymentModalData.invoiceNumber}
                   </div>
                 )}
 
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                  <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
                     Payment Type
                   </label>
                   <select
                     value={paymentModalData.type}
                     onChange={(e: any) => setPaymentModalData({ ...paymentModalData, type: e.target.value })}
-                    style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem', fontSize: '0.9rem' }}
+                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.8rem', fontSize: '0.9rem' }}
                   >
                     <option value="PAYMENT_RECEIVED">💵 Payment Received against Invoice</option>
                     <option value="ADVANCE_PAYMENT">💳 Advance Payment Deposit</option>
@@ -3650,7 +3650,7 @@ export default function Dashboard() {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                  <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
                     Amount Collected (₹) *
                   </label>
                   <input
@@ -3661,19 +3661,19 @@ export default function Dashboard() {
                     value={paymentModalData.amount || ''}
                     onChange={(e) => setPaymentModalData({ ...paymentModalData, amount: Number(e.target.value) || 0 })}
                     placeholder="Enter amount"
-                    style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem 0.75rem', fontSize: '1rem', fontWeight: 700 }}
+                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.85rem', fontSize: '1rem', fontWeight: 700 }}
                   />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                    <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
                       Payment Mode
                     </label>
                     <select
                       value={paymentModalData.paymentMode}
                       onChange={(e: any) => setPaymentModalData({ ...paymentModalData, paymentMode: e.target.value })}
-                      style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem', fontSize: '0.9rem' }}
+                      style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.8rem', fontSize: '0.9rem' }}
                     >
                       <option value="CASH">💵 Cash</option>
                       <option value="UPI">📱 UPI / QR</option>
@@ -3684,7 +3684,7 @@ export default function Dashboard() {
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                    <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
                       Txn Ref / Cheque #
                     </label>
                     <input
@@ -3692,13 +3692,13 @@ export default function Dashboard() {
                       value={paymentModalData.referenceNo}
                       onChange={(e) => setPaymentModalData({ ...paymentModalData, referenceNo: e.target.value })}
                       placeholder="e.g. UPI-998822"
-                      style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem', fontSize: '0.9rem' }}
+                      style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.8rem', fontSize: '0.9rem' }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                  <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
                     Notes / Remarks
                   </label>
                   <input
@@ -3706,11 +3706,11 @@ export default function Dashboard() {
                     value={paymentModalData.notes}
                     onChange={(e) => setPaymentModalData({ ...paymentModalData, notes: e.target.value })}
                     placeholder="Optional details"
-                    style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem', fontSize: '0.9rem' }}
+                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.8rem', fontSize: '0.9rem' }}
                   />
                 </div>
               </div>
-              <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn-secondary-action" onClick={() => setIsRecordPaymentModalOpen(false)}>Cancel</button>
                 <button type="submit" className="btn-primary-action" disabled={recordPaymentMutation.isPending}>
                   {recordPaymentMutation.isPending ? 'Saving Payment...' : 'Save Payment'}

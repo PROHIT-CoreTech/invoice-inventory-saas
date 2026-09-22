@@ -1650,24 +1650,24 @@ const labelStyle: React.CSSProperties = {
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
-  color: '#94a3b8',
+  color: '#334155',
   marginBottom: '0.45rem',
   textAlign: 'left'
 };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  backgroundColor: '#0a0d16',
-  border: '1px solid rgba(255,255,255,0.12)',
+  backgroundColor: '#f8fafc',
+  border: '1px solid #cbd5e1',
   borderRadius: '8px',
-  color: '#fff',
+  color: '#0f172a',
   padding: '0.65rem 0.95rem',
   fontSize: '0.9rem',
   outline: 'none',
   fontFamily: 'inherit',
   boxSizing: 'border-box',
   textAlign: 'left',
-  transition: 'border-color 0.2s'
+  transition: 'all 0.2s'
 };
 
 const pricingBtnStyle: React.CSSProperties = {

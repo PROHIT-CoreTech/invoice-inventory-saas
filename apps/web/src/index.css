@@ -339,16 +339,17 @@ body {
 }
 
 .modal-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   width: 100%;
   max-width: 850px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(251, 146, 60, 0.1);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: modalFadeIn 0.2s ease;
+  color: #0f172a;
 }
 
 @keyframes modalFadeIn {
@@ -358,7 +359,7 @@ body {
 
 .modal-header {
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -368,20 +369,20 @@ body {
   margin: 0;
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #0f172a;
 }
 
 .btn-close {
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: #64748b;
   font-size: 1.5rem;
   cursor: pointer;
   line-height: 1;
 }
 
 .btn-close:hover {
-  color: var(--text-primary);
+  color: #0f172a;
 }
 
 .modal-body {
@@ -400,27 +401,34 @@ body {
 .form-group label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: #334155;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .form-input, .form-select, .form-textarea {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
   padding: 0.6rem 0.8rem;
-  border-radius: 6px;
+  border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
   width: 100%;
   box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
 }
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary);
+  background: #ffffff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .form-row {

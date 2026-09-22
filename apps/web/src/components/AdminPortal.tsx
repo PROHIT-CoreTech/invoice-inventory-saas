@@ -365,7 +365,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ textAlign: 'left' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#334155', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                 Admin Password
               </label>
               <input 
@@ -376,10 +376,10 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 style={{
                   width: '100%',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid #475569',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #cbd5e1',
                   borderRadius: '8px',
-                  color: '#fff',
+                  color: '#0f172a',
                   padding: '0.75rem 1rem',
                   fontSize: '1rem',
                   outline: 'none',
@@ -572,13 +572,14 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
-                backgroundColor: '#1e293b',
-                border: '1px solid #334155',
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                color: '#fff',
+                color: '#0f172a',
                 padding: '0.75rem 1.25rem',
                 fontSize: '1rem',
-                outline: 'none'
+                outline: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
               }}
             />
           </div>
@@ -922,20 +923,20 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       {/* Edit Workspace Profile Modal */}
       {editingTenant && (
         <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: '650px', padding: '1.75rem', overflowY: 'auto', fontFamily: "'Outfit', 'Inter', sans-serif", color: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #334155', paddingBottom: '1rem' }}>
+          <div className="modal-card" style={{ maxWidth: '650px', padding: '1.75rem', overflowY: 'auto', fontFamily: "'Outfit', 'Inter', sans-serif", backgroundColor: '#ffffff', color: '#0f172a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#fff', fontWeight: 800, textAlign: 'left' }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 800, textAlign: 'left' }}>
                   🏢 Manage Workspace Profile
                 </h3>
-                <span style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 600, display: 'block', textAlign: 'left', marginTop: '0.15rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#4f46e5', fontWeight: 600, display: 'block', textAlign: 'left', marginTop: '0.15rem' }}>
                   Tenant ID: {editingTenant.tenantId}
                 </span>
               </div>
               <button 
                 type="button" 
                 onClick={() => setEditingTenant(null)}
-                style={{ backgroundColor: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer', outline: 'none' }}
+                style={{ backgroundColor: 'transparent', border: 'none', color: '#64748b', fontSize: '1.5rem', cursor: 'pointer', outline: 'none' }}
               >
                 &times;
               </button>
@@ -949,96 +950,96 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
             <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ textAlign: 'left' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   1. Company Branding & Details
                 </h4>
                 <div className="grid-col-2">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company Registered Name *</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Company Registered Name *</label>
                     <input 
                       type="text"
                       required
                       value={editFormData.companyName}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, companyName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Proprietor Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Proprietor Name</label>
                     <input 
                       type="text"
                       value={editFormData.proprietorName}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, proprietorName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
                 <div style={{ marginTop: '1rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Billing & Office Address *</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Billing & Office Address *</label>
                   <textarea 
                     required
                     value={editFormData.address}
                     onChange={(e) => setEditFormData((prev: any) => ({ ...prev, address: e.target.value }))}
-                    style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', minHeight: '60px', resize: 'vertical', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', minHeight: '60px', resize: 'vertical', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
 
-              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   2. Government Tax Identifiers
                 </h4>
                 <div className="grid-col-2">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>GSTIN Number</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>GSTIN Number</label>
                     <input 
                       type="text"
                       value={editFormData.gstin}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, gstin: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>PAN Card Number</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>PAN Card Number</label>
                     <input 
                       type="text"
                       value={editFormData.pan}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, pan: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
               </div>
 
-              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   3. Settlement Bank Credentials
                 </h4>
                 <div className="grid-col-3">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Bank Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Bank Name</label>
                     <input 
                       type="text"
                       value={editFormData.bankName}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Holder</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Holder</label>
                     <input 
                       type="text"
                       value={editFormData.bankAccHolder}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankAccHolder: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Type</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Type</label>
                     <select
                       value={editFormData.bankAccType}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankAccType: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', height: '40px', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', height: '40px', boxSizing: 'border-box' }}
                     >
                       <option value="Current A/C">Current A/C</option>
                       <option value="Savings A/C">Savings A/C</option>
@@ -1047,37 +1048,37 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                 </div>
                 <div className="grid-col-3" style={{ marginTop: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Number</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Number</label>
                     <input 
                       type="text"
                       value={editFormData.bankAccNumber}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankAccNumber: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>IFSC Code</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>IFSC Code</label>
                     <input 
                       type="text"
                       value={editFormData.bankIfsc}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankIfsc: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Branch Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Branch Name</label>
                     <input 
                       type="text"
                       value={editFormData.bankBranch}
                       onChange={(e) => setEditFormData((prev: any) => ({ ...prev, bankBranch: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
               </div>
 
-              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   4. Workspace Styling & Subscription Tier
                 </h4>
                 <div className="grid-col-2" style={{ gap: '1.5rem' }}>
@@ -1196,14 +1197,14 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       {/* Create Workspace Modal */}
       {isCreateModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: '680px', padding: '1.75rem', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.4rem', fontWeight: 800 }}>
+          <div className="modal-card" style={{ maxWidth: '680px', padding: '1.75rem', overflowY: 'auto', backgroundColor: '#ffffff', color: '#0f172a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem', fontWeight: 800 }}>
                 ➕ Create New Workspace (Cash/Offline payment)
               </h3>
               <button 
                 onClick={() => setIsCreateModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '1.5rem', cursor: 'pointer' }}
               >
                 ×
               </button>
@@ -1225,27 +1226,27 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
               
               {/* Part 1: Company Profile */}
               <div style={{ textAlign: 'left' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.85rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.85rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   1. Workspace Subdomain & Profile
                 </h4>
                 <div className="grid-col-2">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Workspace Subdomain / ID *</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Workspace Subdomain / ID *</label>
                     <input 
                       type="text" 
                       required
                       placeholder="e.g. rohit (lowercase a-z, 0-9)"
                       value={newTenant.tenantId}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, tenantId: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Subscription Plan *</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Subscription Plan *</label>
                     <select
                       value={newTenant.subscriptionPlan}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, subscriptionPlan: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     >
                       <option value="FREE">Free Tier (₹0)</option>
                       <option value="TRIAL">10-Day Free Trial (₹0)</option>
@@ -1259,101 +1260,101 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
                 <div className="grid-col-2" style={{ marginTop: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Company / Business Name *</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Company / Business Name *</label>
                     <input 
                       type="text" 
                       required
                       placeholder="e.g. Rohit & Co."
                       value={newTenant.companyName}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, companyName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Proprietor / Contact Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Proprietor / Contact Name</label>
                     <input 
                       type="text"
                       placeholder="e.g. Rohit Barge"
                       value={newTenant.proprietorName}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, proprietorName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
 
                 <div style={{ marginTop: '1rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Billing & Office Address *</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Billing & Office Address *</label>
                   <textarea 
                     required
                     placeholder="Enter complete office address..."
                     value={newTenant.address}
                     onChange={(e) => setNewTenant(prev => ({ ...prev, address: e.target.value }))}
-                    style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', minHeight: '60px', resize: 'vertical', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', minHeight: '60px', resize: 'vertical', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
 
               {/* Part 2: Govt Tax Identifiers */}
-              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   2. Government Tax Identifiers
                 </h4>
                 <div className="grid-col-2">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>GSTIN Number</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>GSTIN Number</label>
                     <input 
                       type="text"
                       placeholder="e.g. 27AAAAA1111A1Z1"
                       value={newTenant.gstin}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, gstin: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>PAN Card Number</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>PAN Card Number</label>
                     <input 
                       type="text"
                       placeholder="e.g. ABCDE1234F"
                       value={newTenant.pan}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, pan: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
               </div>
 
               {/* Part 3: Settlement Bank Credentials */}
-              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   3. Settlement Bank Credentials
                 </h4>
                 <div className="grid-col-3">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Bank Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Bank Name</label>
                     <input 
                       type="text"
                       placeholder="e.g. HDFC Bank"
                       value={newTenant.bankName}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, bankName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Holder Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Holder Name</label>
                     <input 
                       type="text"
                       placeholder="e.g. Rohit & Co."
                       value={newTenant.bankAccHolder}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, bankAccHolder: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Type</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Type</label>
                     <select
                       value={newTenant.bankAccType}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, bankAccType: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     >
                       <option value="CURRENT">Current Account</option>
                       <option value="SAVINGS">Savings Account</option>
@@ -1363,56 +1364,55 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
                 <div className="grid-col-3" style={{ marginTop: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Account Number</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Number</label>
                     <input 
                       type="text"
                       placeholder="Enter account number..."
                       value={newTenant.bankAccNumber}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, bankAccNumber: e.target.value.replace(/\D/g, '') }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>IFSC Code</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>IFSC Code</label>
                     <input 
                       type="text"
                       placeholder="e.g. HDFC0001234"
                       value={newTenant.bankIfsc}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, bankIfsc: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Branch Name</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Branch Name</label>
                     <input 
                       type="text"
                       placeholder="e.g. Mumbai Main"
                       value={newTenant.bankBranch}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, bankBranch: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
               </div>
 
               {/* Part 4: Layout customization */}
-              <div style={{ textAlign: 'left', borderTop: '1px solid #334155', paddingTop: '1.25rem' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   4. Layout Customizations
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Brand Theme</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Brand Theme</label>
                     <select
                       value={newTenant.theme}
                       onChange={(e) => setNewTenant(prev => ({ ...prev, theme: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a', color: '#fff', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
                     >
-                      <option value="DEFAULT">Default Slate Dark</option>
-                      <option value="SLEEK_NAVY">Sleek Navy</option>
-                      <option value="ROYAL_GOLD">Royal Gold</option>
-                      <option value="EMERALD_MINT">Emerald Mint</option>
-                      <option value="CRIMSON_LUXE">Crimson Luxe</option>
+                      <option value="DEFAULT">Default Light</option>
+                      <option value="EMERALD">Emerald Green</option>
+                      <option value="SAPPHIRE">Sapphire Blue</option>
+                      <option value="ROYAL">Royal Purple</option>
                     </select>
                   </div>
                 </div>
