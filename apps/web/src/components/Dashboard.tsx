@@ -1363,33 +1363,34 @@ export default function Dashboard() {
       {/* Top Header */}
       <header className="header">
         <div className="logo-section">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#0f172a', fontWeight: 800 }}>
             <img src={tenantProfile?.logoUrl || "/images/hero.png"} alt="Logo" style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.src = "/images/hero.png"; }} />
             {tenantProfile?.companyName || "PROCash Invoice ERP"}
             <button
               onClick={() => setIsSettingsOpen(true)}
               style={{
-                background: 'none',
-                border: 'none',
+                backgroundColor: '#f1f5f9',
+                border: '1px solid #cbd5e1',
                 cursor: 'pointer',
-                fontSize: '1.1rem',
-                color: 'var(--text-secondary)',
-                padding: '4px',
-                borderRadius: '6px',
-                display: 'flex',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: '#334155',
+                padding: '0.35rem 0.65rem',
+                borderRadius: '8px',
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'background-color 0.2s',
-                marginLeft: '5px'
+                gap: '0.35rem',
+                transition: 'all 0.15s ease',
+                marginLeft: '8px'
               }}
-              title="Workspace Settings"
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              title="Workspace Profile Settings"
             >
-              ⚙️
+              ⚙️ Settings
             </button>
           </h1>
-          <p style={{ margin: 0 }}>{tenantProfile?.companyName ? `Invoicing & Billing Dashboard for ${tenantProfile.companyName}` : "Production-Grade Invoicing & Billing Dashboard"}</p>
+          <p style={{ margin: '0.2rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+            {tenantProfile?.companyName ? `Invoicing & Billing Dashboard for ${tenantProfile.companyName}` : "Production-Grade Invoicing & Billing Dashboard"}
+          </p>
           {tenantProfile && (
             <div 
               className="sub-badge" 
@@ -1398,15 +1399,17 @@ export default function Dashboard() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.4rem',
-                padding: '0.3rem 0.75rem',
+                padding: '0.35rem 0.85rem',
                 borderRadius: '20px',
-                backgroundColor: tenantProfile.subscriptionStatus === 'EXPIRED' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.15)',
-                border: tenantProfile.subscriptionStatus === 'EXPIRED' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(99, 102, 241, 0.3)',
-                fontSize: '0.75rem',
-                color: tenantProfile.subscriptionStatus === 'EXPIRED' ? '#f87171' : '#a5b4fc',
+                backgroundColor: tenantProfile.subscriptionStatus === 'EXPIRED' ? '#fee2e2' : '#e0e7ff',
+                border: tenantProfile.subscriptionStatus === 'EXPIRED' ? '1px solid #fca5a5' : '1px solid #c7d2fe',
+                fontSize: '0.78125rem',
+                color: tenantProfile.subscriptionStatus === 'EXPIRED' ? '#991b1b' : '#3730a3',
                 fontWeight: 700,
-                marginTop: '0.5rem',
-                cursor: 'pointer'
+                marginTop: '0.6rem',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                transition: 'all 0.15s ease'
               }}
               title="Click to view Subscription & Plan Details"
             >
