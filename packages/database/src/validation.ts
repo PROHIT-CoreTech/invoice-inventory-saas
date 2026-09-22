@@ -31,6 +31,7 @@ export const invoiceSchema = z.object({
   subTotal: z.number().nonnegative().default(0),
   taxAmount: z.number().nonnegative().default(0),
   totalAmount: z.number().nonnegative().default(0),
+  paidAmount: z.number().nonnegative().optional().default(0),
   currency: z.string().min(1, 'Currency is required').default('INR'),
   notes: z.string().optional(),
   issueDate: z.union([z.date(), z.string()]).default(() => new Date()),
@@ -46,4 +47,15 @@ export const invoiceSchema = z.object({
   validUntil: z.union([z.date(), z.string()]).optional(),
   paymentStatus: z.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID']).optional(),
   paymentDate: z.union([z.date(), z.string()]).optional(),
+});
+
+export const paymentRecordSchema = z.object({
+  clientId: z.string().min(1, 'Client ID is required'),
+  invoiceId: z.string().optional().nullable(),
+  amount: z.number().positive('Payment amount must be greater than 0'),
+  type: z.enum(['PAYMENT_RECEIVED', 'ADVANCE_PAYMENT', 'REFUND']).default('PAYMENT_RECEIVED'),
+  paymentMode: z.enum(['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'OTHER']).default('CASH'),
+  referenceNo: z.string().optional().nullable(),
+  paymentDate: z.union([z.date(), z.string()]).default(() => new Date()),
+  notes: z.string().optional().nullable(),
 });

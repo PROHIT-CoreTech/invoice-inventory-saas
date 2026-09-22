@@ -88,10 +88,15 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const validatedData = invoiceSchema.parse(req.body);
     const totals = calculateTotals(validatedData.items);
     
-    // Automatically manage paymentStatus and paymentDate transitions
-    if (validatedData.status === 'PAID') {
-      validatedData.paymentStatus = 'PAID';
+    let initialPaid = validatedData.paidAmount || 0;
+    let paymentStatus = validatedData.paymentStatus || 'UNPAID';
+
+    if (validatedData.status === 'PAID' || initialPaid >= totals.totalAmount) {
+      paymentStatus = 'PAID';
+      initialPaid = totals.totalAmount;
       validatedData.paymentDate = validatedData.paymentDate || new Date();
+    } else if (initialPaid > 0) {
+      paymentStatus = 'PARTIALLY_PAID';
     }
     
     const newInvoice = await req.db.invoice.create({
@@ -103,6 +108,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
         subTotal: totals.subTotal,
         taxAmount: totals.taxAmount,
         totalAmount: totals.totalAmount,
+        paidAmount: initialPaid,
         currency: validatedData.currency,
         notes: validatedData.notes || null,
         issueDate: validatedData.issueDate ? new Date(validatedData.issueDate) : new Date(),
@@ -111,7 +117,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
         quotationRef: validatedData.quotationRef || null,
         proformaRef: validatedData.proformaRef || null,
         validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : null,
-        paymentStatus: validatedData.paymentStatus || null,
+        paymentStatus: paymentStatus,
         paymentDate: validatedData.paymentDate ? new Date(validatedData.paymentDate) : null,
         logoUrl: validatedData.logoUrl || null,
         tenantId: req.tenantId!,
@@ -121,6 +127,23 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       },
       include: { items: true },
     });
+
+    // Automatically create a PaymentRecord if initial payment/advance was collected
+    if (initialPaid > 0) {
+      await req.db.paymentRecord.create({
+        data: {
+          clientId: validatedData.clientRef,
+          invoiceId: newInvoice.id,
+          amount: initialPaid,
+          type: 'PAYMENT_RECEIVED',
+          paymentMode: (req.body as any).paymentMode || 'CASH',
+          referenceNo: (req.body as any).paymentReference || null,
+          paymentDate: newInvoice.paymentDate || new Date(),
+          notes: `Initial/Advance payment collected for Invoice #${newInvoice.documentNumber}`,
+          tenantId: req.tenantId!
+        }
+      });
+    }
     
     res.status(201).json(mapInvoice(newInvoice));
   } catch (error) {
@@ -140,15 +163,17 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     }
 
     // Support partial status/payment status updates (e.g., from table action dropdowns)
-    if (Object.keys(req.body).length <= 3 && (req.body.status || req.body.paymentStatus)) {
+    if (Object.keys(req.body).length <= 4 && (req.body.status || req.body.paymentStatus || req.body.paidAmount !== undefined)) {
       const updateData: any = {};
       if (req.body.status) updateData.status = req.body.status;
       if (req.body.paymentStatus) updateData.paymentStatus = req.body.paymentStatus;
       if (req.body.paymentDate) updateData.paymentDate = new Date(req.body.paymentDate);
+      if (req.body.paidAmount !== undefined) updateData.paidAmount = req.body.paidAmount;
 
       // Adjust payment mapping
-      if (updateData.status === 'PAID') {
+      if (updateData.status === 'PAID' || (updateData.paidAmount && updateData.paidAmount >= existing.totalAmount)) {
         updateData.paymentStatus = 'PAID';
+        updateData.paidAmount = existing.totalAmount;
         updateData.paymentDate = updateData.paymentDate || new Date();
       }
 
@@ -163,11 +188,16 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
     const validatedData = invoiceSchema.parse(req.body);
     const totals = calculateTotals(validatedData.items);
+
+    let updatedPaid = validatedData.paidAmount !== undefined ? validatedData.paidAmount : existing.paidAmount;
+    let paymentStatus = validatedData.paymentStatus || existing.paymentStatus || 'UNPAID';
     
-    // Adjust payment mapping
-    if (validatedData.status === 'PAID') {
-      validatedData.paymentStatus = 'PAID';
+    if (validatedData.status === 'PAID' || updatedPaid >= totals.totalAmount) {
+      paymentStatus = 'PAID';
+      updatedPaid = totals.totalAmount;
       validatedData.paymentDate = validatedData.paymentDate || new Date();
+    } else if (updatedPaid > 0) {
+      paymentStatus = 'PARTIALLY_PAID';
     }
 
     // Delete existing line items
@@ -184,6 +214,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
         subTotal: totals.subTotal,
         taxAmount: totals.taxAmount,
         totalAmount: totals.totalAmount,
+        paidAmount: updatedPaid,
         currency: validatedData.currency,
         notes: validatedData.notes || null,
         issueDate: validatedData.issueDate ? new Date(validatedData.issueDate) : new Date(),
@@ -192,7 +223,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
         quotationRef: validatedData.quotationRef || null,
         proformaRef: validatedData.proformaRef || null,
         validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : null,
-        paymentStatus: validatedData.paymentStatus || null,
+        paymentStatus: paymentStatus,
         paymentDate: validatedData.paymentDate ? new Date(validatedData.paymentDate) : null,
         logoUrl: validatedData.logoUrl || null,
         items: {

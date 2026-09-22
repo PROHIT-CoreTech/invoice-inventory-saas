@@ -18,6 +18,9 @@ import {
   useDeleteQuotation,
   useDeleteProformaInvoice,
   useDeleteFinalInvoice,
+  useGetClientLedger,
+  useRecordClientPayment,
+  useDeletePaymentRecord,
 } from '@procash-invoices/api-client';
 import { type Quotation, type ProformaInvoice, type FinalInvoice } from '@procash-invoices/database';
 import { generateDocumentHtml } from '@procash-invoices/document-templates';
@@ -430,13 +433,37 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
-  // Daily Mode & History States
-  const [viewMode, setViewMode] = useState<'daily' | 'history'>('daily');
+  // Daily Mode, History & Ledger States
+  const [viewMode, setViewMode] = useState<'daily' | 'history' | 'ledger'>('daily');
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isExcelPreviewOpen, setIsExcelPreviewOpen] = useState(false);
   const [excelPreviewTab, setExcelPreviewTab] = useState<'Quotations' | 'Proformas' | 'Final Invoices'>('Quotations');
+
+  // Ledger State & Hooks
+  const [selectedLedgerClientId, setSelectedLedgerClientId] = useState<string>('');
+  const { data: ledgerData, isLoading: loadingLedger, refetch: refetchLedger } = useGetClientLedger(selectedLedgerClientId);
+  const recordPaymentMutation = useRecordClientPayment();
+  const deletePaymentMutation = useDeletePaymentRecord();
+
+  // Payment Recording Modal State
+  const [isRecordPaymentModalOpen, setIsRecordPaymentModalOpen] = useState(false);
+  const [paymentModalData, setPaymentModalData] = useState({
+    clientId: '',
+    invoiceId: '',
+    invoiceNumber: '',
+    amount: 0,
+    type: 'PAYMENT_RECEIVED' as 'PAYMENT_RECEIVED' | 'ADVANCE_PAYMENT' | 'REFUND',
+    paymentMode: 'CASH' as 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'OTHER',
+    referenceNo: '',
+    notes: '',
+  });
+
+  // Advance Payment collected during Invoice Drafting
+  const [initialPayment, setInitialPayment] = useState<number>(0);
+  const [initialPaymentMode, setInitialPaymentMode] = useState<string>('CASH');
+  const [initialPaymentRef, setInitialPaymentRef] = useState<string>('');
 
   // Form State
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -828,6 +855,9 @@ export default function Dashboard() {
     setEditingDoc(null);
     setQuotationRef('');
     setProformaRef('');
+    setInitialPayment(0);
+    setInitialPaymentMode('CASH');
+    setInitialPaymentRef('');
     setItems([{ description: '', quantity: 1, price: 0, taxRate: 18, hsnSac: '998311', discountPercent: 0 }]);
     setNewClientData({
       name: '',
@@ -1237,12 +1267,15 @@ export default function Dashboard() {
             status: 'DRAFT' as const,
             issueDate: new Date(),
             dueDate: new Date(dateVal),
-            paymentStatus: 'UNPAID' as const,
+            paidAmount: Number(initialPayment) || 0,
+            paymentMode: initialPaymentMode,
+            paymentReference: initialPaymentRef,
+            paymentStatus: (Number(initialPayment) >= formTotalAmount) ? 'PAID' as const : (Number(initialPayment) > 0 ? 'PARTIALLY_PAID' as const : 'UNPAID' as const),
             logoUrl: logoUrl || undefined,
             quotationRef: quotationRef || undefined,
             proformaRef: proformaRef || undefined,
           };
-          await createInvoice.mutateAsync(payload);
+          await createInvoice.mutateAsync(payload as any);
         }
         alert('Document created successfully!');
       }
@@ -1358,6 +1391,18 @@ export default function Dashboard() {
               onClick={() => setViewMode('history')}
             >
               📜 Archive & History
+            </button>
+            <button 
+              type="button"
+              className={`view-mode-btn ${viewMode === 'ledger' ? 'active' : ''}`} 
+              onClick={() => {
+                setViewMode('ledger');
+                if (!selectedLedgerClientId && clients.length > 0) {
+                  setSelectedLedgerClientId(clients[0].id || (clients[0] as any)._id);
+                }
+              }}
+            >
+              📒 Client Ledger History
             </button>
           </div>
           <div className="connection-pill">
@@ -1507,188 +1552,493 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Metrics Row */}
-      <section className="stats-grid">
-        <div className="stat-card quotation">
-          <div className="stat-header">
-            <span>Quotations</span>
-            <span style={{ color: 'var(--info)' }}>{activeQuoteCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
-          </div>
-          <div className="stat-value">{formatCurrency(activeQuoteVolume, quotations[0]?.currency || 'INR')}</div>
-          <div className="stat-footer">{viewMode === 'daily' ? "Today's pipe volume" : "Estimated sales pipe volume"}</div>
-        </div>
-
-        <div className="stat-card proforma">
-          <div className="stat-header">
-            <span>Proforma Invoices</span>
-            <span style={{ color: 'var(--warning)' }}>{activeProformaCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
-          </div>
-          <div className="stat-value">{formatCurrency(activeProformaVolume, proformas[0]?.currency || 'INR')}</div>
-          <div className="stat-footer">{viewMode === 'daily' ? "Today's pending" : "Awaiting confirmations"}</div>
-        </div>
-
-        <div className="stat-card invoice">
-          <div className="stat-header">
-            <span>Final Invoices</span>
-            <span style={{ color: 'var(--primary)' }}>{activeInvoiceCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
-          </div>
-          <div className="stat-value">{formatCurrency(activeInvoiceVolume, invoices[0]?.currency || 'INR')}</div>
-          <div className="stat-footer">{viewMode === 'daily' ? "Today's revenue" : "Total billed revenue"}</div>
-        </div>
-      </section>
-
-      {/* Lists Section */}
-      <section className="lists-container">
-        {/* 1. Quotations List */}
-        <div>
-          <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span><span style={{ color: 'var(--info)' }}>●</span> {viewMode === 'daily' ? "Today's Quotations" : "Quotations Archive"}</span>
-            <button className="btn-create" onClick={() => openModal('QUOTATION')}>+ Create</button>
-          </h2>
-          <div className="document-list">
-            <div className="list-header">
-              <span>Quote #</span>
-              <span>Client</span>
-              <span>Valid Until</span>
-              <span>Amount</span>
-              <span>Status</span>
-              <span>Action</span>
+      {/* Main Content Area */}
+      {viewMode === 'ledger' ? (
+        <section className="client-ledger-section" style={{ marginTop: '1.5rem' }}>
+          {/* Client Selection Header & Control Bar */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            padding: '1.25rem 1.5rem',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            marginBottom: '1.5rem',
+            flexWrap: 'wrap',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '280px' }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Select Client:
+              </label>
+              <select
+                value={selectedLedgerClientId}
+                onChange={(e) => setSelectedLedgerClientId(e.target.value)}
+                style={{
+                  backgroundColor: '#0f172a',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  padding: '0.65rem 1rem',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  outline: 'none',
+                  minWidth: '250px'
+                }}
+              >
+                <option value="">-- Choose Client --</option>
+                {clients.map((c: any) => (
+                  <option key={c.id || c._id} value={c.id || c._id}>
+                    {c.name} ({c.email})
+                  </option>
+                ))}
+              </select>
             </div>
-            {loadingQuotes ? (
-              <div className="empty-state">Loading quotations...</div>
-            ) : filteredQuotes.length === 0 ? (
-              <div className="empty-state">{viewMode === 'daily' ? "No quotations created today." : "No quotations found in history."}</div>
-            ) : (
-              (filteredQuotes as Quotation[]).map((q: Quotation) => (
-                <div key={q.id || q.documentNumber || q.quoteNumber} className="list-row">
-                  <span className="doc-number">{q.documentNumber || q.quoteNumber}</span>
-                  <div className="client-info">
-                    <span className="client-name">{q.clientInfo.name}</span>
-                    <span className="client-email">{q.clientInfo.email}</span>
-                  </div>
-                  <span className="doc-date">{formatDate(q.validUntil)}</span>
-                  <span className="doc-amount">{formatCurrency(q.totalAmount, q.currency)}</span>
-                  <div>
-                    <span className={`status-badge ${q.status.toLowerCase()}`}>{q.status}</span>
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Quotation" onClick={() => setPrintDoc(q)}>👁️</button>
-                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(q)}>📥</button>
-                      <button className="btn-status-action text-info" title="Edit Quotation" onClick={() => openEditModal(q)}>✏️</button>
-                      <button className="btn-status-action text-danger" title="Delete Quotation" onClick={() => handleDeleteDoc(q.id || (q as any)._id, 'QUOTATION')}>🗑️</button>
-                      {q.status !== 'CONVERTED' && q.status !== 'DECLINED' && (
-                        <>
-                          <button className="btn-status-action text-success" title="Accept & Convert to Proforma" onClick={() => handleConvertQuote(q.id || (q as any)._id)}>✅</button>
-                          <button className="btn-status-action text-danger" title="Decline Quote" onClick={() => handleUpdateQuoteStatus(q.id || (q as any)._id, 'DECLINED')}>❌</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
+
+            {selectedLedgerClientId && (
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentModalData({
+                      clientId: selectedLedgerClientId,
+                      invoiceId: '',
+                      invoiceNumber: '',
+                      amount: 0,
+                      type: 'ADVANCE_PAYMENT',
+                      paymentMode: 'CASH',
+                      referenceNo: '',
+                      notes: '',
+                    });
+                    setIsRecordPaymentModalOpen(true);
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                  }}
+                >
+                  💳 + Record Payment / Advance
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!ledgerData) return;
+                    const csvRows = [
+                      ['Date', 'Type', 'Ref/Doc #', 'Notes', 'Debit (Billed)', 'Credit (Paid)', 'Running Balance'],
+                      ...ledgerData.entries.map(e => [
+                        new Date(e.date).toLocaleDateString(),
+                        e.type,
+                        e.documentNumber || e.referenceNo || '-',
+                        `"${(e.notes || '').replace(/"/g, '""')}"`,
+                        e.debit,
+                        e.credit,
+                        e.runningBalance
+                      ])
+                    ];
+                    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(row => row.join(",")).join("\n");
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `Ledger_${ledgerData.client?.name || 'Client'}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    color: '#cbd5e1',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  📥 Export CSV
+                </button>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* 2. Proforma Invoices List */}
-        <div>
-          <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span><span style={{ color: 'var(--warning)' }}>●</span> {viewMode === 'daily' ? "Today's Proformas" : "Proformas Archive"}</span>
-            <button className="btn-create" onClick={() => openModal('PROFORMA')}>+ Create</button>
-          </h2>
-          <div className="document-list">
-            <div className="list-header">
-              <span>Proforma #</span>
-              <span>Client</span>
-              <span>Valid Until</span>
-              <span>Amount</span>
-              <span>Status</span>
-              <span>Action</span>
-            </div>
-            {loadingProformas ? (
-              <div className="empty-state">Loading proforma invoices...</div>
-            ) : filteredProformas.length === 0 ? (
-              <div className="empty-state">{viewMode === 'daily' ? "No proforma invoices created today." : "No proforma invoices found in history."}</div>
-            ) : (
-              (filteredProformas as ProformaInvoice[]).map((p: ProformaInvoice) => (
-                <div key={p.id || p.documentNumber || p.proformaNumber} className="list-row">
-                  <span className="doc-number">{p.documentNumber || p.proformaNumber}</span>
-                  <div className="client-info">
-                    <span className="client-name">{p.clientInfo.name}</span>
-                    <span className="client-email">{p.clientInfo.email}</span>
+          {/* Client Summary KPI Cards */}
+          {selectedLedgerClientId && ledgerData && (
+            <>
+              <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
+                <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
+                  <div className="stat-header">
+                    <span>Total Billed</span>
+                    <span style={{ color: '#3b82f6' }}>Invoices</span>
                   </div>
-                  <span className="doc-date">{formatDate(p.validUntil)}</span>
-                  <span className="doc-amount">{formatCurrency(p.totalAmount, p.currency)}</span>
-                  <div>
-                    <span className={`status-badge ${p.status.toLowerCase()}`}>{p.status}</span>
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Proforma" onClick={() => setPrintDoc(p)}>👁️</button>
-                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(p)}>📥</button>
-                      <button className="btn-status-action text-info" title="Edit Proforma" onClick={() => openEditModal(p)}>✏️</button>
-                      <button className="btn-status-action text-danger" title="Delete Proforma" onClick={() => handleDeleteDoc(p.id || (p as any)._id, 'PROFORMA')}>🗑️</button>
-                      {p.status !== 'CONVERTED' && (
-                        <button className="btn-status-action text-success" title="Confirm Payment & Convert to Invoice" onClick={() => handleConvertProforma(p.id || (p as any)._id)}>✅</button>
-                      )}
-                    </div>
-                  </div>
+                  <div className="stat-value">₹{ledgerData.summary.totalInvoiced.toLocaleString('en-IN')}</div>
+                  <div className="stat-footer">Gross invoices issued</div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
 
-        {/* 3. Final Invoices List */}
-        <div>
-          <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span><span style={{ color: 'var(--primary)' }}>●</span> {viewMode === 'daily' ? "Today's Final Invoices" : "Final Invoices Archive"}</span>
-            <button className="btn-create" onClick={() => openModal('FINAL_INVOICE')}>+ Create</button>
-          </h2>
-          <div className="document-list">
-            <div className="list-header">
-              <span>Invoice #</span>
-              <span>Client</span>
-              <span>Due Date</span>
-              <span>Amount</span>
-              <span>Status</span>
-              <span>Action</span>
-            </div>
-            {loadingInvoices ? (
-              <div className="empty-state">Loading final invoices...</div>
-            ) : filteredInvoices.length === 0 ? (
-              <div className="empty-state">{viewMode === 'daily' ? "No final invoices created today." : "No final invoices found in history."}</div>
-            ) : (
-              (filteredInvoices as FinalInvoice[]).map((i: FinalInvoice) => (
-                <div key={i.id || i.documentNumber || i.invoiceNumber} className="list-row">
-                  <span className="doc-number">{i.documentNumber || i.invoiceNumber}</span>
-                  <div className="client-info">
-                    <span className="client-name">{i.clientInfo.name}</span>
-                    <span className="client-email">{i.clientInfo.email}</span>
+                <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
+                  <div className="stat-header">
+                    <span>Total Paid</span>
+                    <span style={{ color: '#10b981' }}>Collected</span>
                   </div>
-                  <span className="doc-date">{formatDate(i.dueDate)}</span>
-                  <span className="doc-amount">{formatCurrency(i.totalAmount, i.currency)}</span>
-                  <div>
-                    <span className={`status-badge ${i.status.toLowerCase()}`}>{i.status}</span>
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Invoice" onClick={() => setPrintDoc(i)}>👁️</button>
-                      <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(i)}>📥</button>
-                      <button className="btn-status-action text-info" title="Edit Invoice" onClick={() => openEditModal(i)}>✏️</button>
-                      <button className="btn-status-action text-danger" title="Delete Invoice" onClick={() => handleDeleteDoc(i.id || (i as any)._id, 'FINAL_INVOICE')}>🗑️</button>
-                      {i.status !== 'PAID' && (
-                        <button className="btn-status-action text-success" title="Mark Paid" onClick={() => handleMarkInvoicePaid(i.id || (i as any)._id)}>💰</button>
-                      )}
-                    </div>
-                  </div>
+                  <div className="stat-value">₹{ledgerData.summary.totalPaid.toLocaleString('en-IN')}</div>
+                  <div className="stat-footer">Payments & Advances</div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-      </section>
+
+                <div className="stat-card" style={{ borderLeft: ledgerData.summary.netBalanceDue > 0 ? '4px solid #ef4444' : '4px solid #34d399' }}>
+                  <div className="stat-header">
+                    <span>Net Balance Due</span>
+                    <span style={{ color: ledgerData.summary.netBalanceDue > 0 ? '#ef4444' : '#34d399' }}>
+                      {ledgerData.summary.netBalanceDue > 0 ? 'Outstanding' : 'Cleared'}
+                    </span>
+                  </div>
+                  <div className="stat-value" style={{ color: ledgerData.summary.netBalanceDue > 0 ? '#f87171' : '#34d399' }}>
+                    ₹{ledgerData.summary.netBalanceDue.toLocaleString('en-IN')}
+                  </div>
+                  <div className="stat-footer">Current net client balance</div>
+                </div>
+
+                <div className="stat-card" style={{ borderLeft: '4px solid #a855f7' }}>
+                  <div className="stat-header">
+                    <span>Advance Credit</span>
+                    <span style={{ color: '#a855f7' }}>Unallocated</span>
+                  </div>
+                  <div className="stat-value">₹{ledgerData.summary.totalAdvance.toLocaleString('en-IN')}</div>
+                  <div className="stat-footer">Advance deposits on account</div>
+                </div>
+              </div>
+
+              {/* Ledger Statement Table */}
+              <div style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '1.5rem'
+              }}>
+                <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>📜 Transaction Ledger Statement for {ledgerData.client?.name}</span>
+                  <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 400 }}>
+                    {ledgerData.entries.length} Transaction Records
+                  </span>
+                </h3>
+
+                {loadingLedger ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Loading ledger entries...</div>
+                ) : ledgerData.entries.length === 0 ? (
+                  <div className="empty-state" style={{ padding: '3rem 1rem' }}>
+                    No invoices or payment transactions recorded for this client yet.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="items-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', textAlign: 'left' }}>
+                          <th style={{ padding: '0.75rem 1rem' }}>Date</th>
+                          <th style={{ padding: '0.75rem 1rem' }}>Type</th>
+                          <th style={{ padding: '0.75rem 1rem' }}>Ref / Doc #</th>
+                          <th style={{ padding: '0.75rem 1rem' }}>Details / Notes</th>
+                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Debit (+Billed)</th>
+                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Credit (-Paid)</th>
+                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Balance</th>
+                          <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ledgerData.entries.map((entry) => (
+                          <tr key={entry.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '0.75rem 1rem', color: '#cbd5e1', fontSize: '0.85rem' }}>
+                              {new Date(entry.date).toLocaleDateString()}
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem' }}>
+                              <span style={{
+                                padding: '0.2rem 0.6rem',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                backgroundColor: entry.type === 'INVOICE'
+                                  ? 'rgba(59, 130, 246, 0.2)'
+                                  : entry.type === 'ADVANCE_PAYMENT'
+                                  ? 'rgba(168, 85, 247, 0.2)'
+                                  : 'rgba(16, 185, 129, 0.2)',
+                                color: entry.type === 'INVOICE'
+                                  ? '#60a5fa'
+                                  : entry.type === 'ADVANCE_PAYMENT'
+                                  ? '#c084fc'
+                                  : '#34d399'
+                              }}>
+                                {entry.type === 'INVOICE' ? '🧾 FINAL INVOICE' : entry.type === 'ADVANCE_PAYMENT' ? '💳 ADVANCE' : '💵 PAYMENT'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}>
+                              {entry.documentNumber || entry.referenceNo || '-'}
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontSize: '0.85rem' }}>
+                              {entry.notes || (entry.paymentMode ? `Paid via ${entry.paymentMode}` : 'Invoice issued')}
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: entry.debit > 0 ? '#f87171' : '#64748b', fontWeight: entry.debit > 0 ? 600 : 400 }}>
+                              {entry.debit > 0 ? `₹${entry.debit.toLocaleString('en-IN')}` : '-'}
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: entry.credit > 0 ? '#34d399' : '#64748b', fontWeight: entry.credit > 0 ? 600 : 400 }}>
+                              {entry.credit > 0 ? `₹${entry.credit.toLocaleString('en-IN')}` : '-'}
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: entry.runningBalance > 0 ? '#f87171' : '#34d399' }}>
+                              ₹{entry.runningBalance.toLocaleString('en-IN')}
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                              {entry.type !== 'INVOICE' && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (window.confirm('Are you sure you want to delete this payment record?')) {
+                                      await deletePaymentMutation.mutateAsync({ paymentId: entry.id, clientId: selectedLedgerClientId });
+                                    }
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#ef4444',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8rem'
+                                  }}
+                                  title="Delete Payment Record"
+                                >
+                                  🗑️ Delete
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {!selectedLedgerClientId && (
+            <div className="empty-state" style={{ padding: '4rem 1rem', backgroundColor: 'rgba(15, 23, 42, 0.7)', borderRadius: '12px' }}>
+              Please select a client from the dropdown above to view their complete financial ledger history, advance credits, and transaction timeline.
+            </div>
+          )}
+        </section>
+      ) : (
+        <>
+          {/* Metrics Row */}
+          <section className="stats-grid">
+            <div className="stat-card quotation">
+              <div className="stat-header">
+                <span>Quotations</span>
+                <span style={{ color: 'var(--info)' }}>{activeQuoteCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
+              </div>
+              <div className="stat-value">{formatCurrency(activeQuoteVolume, quotations[0]?.currency || 'INR')}</div>
+              <div className="stat-footer">{viewMode === 'daily' ? "Today's pipe volume" : "Estimated sales pipe volume"}</div>
+            </div>
+
+            <div className="stat-card proforma">
+              <div className="stat-header">
+                <span>Proforma Invoices</span>
+                <span style={{ color: 'var(--warning)' }}>{activeProformaCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
+              </div>
+              <div className="stat-value">{formatCurrency(activeProformaVolume, proformas[0]?.currency || 'INR')}</div>
+              <div className="stat-footer">{viewMode === 'daily' ? "Today's pending" : "Awaiting confirmations"}</div>
+            </div>
+
+            <div className="stat-card invoice">
+              <div className="stat-header">
+                <span>Final Invoices</span>
+                <span style={{ color: 'var(--primary)' }}>{activeInvoiceCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
+              </div>
+              <div className="stat-value">{formatCurrency(activeInvoiceVolume, invoices[0]?.currency || 'INR')}</div>
+              <div className="stat-footer">{viewMode === 'daily' ? "Today's revenue" : "Total billed revenue"}</div>
+            </div>
+          </section>
+
+          {/* Lists Section */}
+          <section className="lists-container">
+            {/* 1. Quotations List */}
+            <div>
+              <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span><span style={{ color: 'var(--info)' }}>●</span> {viewMode === 'daily' ? "Today's Quotations" : "Quotations Archive"}</span>
+                <button className="btn-create" onClick={() => openModal('QUOTATION')}>+ Create</button>
+              </h2>
+              <div className="document-list">
+                <div className="list-header">
+                  <span>Quote #</span>
+                  <span>Client</span>
+                  <span>Valid Until</span>
+                  <span>Amount</span>
+                  <span>Status</span>
+                  <span>Action</span>
+                </div>
+                {loadingQuotes ? (
+                  <div className="empty-state">Loading quotations...</div>
+                ) : filteredQuotes.length === 0 ? (
+                  <div className="empty-state">{viewMode === 'daily' ? "No quotations created today." : "No quotations found in history."}</div>
+                ) : (
+                  (filteredQuotes as Quotation[]).map((q: Quotation) => (
+                    <div key={q.id || q.documentNumber || q.quoteNumber} className="list-row">
+                      <span className="doc-number">{q.documentNumber || q.quoteNumber}</span>
+                      <div className="client-info">
+                        <span className="client-name">{q.clientInfo.name}</span>
+                        <span className="client-email">{q.clientInfo.email}</span>
+                      </div>
+                      <span className="doc-date">{formatDate(q.validUntil)}</span>
+                      <span className="doc-amount">{formatCurrency(q.totalAmount, q.currency)}</span>
+                      <div>
+                        <span className={`status-badge ${q.status.toLowerCase()}`}>{q.status}</span>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Quotation" onClick={() => setPrintDoc(q)}>👁️</button>
+                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(q)}>📥</button>
+                          <button className="btn-status-action text-info" title="Edit Quotation" onClick={() => openEditModal(q)}>✏️</button>
+                          <button className="btn-status-action text-danger" title="Delete Quotation" onClick={() => handleDeleteDoc(q.id || (q as any)._id, 'QUOTATION')}>🗑️</button>
+                          {q.status !== 'CONVERTED' && q.status !== 'DECLINED' && (
+                            <>
+                              <button className="btn-status-action text-success" title="Accept & Convert to Proforma" onClick={() => handleConvertQuote(q.id || (q as any)._id)}>✅</button>
+                              <button className="btn-status-action text-danger" title="Decline Quote" onClick={() => handleUpdateQuoteStatus(q.id || (q as any)._id, 'DECLINED')}>❌</button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* 2. Proforma Invoices List */}
+            <div>
+              <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span><span style={{ color: 'var(--warning)' }}>●</span> {viewMode === 'daily' ? "Today's Proformas" : "Proformas Archive"}</span>
+                <button className="btn-create" onClick={() => openModal('PROFORMA')}>+ Create</button>
+              </h2>
+              <div className="document-list">
+                <div className="list-header">
+                  <span>Proforma #</span>
+                  <span>Client</span>
+                  <span>Valid Until</span>
+                  <span>Amount</span>
+                  <span>Status</span>
+                  <span>Action</span>
+                </div>
+                {loadingProformas ? (
+                  <div className="empty-state">Loading proforma invoices...</div>
+                ) : filteredProformas.length === 0 ? (
+                  <div className="empty-state">{viewMode === 'daily' ? "No proforma invoices created today." : "No proforma invoices found in history."}</div>
+                ) : (
+                  (filteredProformas as ProformaInvoice[]).map((p: ProformaInvoice) => (
+                    <div key={p.id || p.documentNumber || p.proformaNumber} className="list-row">
+                      <span className="doc-number">{p.documentNumber || p.proformaNumber}</span>
+                      <div className="client-info">
+                        <span className="client-name">{p.clientInfo.name}</span>
+                        <span className="client-email">{p.clientInfo.email}</span>
+                      </div>
+                      <span className="doc-date">{formatDate(p.validUntil)}</span>
+                      <span className="doc-amount">{formatCurrency(p.totalAmount, p.currency)}</span>
+                      <div>
+                        <span className={`status-badge ${p.status.toLowerCase()}`}>{p.status}</span>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Proforma" onClick={() => setPrintDoc(p)}>👁️</button>
+                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(p)}>📥</button>
+                          <button className="btn-status-action text-info" title="Edit Proforma" onClick={() => openEditModal(p)}>✏️</button>
+                          <button className="btn-status-action text-danger" title="Delete Proforma" onClick={() => handleDeleteDoc(p.id || (p as any)._id, 'PROFORMA')}>🗑️</button>
+                          {p.status !== 'CONVERTED' && (
+                            <button className="btn-status-action text-success" title="Confirm Payment & Convert to Invoice" onClick={() => handleConvertProforma(p.id || (p as any)._id)}>✅</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* 3. Final Invoices List */}
+            <div>
+              <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span><span style={{ color: 'var(--primary)' }}>●</span> {viewMode === 'daily' ? "Today's Final Invoices" : "Final Invoices Archive"}</span>
+                <button className="btn-create" onClick={() => openModal('FINAL_INVOICE')}>+ Create</button>
+              </h2>
+              <div className="document-list">
+                <div className="list-header">
+                  <span>Invoice #</span>
+                  <span>Client</span>
+                  <span>Due Date</span>
+                  <span>Amount & Paid</span>
+                  <span>Status</span>
+                  <span>Action</span>
+                </div>
+                {loadingInvoices ? (
+                  <div className="empty-state">Loading final invoices...</div>
+                ) : filteredInvoices.length === 0 ? (
+                  <div className="empty-state">{viewMode === 'daily' ? "No final invoices created today." : "No final invoices found in history."}</div>
+                ) : (
+                  (filteredInvoices as FinalInvoice[]).map((i: FinalInvoice) => (
+                    <div key={i.id || i.documentNumber || i.invoiceNumber} className="list-row">
+                      <span className="doc-number">{i.documentNumber || i.invoiceNumber}</span>
+                      <div className="client-info">
+                        <span className="client-name">{i.clientInfo.name}</span>
+                        <span className="client-email">{i.clientInfo.email}</span>
+                      </div>
+                      <span className="doc-date">{formatDate(i.dueDate)}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="doc-amount">{formatCurrency(i.totalAmount, i.currency)}</span>
+                        <span style={{ fontSize: '0.75rem', color: ((i as any).paidAmount || 0) >= i.totalAmount ? '#34d399' : ((i as any).paidAmount || 0) > 0 ? '#fbbf24' : '#94a3b8' }}>
+                          Paid: {formatCurrency((i as any).paidAmount || 0, i.currency)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className={`status-badge ${(i.paymentStatus || i.status).toLowerCase()}`}>
+                          {i.paymentStatus || i.status}
+                        </span>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Invoice" onClick={() => setPrintDoc(i)}>👁️</button>
+                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(i)}>📥</button>
+                          <button className="btn-status-action text-info" title="Edit Invoice" onClick={() => openEditModal(i)}>✏️</button>
+                          <button className="btn-status-action text-danger" title="Delete Invoice" onClick={() => handleDeleteDoc(i.id || (i as any)._id, 'FINAL_INVOICE')}>🗑️</button>
+                          <button
+                            className="btn-status-action"
+                            style={{ color: '#a855f7' }}
+                            title="Record Payment against Invoice"
+                            onClick={() => {
+                              setPaymentModalData({
+                                clientId: i.clientRef?.id || i.clientRef || '',
+                                invoiceId: i.id || (i as any)._id,
+                                invoiceNumber: i.documentNumber || i.invoiceNumber || '',
+                                amount: Math.max(0, Number((i.totalAmount - ((i as any).paidAmount || 0)).toFixed(2))),
+                                type: 'PAYMENT_RECEIVED',
+                                paymentMode: 'CASH',
+                                referenceNo: '',
+                                notes: '',
+                              });
+                              setIsRecordPaymentModalOpen(true);
+                            }}
+                          >
+                            💳
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* FLOATING CREATION/EDIT MODAL */}
       {isModalOpen && (
@@ -2036,11 +2386,105 @@ export default function Dashboard() {
                   + Add Item
                 </button>
 
+                {/* Advance / Initial Payment Collection (For Final Invoices) */}
+                {docType === 'FINAL_INVOICE' && !editingDoc && (
+                  <div style={{
+                    marginTop: '1.25rem',
+                    padding: '1rem',
+                    backgroundColor: 'rgba(30, 41, 59, 0.7)',
+                    border: '1px solid rgba(99, 102, 241, 0.25)',
+                    borderRadius: '8px'
+                  }}>
+                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#818cf8', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      💳 Advance Payment / Initial Collection (Optional)
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem' }}>
+                          Advance Received (₹)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max={formTotalAmount}
+                          step="any"
+                          value={initialPayment || ''}
+                          onChange={(e) => setInitialPayment(Number(e.target.value) || 0)}
+                          placeholder="0.00"
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#0f172a',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            padding: '0.4rem 0.6rem',
+                            fontSize: '0.85rem'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem' }}>
+                          Payment Mode
+                        </label>
+                        <select
+                          value={initialPaymentMode}
+                          onChange={(e) => setInitialPaymentMode(e.target.value)}
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#0f172a',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            padding: '0.4rem 0.6rem',
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          <option value="CASH">💵 Cash</option>
+                          <option value="UPI">📱 UPI / QR</option>
+                          <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
+                          <option value="CHEQUE">📜 Cheque</option>
+                          <option value="OTHER">✨ Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem' }}>
+                          Txn Ref / Cheque #
+                        </label>
+                        <input
+                          type="text"
+                          value={initialPaymentRef}
+                          onChange={(e) => setInitialPaymentRef(e.target.value)}
+                          placeholder="e.g. UPI-129381"
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#0f172a',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            padding: '0.4rem 0.6rem',
+                            fontSize: '0.85rem'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Totals Summary */}
                 <div className="totals-summary">
                   <div>Subtotal: {formatCurrency(formSubTotal, currency)}</div>
                   <div>Tax Amount: {formatCurrency(formTaxAmount, currency)}</div>
-                  <div className="grand-total">Total: {formatCurrency(formTotalAmount, currency)}</div>
+                  <div className="grand-total">Total Amount: {formatCurrency(formTotalAmount, currency)}</div>
+                  {docType === 'FINAL_INVOICE' && initialPayment > 0 && (
+                    <>
+                      <div style={{ color: '#34d399', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                        Advance / Paid: -{formatCurrency(initialPayment, currency)}
+                      </div>
+                      <div style={{ color: '#f87171', fontWeight: 800, fontSize: '1rem', marginTop: '0.25rem' }}>
+                        Balance Due: {formatCurrency(Math.max(0, formTotalAmount - initialPayment), currency)}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">
@@ -2726,6 +3170,129 @@ export default function Dashboard() {
                   }}
                 >
                   {renewalLoading ? 'Submitting...' : 'Submit Payment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* RECORD PAYMENT MODAL */}
+      {isRecordPaymentModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-card" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3 style={{ color: '#fff', fontSize: '1.15rem' }}>💳 Record Payment / Advance Collection</h3>
+              <button type="button" className="btn-close" onClick={() => setIsRecordPaymentModalOpen(false)}>&times;</button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (paymentModalData.amount <= 0) {
+                alert('Please enter a valid payment amount greater than 0');
+                return;
+              }
+              try {
+                await recordPaymentMutation.mutateAsync({
+                  clientId: paymentModalData.clientId,
+                  invoiceId: paymentModalData.invoiceId || null,
+                  amount: Number(paymentModalData.amount),
+                  type: paymentModalData.type,
+                  paymentMode: paymentModalData.paymentMode,
+                  referenceNo: paymentModalData.referenceNo || null,
+                  notes: paymentModalData.notes || null
+                });
+                alert('Payment recorded successfully!');
+                setIsRecordPaymentModalOpen(false);
+              } catch (err: any) {
+                alert(err.response?.data?.message || 'Failed to record payment');
+              }
+            }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+                {paymentModalData.invoiceNumber && (
+                  <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'rgba(99, 102, 241, 0.15)', borderRadius: '6px', fontSize: '0.85rem', color: '#a5b4fc', fontWeight: 600 }}>
+                    Linked Invoice #: {paymentModalData.invoiceNumber}
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                    Payment Type
+                  </label>
+                  <select
+                    value={paymentModalData.type}
+                    onChange={(e: any) => setPaymentModalData({ ...paymentModalData, type: e.target.value })}
+                    style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem', fontSize: '0.9rem' }}
+                  >
+                    <option value="PAYMENT_RECEIVED">💵 Payment Received against Invoice</option>
+                    <option value="ADVANCE_PAYMENT">💳 Advance Payment Deposit</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                    Amount Collected (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    required
+                    value={paymentModalData.amount || ''}
+                    onChange={(e) => setPaymentModalData({ ...paymentModalData, amount: Number(e.target.value) || 0 })}
+                    placeholder="Enter amount"
+                    style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem 0.75rem', fontSize: '1rem', fontWeight: 700 }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                      Payment Mode
+                    </label>
+                    <select
+                      value={paymentModalData.paymentMode}
+                      onChange={(e: any) => setPaymentModalData({ ...paymentModalData, paymentMode: e.target.value })}
+                      style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem', fontSize: '0.9rem' }}
+                    >
+                      <option value="CASH">💵 Cash</option>
+                      <option value="UPI">📱 UPI / QR</option>
+                      <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
+                      <option value="CHEQUE">📜 Cheque</option>
+                      <option value="OTHER">✨ Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                      Txn Ref / Cheque #
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentModalData.referenceNo}
+                      onChange={(e) => setPaymentModalData({ ...paymentModalData, referenceNo: e.target.value })}
+                      placeholder="e.g. UPI-998822"
+                      style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem', fontSize: '0.9rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                    Notes / Remarks
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentModalData.notes}
+                    onChange={(e) => setPaymentModalData({ ...paymentModalData, notes: e.target.value })}
+                    placeholder="Optional details"
+                    style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#fff', padding: '0.5rem', fontSize: '0.9rem' }}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn-secondary-action" onClick={() => setIsRecordPaymentModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-primary-action" disabled={recordPaymentMutation.isPending}>
+                  {recordPaymentMutation.isPending ? 'Saving Payment...' : 'Save Payment'}
                 </button>
               </div>
             </form>

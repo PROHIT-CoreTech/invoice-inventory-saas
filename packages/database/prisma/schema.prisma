@@ -18,6 +18,7 @@ model Client {
   pan            String?
   tenantId       String
   invoices       Invoice[]
+  payments       PaymentRecord[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -33,6 +34,7 @@ model Invoice {
   subTotal       Float    @default(0)
   taxAmount      Float    @default(0)
   totalAmount    Float    @default(0)
+  paidAmount     Float    @default(0)
   currency       String   @default("INR")
   notes          String?
   issueDate      DateTime @default(now())
@@ -48,6 +50,8 @@ model Invoice {
   paymentDate    DateTime?
   logoUrl        String?
   tenantId       String
+
+  payments       PaymentRecord[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -65,6 +69,23 @@ model LineItem {
   total           Float    @default(0)
   invoiceId       String @db.ObjectId
   invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model PaymentRecord {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoiceId   String?  @db.ObjectId
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  amount      Float
+  type        String   // 'PAYMENT_RECEIVED' | 'ADVANCE_PAYMENT' | 'REFUND'
+  paymentMode String   // 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'OTHER'
+  referenceNo String?
+  paymentDate DateTime @default(now())
+  notes       String?
+  tenantId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model TenantProfile {
