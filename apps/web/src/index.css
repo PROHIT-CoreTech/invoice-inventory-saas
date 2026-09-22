@@ -1586,8 +1586,63 @@ body {
   :root {
     --preview-scale: 0.57;
   }
-  .hero-right-preview {
-    height: calc(390px * 0.57) !important;
-    margin: 1rem auto !important;
+}
+
+/* Header Navigation View Mode Tabs */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.view-mode-tabs {
+  display: flex;
+  align-items: center;
+  background-color: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+  backdrop-filter: blur(12px);
+}
+
+.view-mode-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.5rem 0.9rem;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.view-mode-btn:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.view-mode-btn.active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+}
+
+@media (max-width: 1024px) {
+  .view-mode-tabs {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .view-mode-btn {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.75rem;
   }
 }
+
