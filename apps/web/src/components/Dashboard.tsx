@@ -100,8 +100,9 @@ export default function Dashboard() {
   // Workspace Settings Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Expiration Renewal Modal States
+  // Expiration Renewal & Plan Change Modal States
   const [isRenewalOpen, setIsRenewalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string>('1_MONTH');
   const [renewalUtr, setRenewalUtr] = useState('');
   const [renewalLoading, setRenewalLoading] = useState(false);
   const [renewalStatus, setRenewalStatus] = useState('');
@@ -112,19 +113,22 @@ export default function Dashboard() {
       case '6_MONTHS': return 4999;
       case '1_YEAR': return 9999;
       case 'LIFETIME': return 20000;
+      case 'TRIAL': return 0;
+      case 'FREE': return 0;
       default: return 999;
     }
   };
 
-  const getRenewalUpiUrl = () => {
+  const getRenewalUpiUrl = (targetPlan?: string) => {
     if (!tenantProfile) return '';
     const formattedTenant = tenantProfile.tenantId.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-    const planId = tenantProfile.subscriptionPlan || '1_MONTH';
+    const planId = targetPlan || selectedPlan || tenantProfile.subscriptionPlan || '1_MONTH';
     
     let planCode = 'MON';
     if (planId === '6_MONTHS') planCode = 'PRO';
     else if (planId === '1_YEAR') planCode = 'ENT';
     else if (planId === 'LIFETIME') planCode = 'LIF';
+    else if (planId === 'TRIAL') planCode = 'TRL';
 
     const tn = `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
     const amount = getPlanPriceNum(planId);
@@ -132,14 +136,15 @@ export default function Dashboard() {
     return `upi://pay?pa=rohitbarge22-3@okaxis&pn=ROHIT%20BARGE&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`;
   };
 
-  const getRenewalUpiNote = () => {
+  const getRenewalUpiNote = (targetPlan?: string) => {
     if (!tenantProfile) return '';
     const formattedTenant = tenantProfile.tenantId.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-    const planId = tenantProfile.subscriptionPlan || '1_MONTH';
+    const planId = targetPlan || selectedPlan || tenantProfile.subscriptionPlan || '1_MONTH';
     let planCode = 'MON';
     if (planId === '6_MONTHS') planCode = 'PRO';
     else if (planId === '1_YEAR') planCode = 'ENT';
     else if (planId === 'LIFETIME') planCode = 'LIF';
+    else if (planId === 'TRIAL') planCode = 'TRL';
     return `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
   };
 
@@ -157,6 +162,7 @@ export default function Dashboard() {
 
     try {
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/subscriptions/submit-payment';
+      const activeTargetPlan = selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH';
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -164,8 +170,8 @@ export default function Dashboard() {
           'X-Tenant-Id': tenantId
         },
         body: JSON.stringify({
-          planTier: tenantProfile?.subscriptionPlan || '1_MONTH',
-          amountPaid: getPlanPriceNum(tenantProfile?.subscriptionPlan || '1_MONTH'),
+          planTier: activeTargetPlan,
+          amountPaid: getPlanPriceNum(activeTargetPlan),
           utrNumber: cleanUtr
         })
       });
@@ -2029,6 +2035,86 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Change Subscription Plan Options */}
+          <div style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '12px',
+            padding: '1.5rem'
+          }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              💳 Select or Change Subscription Plan
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+              {[
+                { id: '1_MONTH', name: 'Monthly Starter', price: '₹999', period: 'per month', badge: 'Popular' },
+                { id: '6_MONTHS', name: '6 Months Pro', price: '₹4,999', period: 'for 6 months', badge: 'Save 17%' },
+                { id: '1_YEAR', name: '1 Year Enterprise', price: '₹9,999', period: 'per year', badge: 'Best Value' },
+                { id: 'LIFETIME', name: 'Lifetime Unlimited', price: '₹20,000', period: 'one-time', badge: 'VIP Access' }
+              ].map((plan) => {
+                const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
+                return (
+                  <div
+                    key={plan.id}
+                    style={{
+                      backgroundColor: isCurrent ? 'rgba(99, 102, 241, 0.15)' : '#0f172a',
+                      border: isCurrent ? '2px solid #6366f1' : '1px solid #334155',
+                      borderRadius: '10px',
+                      padding: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      position: 'relative'
+                    }}
+                  >
+                    {isCurrent && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '-10px',
+                        right: '12px',
+                        backgroundColor: '#6366f1',
+                        color: '#fff',
+                        fontSize: '0.65rem',
+                        fontWeight: 800,
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '10px',
+                        textTransform: 'uppercase'
+                      }}>
+                        Current Plan
+                      </span>
+                    )}
+                    <div>
+                      <span style={{ color: '#818cf8', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{plan.badge}</span>
+                      <div style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 800, marginTop: '0.2rem' }}>{plan.name}</div>
+                      <div style={{ color: '#34d399', fontSize: '1.35rem', fontWeight: 900, fontFamily: 'monospace', margin: '0.35rem 0' }}>{plan.price}</div>
+                      <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{plan.period}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlan(plan.id);
+                        setIsRenewalOpen(true);
+                      }}
+                      style={{
+                        backgroundColor: isCurrent ? '#10b981' : '#6366f1',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '0.55rem',
+                        borderRadius: '6px',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        marginTop: '1rem'
+                      }}
+                    >
+                      {isCurrent ? '🔄 Renew Current Plan' : `⚡ Select & Upgrade`}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </section>
       ) : (
         <>
@@ -3266,11 +3352,47 @@ export default function Dashboard() {
               </button>
             </div>
 
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                Select / Change Subscription Plan:
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                {[
+                  { id: '1_MONTH', label: 'Monthly Starter', price: '₹999 / mo' },
+                  { id: '6_MONTHS', label: '6 Months Pro', price: '₹4,999 / 6 mos' },
+                  { id: '1_YEAR', label: '1 Year Enterprise', price: '₹9,999 / yr' },
+                  { id: 'LIFETIME', label: 'Lifetime Unlimited', price: '₹20,000' }
+                ].map((plan) => (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setSelectedPlan(plan.id)}
+                    style={{
+                      backgroundColor: (selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id ? 'rgba(99, 102, 241, 0.2)' : '#0f172a',
+                      border: (selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id ? '2px solid #6366f1' : '1px solid #334155',
+                      borderRadius: '8px',
+                      padding: '0.55rem 0.75rem',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ color: (selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id ? '#818cf8' : '#fff', fontWeight: 700, fontSize: '0.8rem' }}>
+                      {plan.label}
+                    </div>
+                    <div style={{ color: '#94a3b8', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                      {plan.price}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '10px', padding: '0.85rem', marginBottom: '1.25rem' }}>
-              <span style={{ fontSize: '0.75rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>Renewal Plan</span>
+              <span style={{ fontSize: '0.75rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>Selected Target Plan</span>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.2rem' }}>
-                <span style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{getPlanLabel(tenantProfile?.subscriptionPlan || '1_MONTH')}</span>
-                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>₹{getPlanPriceNum(tenantProfile?.subscriptionPlan || '1_MONTH').toLocaleString()}</span>
+                <span style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{getPlanLabel(selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH')}</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#34d399', fontFamily: 'monospace' }}>₹{getPlanPriceNum(selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH').toLocaleString()}</span>
               </div>
             </div>
 
