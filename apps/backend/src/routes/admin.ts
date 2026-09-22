@@ -19,7 +19,29 @@ router.get('/tenants', async (req: Request, res: Response, next: NextFunction) =
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(tenants);
+    const now = new Date();
+    const updatedTenants = await Promise.all(
+      tenants.map(async (t) => {
+        let status = t.subscriptionStatus || 'INACTIVE';
+        if (t.subscriptionExpiresAt && now > new Date(t.subscriptionExpiresAt) && status === 'ACTIVE') {
+          status = 'EXPIRED';
+          try {
+            await prisma.tenantProfile.update({
+              where: { tenantId: t.tenantId },
+              data: { subscriptionStatus: 'EXPIRED' }
+            });
+          } catch (err) {
+            console.error(`Failed to update tenant ${t.tenantId} status to EXPIRED:`, err);
+          }
+        }
+        return {
+          ...t,
+          subscriptionStatus: status
+        };
+      })
+    );
+
+    res.json(updatedTenants);
   } catch (error) {
     next(error);
   }

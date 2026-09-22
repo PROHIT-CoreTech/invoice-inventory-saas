@@ -145,6 +145,16 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     }
   };
 
+  const getEffectiveStatus = (t: Tenant) => {
+    const rawStatus = t.subscriptionStatus || 'INACTIVE';
+    if (rawStatus === 'ACTIVE' && t.subscriptionExpiresAt) {
+      if (new Date() > new Date(t.subscriptionExpiresAt)) {
+        return 'EXPIRED';
+      }
+    }
+    return rawStatus;
+  };
+
   const fetchAdminData = async (adminPassword: string) => {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
     
@@ -702,25 +712,35 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                               {getPlanPrice(t.subscriptionPlan)}
                             </span>
                           </div>
-                          <div>
-                            <span style={{ color: '#64748b', fontWeight: 600 }}>Status: </span>
-                            <span style={{ 
-                              backgroundColor: t.subscriptionStatus === 'ACTIVE' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                              color: t.subscriptionStatus === 'ACTIVE' ? '#10b981' : '#ef4444',
-                              padding: '0.1rem 0.4rem',
-                              borderRadius: '4px',
-                              fontSize: '0.7rem',
-                              fontWeight: 700
-                            }}>
-                              {t.subscriptionStatus || 'INACTIVE'}
-                            </span>
-                          </div>
-                          <div>
-                            <span style={{ color: '#64748b', fontWeight: 600 }}>Expires: </span>
-                            <span style={{ color: '#94a3b8' }}>
-                              {t.subscriptionPlan === 'LIFETIME' ? 'Never' : (t.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(t.subscriptionExpiresAt))}
-                            </span>
-                          </div>
+                          {(() => {
+                            const effStatus = getEffectiveStatus(t);
+                            const isActive = effStatus === 'ACTIVE';
+                            const isExpired = effStatus === 'EXPIRED';
+                            return (
+                              <>
+                                <div>
+                                  <span style={{ color: '#64748b', fontWeight: 600 }}>Status: </span>
+                                  <span style={{ 
+                                    backgroundColor: isActive ? 'rgba(16, 185, 129, 0.15)' : isExpired ? 'rgba(239, 68, 68, 0.2)' : 'rgba(148, 163, 184, 0.15)',
+                                    color: isActive ? '#10b981' : isExpired ? '#f87171' : '#94a3b8',
+                                    padding: '0.1rem 0.4rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700
+                                  }}>
+                                    {effStatus}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span style={{ color: '#64748b', fontWeight: 600 }}>Expires: </span>
+                                  <span style={{ color: isExpired ? '#f87171' : '#94a3b8', fontWeight: isExpired ? 600 : 400 }}>
+                                    {t.subscriptionPlan === 'LIFETIME' ? 'Never' : (t.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(t.subscriptionExpiresAt))}
+                                    {isExpired && ' (Expired)'}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </td>
 
