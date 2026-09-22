@@ -1362,35 +1362,29 @@ export default function Dashboard() {
       )}
       {/* Top Header */}
       <header className="header">
-        <div className="logo-section">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#0f172a', fontWeight: 800 }}>
-            <img src={tenantProfile?.logoUrl || "/images/hero.png"} alt="Logo" style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }} onError={(e) => { e.currentTarget.src = "/images/hero.png"; }} />
-            {tenantProfile?.companyName || "PROCash Invoice ERP"}
+        {/* Line 1: Logo, Company Name, Settings Button & Subscription Badge */}
+        <div className="header-line-1">
+          <div className="header-brand-group">
+            <img 
+              src={tenantProfile?.logoUrl || "/images/hero.png"} 
+              alt="Logo" 
+              className="header-logo"
+              onError={(e) => { e.currentTarget.src = "/images/hero.png"; }} 
+            />
+            <h1 className="header-company-name">
+              {tenantProfile?.companyName || "PROCash Invoice ERP"}
+            </h1>
             <button
+              type="button"
               onClick={() => setIsSettingsOpen(true)}
-              style={{
-                backgroundColor: '#f1f5f9',
-                border: '1px solid #cbd5e1',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: '#334155',
-                padding: '0.35rem 0.65rem',
-                borderRadius: '8px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                transition: 'all 0.15s ease',
-                marginLeft: '8px'
-              }}
+              className="header-settings-btn"
               title="Workspace Profile Settings"
             >
-              ⚙️ Settings
+              <span className="settings-icon">⚙️</span>
+              <span>Settings</span>
             </button>
-          </h1>
-          <p style={{ margin: '0.2rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>
-            {tenantProfile?.companyName ? `Invoicing & Billing Dashboard for ${tenantProfile.companyName}` : "Production-Grade Invoicing & Billing Dashboard"}
-          </p>
+          </div>
+
           {tenantProfile && (
             <div 
               className="sub-badge" 
@@ -1399,14 +1393,13 @@ export default function Dashboard() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.4rem',
-                padding: '0.35rem 0.85rem',
+                padding: '0.4rem 0.9rem',
                 borderRadius: '20px',
                 backgroundColor: tenantProfile.subscriptionStatus === 'EXPIRED' ? '#fee2e2' : '#e0e7ff',
                 border: tenantProfile.subscriptionStatus === 'EXPIRED' ? '1px solid #fca5a5' : '1px solid #c7d2fe',
-                fontSize: '0.78125rem',
+                fontSize: '0.8125rem',
                 color: tenantProfile.subscriptionStatus === 'EXPIRED' ? '#991b1b' : '#3730a3',
                 fontWeight: 700,
-                marginTop: '0.6rem',
                 cursor: 'pointer',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                 transition: 'all 0.15s ease'
@@ -1417,7 +1410,9 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        <div className="header-controls">
+
+        {/* Line 2: All Menu Navigation Tabs & API Status Pill */}
+        <div className="header-line-2">
           <div className="view-mode-tabs">
             <button 
               type="button"
@@ -1453,6 +1448,7 @@ export default function Dashboard() {
               👑 Subscription Details
             </button>
           </div>
+
           <div className="connection-pill">
             <div className="connection-dot" style={{ backgroundColor: isApiError ? '#f87171' : '#34d399', boxShadow: isApiError ? '0 0 8px #f87171' : '0 0 8px #34d399' }} />
             <span>API: {isApiError ? 'Disconnected' : 'Connected'}</span>
@@ -1465,7 +1461,7 @@ export default function Dashboard() {
         <div className="search-bar-container">
           {/* Search Query */}
           <div className="search-field-query">
-            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               Search Query
             </label>
             <input 
@@ -1476,10 +1472,10 @@ export default function Dashboard() {
               className="search-input"
               style={{
                 width: '100%',
-                backgroundColor: 'rgba(15, 23, 42, 0.55)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                color: '#fff',
+                color: '#0f172a',
                 padding: '0.65rem 1rem',
                 fontSize: '0.9rem',
                 outline: 'none',
@@ -1490,7 +1486,7 @@ export default function Dashboard() {
 
           {/* Start Date */}
           <div className="search-field-date">
-            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               Start Date
             </label>
             <input 
@@ -1499,22 +1495,22 @@ export default function Dashboard() {
               onChange={(e) => setStartDate(e.target.value)}
               style={{
                 width: '100%',
-                backgroundColor: 'rgba(15, 23, 42, 0.55)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                color: '#fff',
+                color: '#0f172a',
                 padding: '0.6rem 0.85rem',
                 fontSize: '0.9rem',
                 outline: 'none',
                 boxSizing: 'border-box',
-                colorScheme: 'dark'
+                colorScheme: 'light'
               }}
             />
           </div>
 
           {/* End Date */}
           <div className="search-field-date">
-            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               End Date
             </label>
             <input 
@@ -1523,15 +1519,15 @@ export default function Dashboard() {
               onChange={(e) => setEndDate(e.target.value)}
               style={{
                 width: '100%',
-                backgroundColor: 'rgba(15, 23, 42, 0.55)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                color: '#fff',
+                color: '#0f172a',
                 padding: '0.6rem 0.85rem',
                 fontSize: '0.9rem',
                 outline: 'none',
                 boxSizing: 'border-box',
-                colorScheme: 'dark'
+                colorScheme: 'light'
               }}
             />
           </div>
@@ -1608,26 +1604,27 @@ export default function Dashboard() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backgroundColor: '#ffffff',
             padding: '1.25rem 1.5rem',
             borderRadius: '12px',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             marginBottom: '1.5rem',
             flexWrap: 'wrap',
             gap: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '280px' }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Select Client:
               </label>
               <select
                 value={selectedLedgerClientId}
                 onChange={(e) => setSelectedLedgerClientId(e.target.value)}
                 style={{
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #cbd5e1',
                   borderRadius: '8px',
-                  color: '#fff',
+                  color: '#0f172a',
                   padding: '0.65rem 1rem',
                   fontSize: '0.95rem',
                   fontWeight: 600,
@@ -1672,7 +1669,7 @@ export default function Dashboard() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)'
                   }}
                 >
                   💳 + Record Payment / Advance
@@ -1707,9 +1704,9 @@ export default function Dashboard() {
                     URL.revokeObjectURL(url);
                   }}
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    color: '#cbd5e1',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    backgroundColor: '#f1f5f9',
+                    color: '#334155',
+                    border: '1px solid #cbd5e1',
                     padding: '0.65rem 1.25rem',
                     borderRadius: '8px',
                     fontWeight: 600,
@@ -1729,7 +1726,7 @@ export default function Dashboard() {
                 <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
                   <div className="stat-header">
                     <span>Total Billed</span>
-                    <span style={{ color: '#3b82f6' }}>Invoices</span>
+                    <span style={{ color: '#2563eb' }}>Invoices</span>
                   </div>
                   <div className="stat-value">₹{ledgerData.summary.totalInvoiced.toLocaleString('en-IN')}</div>
                   <div className="stat-footer">Gross invoices issued</div>
@@ -1738,20 +1735,20 @@ export default function Dashboard() {
                 <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
                   <div className="stat-header">
                     <span>Total Paid</span>
-                    <span style={{ color: '#10b981' }}>Collected</span>
+                    <span style={{ color: '#059669' }}>Collected</span>
                   </div>
                   <div className="stat-value">₹{ledgerData.summary.totalPaid.toLocaleString('en-IN')}</div>
                   <div className="stat-footer">Payments & Advances</div>
                 </div>
 
-                <div className="stat-card" style={{ borderLeft: ledgerData.summary.netBalanceDue > 0 ? '4px solid #ef4444' : '4px solid #34d399' }}>
+                <div className="stat-card" style={{ borderLeft: ledgerData.summary.netBalanceDue > 0 ? '4px solid #ef4444' : '4px solid #10b981' }}>
                   <div className="stat-header">
                     <span>Net Balance Due</span>
-                    <span style={{ color: ledgerData.summary.netBalanceDue > 0 ? '#ef4444' : '#34d399' }}>
+                    <span style={{ color: ledgerData.summary.netBalanceDue > 0 ? '#dc2626' : '#059669' }}>
                       {ledgerData.summary.netBalanceDue > 0 ? 'Outstanding' : 'Cleared'}
                     </span>
                   </div>
-                  <div className="stat-value" style={{ color: ledgerData.summary.netBalanceDue > 0 ? '#f87171' : '#34d399' }}>
+                  <div className="stat-value" style={{ color: ledgerData.summary.netBalanceDue > 0 ? '#dc2626' : '#059669' }}>
                     ₹{ledgerData.summary.netBalanceDue.toLocaleString('en-IN')}
                   </div>
                   <div className="stat-footer">Current net client balance</div>
@@ -1760,7 +1757,7 @@ export default function Dashboard() {
                 <div className="stat-card" style={{ borderLeft: '4px solid #a855f7' }}>
                   <div className="stat-header">
                     <span>Advance Credit</span>
-                    <span style={{ color: '#a855f7' }}>Unallocated</span>
+                    <span style={{ color: '#9333ea' }}>Unallocated</span>
                   </div>
                   <div className="stat-value">₹{ledgerData.summary.totalAdvance.toLocaleString('en-IN')}</div>
                   <div className="stat-footer">Advance deposits on account</div>
@@ -1769,43 +1766,44 @@ export default function Dashboard() {
 
               {/* Ledger Statement Table */}
               <div style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                backgroundColor: '#ffffff',
                 borderRadius: '12px',
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 padding: '1.5rem'
               }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>📜 Transaction Ledger Statement for {ledgerData.client?.name}</span>
-                  <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 400 }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 400 }}>
                     {ledgerData.entries.length} Transaction Records
                   </span>
                 </h3>
 
                 {loadingLedger ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Loading ledger entries...</div>
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading ledger entries...</div>
                 ) : ledgerData.entries.length === 0 ? (
-                  <div className="empty-state" style={{ padding: '3rem 1rem' }}>
+                  <div className="empty-state" style={{ padding: '3rem 1rem', color: '#64748b' }}>
                     No invoices or payment transactions recorded for this client yet.
                   </div>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table className="items-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
-                        <tr style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', textAlign: 'left' }}>
-                          <th style={{ padding: '0.75rem 1rem' }}>Date</th>
-                          <th style={{ padding: '0.75rem 1rem' }}>Type</th>
-                          <th style={{ padding: '0.75rem 1rem' }}>Ref / Doc #</th>
-                          <th style={{ padding: '0.75rem 1rem' }}>Details / Notes</th>
-                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Debit (+Billed)</th>
-                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Credit (-Paid)</th>
-                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Balance</th>
-                          <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>Action</th>
+                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #cbd5e1', textAlign: 'left' }}>
+                          <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>Date</th>
+                          <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>Type</th>
+                          <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>Ref / Doc #</th>
+                          <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>Details / Notes</th>
+                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Debit (+Billed)</th>
+                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Credit (-Paid)</th>
+                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Balance</th>
+                          <th style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#475569' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {ledgerData.entries.map((entry) => (
-                          <tr key={entry.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: '0.75rem 1rem', color: '#cbd5e1', fontSize: '0.85rem' }}>
+                          <tr key={entry.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '0.75rem 1rem', color: '#475569', fontSize: '0.85rem' }}>
                               {new Date(entry.date).toLocaleDateString()}
                             </td>
                             <td style={{ padding: '0.75rem 1rem' }}>
@@ -1815,32 +1813,32 @@ export default function Dashboard() {
                                 fontSize: '0.75rem',
                                 fontWeight: 700,
                                 backgroundColor: entry.type === 'INVOICE'
-                                  ? 'rgba(59, 130, 246, 0.2)'
+                                  ? '#dbeafe'
                                   : entry.type === 'ADVANCE_PAYMENT'
-                                  ? 'rgba(168, 85, 247, 0.2)'
-                                  : 'rgba(16, 185, 129, 0.2)',
+                                  ? '#f3e8ff'
+                                  : '#d1fae5',
                                 color: entry.type === 'INVOICE'
-                                  ? '#60a5fa'
+                                  ? '#1d4ed8'
                                   : entry.type === 'ADVANCE_PAYMENT'
-                                  ? '#c084fc'
-                                  : '#34d399'
+                                  ? '#7e22ce'
+                                  : '#047857'
                               }}>
                                 {entry.type === 'INVOICE' ? '🧾 FINAL INVOICE' : entry.type === 'ADVANCE_PAYMENT' ? '💳 ADVANCE' : '💵 PAYMENT'}
                               </span>
                             </td>
-                            <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}>
+                            <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
                               {entry.documentNumber || entry.referenceNo || '-'}
                             </td>
-                            <td style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontSize: '0.85rem' }}>
+                            <td style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.85rem' }}>
                               {entry.notes || (entry.paymentMode ? `Paid via ${entry.paymentMode}` : 'Invoice issued')}
                             </td>
-                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: entry.debit > 0 ? '#f87171' : '#64748b', fontWeight: entry.debit > 0 ? 600 : 400 }}>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: entry.debit > 0 ? '#dc2626' : '#94a3b8', fontWeight: entry.debit > 0 ? 600 : 400 }}>
                               {entry.debit > 0 ? `₹${entry.debit.toLocaleString('en-IN')}` : '-'}
                             </td>
-                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: entry.credit > 0 ? '#34d399' : '#64748b', fontWeight: entry.credit > 0 ? 600 : 400 }}>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: entry.credit > 0 ? '#059669' : '#94a3b8', fontWeight: entry.credit > 0 ? 600 : 400 }}>
                               {entry.credit > 0 ? `₹${entry.credit.toLocaleString('en-IN')}` : '-'}
                             </td>
-                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: entry.runningBalance > 0 ? '#f87171' : '#34d399' }}>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: entry.runningBalance > 0 ? '#dc2626' : '#059669' }}>
                               ₹{entry.runningBalance.toLocaleString('en-IN')}
                             </td>
                             <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
@@ -1855,7 +1853,7 @@ export default function Dashboard() {
                                   style={{
                                     background: 'none',
                                     border: 'none',
-                                    color: '#ef4444',
+                                    color: '#dc2626',
                                     cursor: 'pointer',
                                     fontSize: '0.8rem'
                                   }}
@@ -1876,7 +1874,7 @@ export default function Dashboard() {
           )}
 
           {!selectedLedgerClientId && (
-            <div className="empty-state" style={{ padding: '4rem 1rem', backgroundColor: 'rgba(15, 23, 42, 0.7)', borderRadius: '12px' }}>
+            <div className="empty-state" style={{ padding: '4rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#64748b', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               Please select a client from the dropdown above to view their complete financial ledger history, advance credits, and transaction timeline.
             </div>
           )}
@@ -1885,8 +1883,9 @@ export default function Dashboard() {
         <section style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
           {/* Subscription Banner / Title */}
           <div style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             borderRadius: '12px',
             padding: '1.5rem',
             display: 'flex',
@@ -1896,10 +1895,10 @@ export default function Dashboard() {
             gap: '1rem'
           }}>
             <div>
-              <h2 style={{ margin: 0, color: '#fff', fontSize: '1.35rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.35rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 👑 Workspace Subscription & Billing Details
               </h2>
-              <p style={{ margin: '0.35rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>
+              <p style={{ margin: '0.35rem 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>
                 Comprehensive overview of your active plan, expiration timeline, and workspace tier settings.
               </p>
             </div>
@@ -1916,7 +1915,7 @@ export default function Dashboard() {
                   fontWeight: 700,
                   fontSize: '0.875rem',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)'
+                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.25)'
                 }}
               >
                 ⚡ Renew / Upgrade Subscription
@@ -1925,9 +1924,9 @@ export default function Dashboard() {
                 type="button"
                 onClick={() => setIsSettingsOpen(true)}
                 style={{
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  color: '#cbd5e1',
-                  border: '1px solid rgba(255,255,255,0.15)',
+                  backgroundColor: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
                   padding: '0.65rem 1.25rem',
                   borderRadius: '8px',
                   fontWeight: 600,
@@ -1945,7 +1944,7 @@ export default function Dashboard() {
             <div className="stat-card" style={{ borderLeft: '4px solid #6366f1' }}>
               <div className="stat-header">
                 <span>Active Plan</span>
-                <span style={{ color: '#818cf8', fontWeight: 700 }}>
+                <span style={{ color: '#4f46e5', fontWeight: 700 }}>
                   {getPlanPrice(tenantProfile?.subscriptionPlan || 'FREE')}
                 </span>
               </div>
@@ -1958,11 +1957,11 @@ export default function Dashboard() {
             <div className="stat-card" style={{ borderLeft: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '4px solid #ef4444' : '4px solid #10b981' }}>
               <div className="stat-header">
                 <span>Subscription Status</span>
-                <span style={{ color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#ef4444' : '#10b981', fontWeight: 700 }}>
+                <span style={{ color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#dc2626' : '#059669', fontWeight: 700 }}>
                   {tenantProfile?.subscriptionStatus === 'EXPIRED' ? 'EXPIRED' : 'ACTIVE'}
                 </span>
               </div>
-              <div className="stat-value" style={{ fontSize: '1.35rem', color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#f87171' : '#34d399' }}>
+              <div className="stat-value" style={{ fontSize: '1.35rem', color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#dc2626' : '#059669' }}>
                 {tenantProfile?.subscriptionStatus === 'EXPIRED' ? 'Read-Only Mode' : 'Full Access'}
               </div>
               <div className="stat-footer">Current workspace state</div>
@@ -1971,7 +1970,7 @@ export default function Dashboard() {
             <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
               <div className="stat-header">
                 <span>Expiration Date</span>
-                <span style={{ color: '#f59e0b', fontWeight: 700 }}>Timeline</span>
+                <span style={{ color: '#d97706', fontWeight: 700 }}>Timeline</span>
               </div>
               <div className="stat-value" style={{ fontSize: '1.25rem' }}>
                 {tenantProfile?.subscriptionPlan === 'LIFETIME' ? 'Never (Lifetime)' : (tenantProfile?.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(tenantProfile?.subscriptionExpiresAt))}
@@ -1986,9 +1985,9 @@ export default function Dashboard() {
             <div className="stat-card" style={{ borderLeft: '4px solid #a855f7' }}>
               <div className="stat-header">
                 <span>Subdomain Workspace</span>
-                <span style={{ color: '#a855f7', fontWeight: 700 }}>Multi-Tenant</span>
+                <span style={{ color: '#7e22ce', fontWeight: 700 }}>Multi-Tenant</span>
               </div>
-              <div className="stat-value" style={{ fontSize: '1.25rem', fontFamily: 'monospace', color: '#c084fc' }}>
+              <div className="stat-value" style={{ fontSize: '1.25rem', fontFamily: 'monospace', color: '#7e22ce' }}>
                 {tenantProfile?.tenantId || 'default'}
               </div>
               <div className="stat-footer">Subdomain identifier</div>
@@ -2003,63 +2002,65 @@ export default function Dashboard() {
           }}>
             {/* Account Profile Card */}
             <div style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.7)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               borderRadius: '12px',
               padding: '1.5rem'
             }}>
-              <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>
+              <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.1rem', fontWeight: 700 }}>
                 🏢 Tenant Account Profile
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#94a3b8' }}>Company Name:</span>
-                  <strong style={{ color: '#fff' }}>{tenantProfile?.companyName || 'Not Set'}</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#64748b' }}>Company Name:</span>
+                  <strong style={{ color: '#0f172a' }}>{tenantProfile?.companyName || 'Not Set'}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#94a3b8' }}>Proprietor:</span>
-                  <span style={{ color: '#e2e8f0' }}>{tenantProfile?.proprietorName || 'Not Set'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#64748b' }}>Proprietor:</span>
+                  <span style={{ color: '#334155' }}>{tenantProfile?.proprietorName || 'Not Set'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#94a3b8' }}>GSTIN / Tax ID:</span>
-                  <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{tenantProfile?.gstin || 'None'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#64748b' }}>GSTIN / Tax ID:</span>
+                  <span style={{ color: '#334155', fontFamily: 'monospace' }}>{tenantProfile?.gstin || 'None'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#94a3b8' }}>PAN Number:</span>
-                  <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{tenantProfile?.pan || 'None'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#64748b' }}>PAN Number:</span>
+                  <span style={{ color: '#334155', fontFamily: 'monospace' }}>{tenantProfile?.pan || 'None'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#94a3b8' }}>Primary Theme:</span>
-                  <span style={{ color: '#818cf8', fontWeight: 600 }}>{tenantProfile?.theme || 'DEFAULT'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
+                  <span style={{ color: '#64748b' }}>Primary Theme:</span>
+                  <span style={{ color: '#4f46e5', fontWeight: 600 }}>{tenantProfile?.theme || 'DEFAULT'}</span>
                 </div>
               </div>
             </div>
 
             {/* Plan Entitlements Card */}
             <div style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.7)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               borderRadius: '12px',
               padding: '1.5rem'
             }}>
-              <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>
+              <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.1rem', fontWeight: 700 }}>
                 🚀 Plan Features & Entitlements
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.85rem' }}>
-                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>Unlimited Quotation & Proforma Generation</span>
+                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#334155' }}>Unlimited Quotation & Proforma Generation</span>
                 </div>
-                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>Final Invoices & Advance Payment Tracking</span>
+                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#334155' }}>Final Invoices & Advance Payment Tracking</span>
                 </div>
-                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>Client Ledger Statements & Transaction History</span>
+                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#334155' }}>Client Ledger Statements & Transaction History</span>
                 </div>
-                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>Instant Excel Report & CSV Data Exports</span>
+                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#334155' }}>Instant Excel Report & CSV Data Exports</span>
                 </div>
-                <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#e2e8f0' }}>WhatsApp & Email One-Click Invoice Sharing</span>
+                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>✓</span> <span style={{ color: '#334155' }}>WhatsApp & Email One-Click Invoice Sharing</span>
                 </div>
               </div>
             </div>
@@ -2067,12 +2068,13 @@ export default function Dashboard() {
 
           {/* Change Subscription Plan Options */}
           <div style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             borderRadius: '12px',
             padding: '1.5rem'
           }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               💳 Select or Change Subscription Plan
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
@@ -2087,8 +2089,8 @@ export default function Dashboard() {
                   <div
                     key={plan.id}
                     style={{
-                      backgroundColor: isCurrent ? 'rgba(99, 102, 241, 0.15)' : '#0f172a',
-                      border: isCurrent ? '2px solid #6366f1' : '1px solid #334155',
+                      backgroundColor: isCurrent ? '#f4f4ff' : '#f8fafc',
+                      border: isCurrent ? '2px solid #4f46e5' : '1px solid #e2e8f0',
                       borderRadius: '10px',
                       padding: '1.25rem',
                       display: 'flex',
@@ -2102,7 +2104,7 @@ export default function Dashboard() {
                         position: 'absolute',
                         top: '-10px',
                         right: '12px',
-                        backgroundColor: '#6366f1',
+                        backgroundColor: '#4f46e5',
                         color: '#fff',
                         fontSize: '0.65rem',
                         fontWeight: 800,
@@ -2114,10 +2116,10 @@ export default function Dashboard() {
                       </span>
                     )}
                     <div>
-                      <span style={{ color: '#818cf8', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{plan.badge}</span>
-                      <div style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 800, marginTop: '0.2rem' }}>{plan.name}</div>
-                      <div style={{ color: '#34d399', fontSize: '1.35rem', fontWeight: 900, fontFamily: 'monospace', margin: '0.35rem 0' }}>{plan.price}</div>
-                      <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{plan.period}</div>
+                      <span style={{ color: '#4f46e5', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{plan.badge}</span>
+                      <div style={{ color: '#0f172a', fontSize: '1.1rem', fontWeight: 800, marginTop: '0.2rem' }}>{plan.name}</div>
+                      <div style={{ color: '#059669', fontSize: '1.35rem', fontWeight: 900, fontFamily: 'monospace', margin: '0.35rem 0' }}>{plan.price}</div>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{plan.period}</div>
                     </div>
                     <button
                       type="button"
@@ -2126,7 +2128,7 @@ export default function Dashboard() {
                         setIsRenewalOpen(true);
                       }}
                       style={{
-                        backgroundColor: isCurrent ? '#10b981' : '#6366f1',
+                        backgroundColor: isCurrent ? '#059669' : '#4f46e5',
                         color: '#fff',
                         border: 'none',
                         padding: '0.55rem',
@@ -3550,12 +3552,12 @@ export default function Dashboard() {
 
               {renewalStatus && (
                 <div style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #cbd5e1',
                   borderRadius: '8px',
                   padding: '0.75rem',
                   fontSize: '0.8rem',
-                  color: '#e2e8f0',
+                  color: '#0f172a',
                   lineHeight: 1.4
                 }}>
                   {renewalStatus}
