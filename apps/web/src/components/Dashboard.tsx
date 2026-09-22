@@ -439,16 +439,6 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
-  // Theme Mode (Light / Dark) State
-  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('theme_mode') as 'light' | 'dark') || 'light';
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-mode', themeMode);
-    localStorage.setItem('theme_mode', themeMode);
-  }, [themeMode]);
-
   // Daily Mode, History, Ledger & Subscription States
   const [viewMode, setViewMode] = useState<'daily' | 'history' | 'ledger' | 'subscription'>('daily');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1434,27 +1424,6 @@ export default function Dashboard() {
               👑 Subscription Details
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setThemeMode(prev => prev === 'light' ? 'dark' : 'light')}
-            style={{
-              backgroundColor: themeMode === 'light' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)',
-              border: themeMode === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
-              color: themeMode === 'light' ? '#0f172a' : '#fff',
-              padding: '0.45rem 0.85rem',
-              borderRadius: '20px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              transition: 'all 0.2s ease'
-            }}
-            title="Toggle Base Theme (Light / Dark Mode)"
-          >
-            {themeMode === 'light' ? '☀️ Light Mode' : '🌙 Dark Mode'}
-          </button>
           <div className="connection-pill">
             <div className="connection-dot" style={{ backgroundColor: isApiError ? '#f87171' : '#34d399', boxShadow: isApiError ? '0 0 8px #f87171' : '0 0 8px #34d399' }} />
             <span>API: {isApiError ? 'Disconnected' : 'Connected'}</span>
