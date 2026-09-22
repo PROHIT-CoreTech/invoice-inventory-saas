@@ -1797,7 +1797,6 @@ export default function Dashboard() {
                           <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Debit (+Billed)</th>
                           <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Credit (-Paid)</th>
                           <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Balance</th>
-                          <th style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#475569' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1840,28 +1839,6 @@ export default function Dashboard() {
                             </td>
                             <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: entry.runningBalance > 0 ? '#dc2626' : '#059669' }}>
                               ₹{entry.runningBalance.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                              {entry.type !== 'INVOICE' && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (window.confirm('Are you sure you want to delete this payment record?')) {
-                                      await deletePaymentMutation.mutateAsync({ paymentId: entry.id, clientId: selectedLedgerClientId });
-                                    }
-                                  }}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#dc2626',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8rem'
-                                  }}
-                                  title="Delete Payment Record"
-                                >
-                                  🗑️ Delete
-                                </button>
-                              )}
                             </td>
                           </tr>
                         ))}
