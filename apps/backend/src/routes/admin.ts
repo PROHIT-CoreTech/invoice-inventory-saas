@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '@procash-invoices/database/server';
+import { ensureDefaultPlansSeeded, evaluatePlanPricing } from './subscriptionPlans';
 
 const router = Router();
 
@@ -321,10 +322,158 @@ router.post('/reject-payment/:paymentId', async (req: Request, res: Response, ne
       return;
     }
 
-    payment.verificationStatus = 'REJECTED';
-    await payment.save();
-
     res.json({ success: true, message: 'Payment rejected successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET: Fetch all subscription plan configurations for admin
+router.get('/subscription-plans', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { password } = req.query;
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    if (password !== expectedPassword) {
+      res.status(401).json({ message: 'Invalid Admin Password.' });
+      return;
+    }
+
+    await ensureDefaultPlansSeeded();
+    const plans = await prisma.subscriptionPlanConfig.findMany({
+      orderBy: { regularPrice: 'asc' }
+    });
+
+    const evaluated = plans.map(evaluatePlanPricing);
+    res.json(evaluated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT: Update a subscription plan configuration (regular price, offer price, offer dates, future price)
+router.put('/subscription-plans/:planId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { planId } = req.params;
+    const {
+      password,
+      name,
+      description,
+      regularPrice,
+      offerPrice,
+      offerBadge,
+      offerStartDate,
+      offerEndDate,
+      futurePrice,
+      futurePriceEffectiveDate,
+      isActive,
+      billingCycleMonths
+    } = req.body;
+
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    if (password !== expectedPassword) {
+      res.status(401).json({ message: 'Invalid Admin Password.' });
+      return;
+    }
+
+    if (regularPrice === undefined || regularPrice === null || regularPrice < 0) {
+      res.status(400).json({ message: 'Regular price must be a non-negative number.' });
+      return;
+    }
+
+    const updated = await prisma.subscriptionPlanConfig.upsert({
+      where: { planId },
+      update: {
+        name: name || undefined,
+        description: description !== undefined ? description : undefined,
+        regularPrice: Number(regularPrice),
+        offerPrice: offerPrice !== null && offerPrice !== undefined && offerPrice !== '' ? Number(offerPrice) : null,
+        offerBadge: offerBadge ? String(offerBadge).trim() : null,
+        offerStartDate: offerStartDate ? new Date(offerStartDate) : null,
+        offerEndDate: offerEndDate ? new Date(offerEndDate) : null,
+        futurePrice: futurePrice !== null && futurePrice !== undefined && futurePrice !== '' ? Number(futurePrice) : null,
+        futurePriceEffectiveDate: futurePriceEffectiveDate ? new Date(futurePriceEffectiveDate) : null,
+        isActive: isActive !== undefined ? Boolean(isActive) : true,
+        billingCycleMonths: billingCycleMonths !== undefined && billingCycleMonths !== null ? Number(billingCycleMonths) : null
+      },
+      create: {
+        planId,
+        name: name || planId,
+        description: description || '',
+        regularPrice: Number(regularPrice),
+        offerPrice: offerPrice !== null && offerPrice !== undefined && offerPrice !== '' ? Number(offerPrice) : null,
+        offerBadge: offerBadge ? String(offerBadge).trim() : null,
+        offerStartDate: offerStartDate ? new Date(offerStartDate) : null,
+        offerEndDate: offerEndDate ? new Date(offerEndDate) : null,
+        futurePrice: futurePrice !== null && futurePrice !== undefined && futurePrice !== '' ? Number(futurePrice) : null,
+        futurePriceEffectiveDate: futurePriceEffectiveDate ? new Date(futurePriceEffectiveDate) : null,
+        isActive: isActive !== undefined ? Boolean(isActive) : true,
+        billingCycleMonths: billingCycleMonths !== undefined && billingCycleMonths !== null ? Number(billingCycleMonths) : null
+      }
+    });
+
+    const evaluated = evaluatePlanPricing(updated);
+    res.json(evaluated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST: Instantly apply scheduled future price as regular price
+router.post('/subscription-plans/:planId/apply-future', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { planId } = req.params;
+    const { password } = req.body;
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    if (password !== expectedPassword) {
+      res.status(401).json({ message: 'Invalid Admin Password.' });
+      return;
+    }
+
+    const plan = await prisma.subscriptionPlanConfig.findUnique({ where: { planId } });
+    if (!plan || plan.futurePrice === null || plan.futurePrice === undefined) {
+      res.status(400).json({ message: 'No scheduled future price found for this plan.' });
+      return;
+    }
+
+    const updated = await prisma.subscriptionPlanConfig.update({
+      where: { planId },
+      data: {
+        regularPrice: plan.futurePrice,
+        futurePrice: null,
+        futurePriceEffectiveDate: null
+      }
+    });
+
+    const evaluated = evaluatePlanPricing(updated);
+    res.json(evaluated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE: Clear promotional offer for a plan
+router.delete('/subscription-plans/:planId/offer', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { planId } = req.params;
+    const { password } = req.body;
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    if (password !== expectedPassword) {
+      res.status(401).json({ message: 'Invalid Admin Password.' });
+      return;
+    }
+
+    const updated = await prisma.subscriptionPlanConfig.update({
+      where: { planId },
+      data: {
+        offerPrice: null,
+        offerBadge: null,
+        offerStartDate: null,
+        offerEndDate: null
+      }
+    });
+
+    const evaluated = evaluatePlanPricing(updated);
+    res.json(evaluated);
   } catch (error) {
     next(error);
   }

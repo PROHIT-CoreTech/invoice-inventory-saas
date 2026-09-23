@@ -1,12 +1,14 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { tenantMiddleware } from '../middleware/tenantMiddleware';
+import { prisma } from '@procash-invoices/database/server';
+import { evaluatePlanPricing } from './subscriptionPlans';
 
 const router = Router();
 
 // Apply tenantMiddleware to ensure all requests contain X-Tenant-Id header and have req.db set
 router.use(tenantMiddleware);
 
-// Map of plan details: ID -> price, duration (months)
+// Map of plan details fallback: ID -> price, duration (months)
 const PLANS: Record<string, { price: number; months: number | null; label: string }> = {
   'TRIAL': { price: 0, months: null, label: '10-Day Free Trial' },
   '1_MONTH': { price: 999, months: 1, label: 'Monthly Starter' },
@@ -14,6 +16,23 @@ const PLANS: Record<string, { price: number; months: number | null; label: strin
   '1_YEAR': { price: 9999, months: 12, label: 'Annual Enterprise' },
   'LIFETIME': { price: 20000, months: null, label: 'Lifetime Unlimited' }
 };
+
+async function getDynamicPlan(planId: string) {
+  try {
+    const config = await prisma.subscriptionPlanConfig.findUnique({ where: { planId } });
+    if (config) {
+      const evaluated = evaluatePlanPricing(config);
+      return {
+        price: evaluated.effectivePrice,
+        months: evaluated.billingCycleMonths,
+        label: evaluated.name
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load dynamic plan config:', e);
+  }
+  return PLANS[planId] || null;
+}
 
 // POST: Start 10-day free trial directly without payment gateway
 router.post('/start-trial', async (req: Request, res: Response, next: NextFunction) => {
@@ -66,7 +85,7 @@ router.post('/simulate-success', async (req: Request, res: Response, next: NextF
     const { planId } = req.body;
     const tenantId = req.tenantId!;
 
-    const plan = PLANS[planId];
+    const plan = await getDynamicPlan(planId);
     if (!plan) {
       res.status(400).json({ message: 'Invalid subscription plan selected.' });
       return;
@@ -123,7 +142,7 @@ router.post('/create-order', async (req: Request, res: Response, next: NextFunct
     const { planId, customerName, customerEmail, customerPhone } = req.body;
     const tenantId = req.tenantId!;
 
-    const plan = PLANS[planId];
+    const plan = await getDynamicPlan(planId);
     if (!plan) {
       res.status(400).json({ message: 'Invalid subscription plan selected.' });
       return;
@@ -203,7 +222,7 @@ router.post('/verify-payment', async (req: Request, res: Response, next: NextFun
     const { orderId, planId } = req.body;
     const tenantId = req.tenantId!;
 
-    const plan = PLANS[planId];
+    const plan = await getDynamicPlan(planId);
     if (!plan) {
       res.status(400).json({ message: 'Invalid subscription plan.' });
       return;

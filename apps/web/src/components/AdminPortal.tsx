@@ -25,6 +25,26 @@ interface Tenant {
   updatedAt: string;
 }
 
+interface SubscriptionPlanConfig {
+  id: string;
+  planId: string;
+  name: string;
+  description?: string;
+  regularPrice: number;
+  offerPrice?: number | null;
+  offerBadge?: string | null;
+  offerStartDate?: string | null;
+  offerEndDate?: string | null;
+  futurePrice?: number | null;
+  futurePriceEffectiveDate?: string | null;
+  isActive: boolean;
+  billingCycleMonths?: number | null;
+  effectivePrice?: number;
+  isOfferActive?: boolean;
+  savingsAmount?: number;
+  savingsPercentage?: number;
+}
+
 interface AdminPortalProps {
   onClose: () => void;
 }
@@ -37,10 +57,28 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Active Tab & Pending Payments states
-  const [activeTab, setActiveTab] = useState<'WORKSPACES' | 'PENDING_PAYMENTS'>('WORKSPACES');
+  // Active Tab & Section states
+  const [activeTab, setActiveTab] = useState<'WORKSPACES' | 'PENDING_PAYMENTS' | 'PRICING'>('WORKSPACES');
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlanConfig[]>([]);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  // Plan Pricing Management States
+  const [editingPlan, setEditingPlan] = useState<SubscriptionPlanConfig | null>(null);
+  const [planFormData, setPlanFormData] = useState({
+    name: '',
+    description: '',
+    regularPrice: '',
+    offerPrice: '',
+    offerBadge: '',
+    offerStartDate: '',
+    offerEndDate: '',
+    futurePrice: '',
+    futurePriceEffectiveDate: ''
+  });
+  const [planSaveLoading, setPlanSaveLoading] = useState(false);
+  const [planSaveError, setPlanSaveError] = useState('');
+  const [planSaveSuccess, setPlanSaveSuccess] = useState('');
 
   // Manual Workspace Creation States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -175,6 +213,141 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       }
     } catch (e) {
       console.error('Failed to fetch pending payments:', e);
+    }
+
+    // 3. Fetch Subscription Plan Configs & Pricing Offers
+    const plansUrl = `${baseUrl}/admin/subscription-plans?password=${encodeURIComponent(adminPassword)}`;
+    try {
+      const plansRes = await fetch(plansUrl);
+      if (plansRes.ok) {
+        const plansData = await plansRes.json();
+        setSubscriptionPlans(plansData);
+      }
+    } catch (e) {
+      console.error('Failed to fetch subscription plans:', e);
+    }
+  };
+
+  const handleOpenEditPlan = (plan: SubscriptionPlanConfig) => {
+    setEditingPlan(plan);
+    setPlanSaveError('');
+    setPlanSaveSuccess('');
+    
+    // Format dates for input type="datetime-local" or "date"
+    const formatDateInput = (isoStr: string | null | undefined) => {
+      if (!isoStr) return '';
+      try {
+        const d = new Date(isoStr);
+        return d.toISOString().slice(0, 10);
+      } catch {
+        return '';
+      }
+    };
+
+    setPlanFormData({
+      name: plan.name || '',
+      description: plan.description || '',
+      regularPrice: plan.regularPrice !== undefined ? String(plan.regularPrice) : '',
+      offerPrice: plan.offerPrice !== null && plan.offerPrice !== undefined ? String(plan.offerPrice) : '',
+      offerBadge: plan.offerBadge || '',
+      offerStartDate: formatDateInput(plan.offerStartDate),
+      offerEndDate: formatDateInput(plan.offerEndDate),
+      futurePrice: plan.futurePrice !== null && plan.futurePrice !== undefined ? String(plan.futurePrice) : '',
+      futurePriceEffectiveDate: formatDateInput(plan.futurePriceEffectiveDate)
+    });
+  };
+
+  const handleSavePlanSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlan) return;
+    setPlanSaveLoading(true);
+    setPlanSaveError('');
+    setPlanSaveSuccess('');
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const res = await fetch(`${baseUrl}/admin/subscription-plans/${editingPlan.planId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password,
+          ...planFormData,
+          regularPrice: parseFloat(planFormData.regularPrice),
+          offerPrice: planFormData.offerPrice ? parseFloat(planFormData.offerPrice) : null,
+          futurePrice: planFormData.futurePrice ? parseFloat(planFormData.futurePrice) : null
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to update plan configuration.');
+      }
+
+      const updatedPlan = await res.json();
+      setSubscriptionPlans(prev => prev.map(p => p.planId === updatedPlan.planId ? updatedPlan : p));
+      setPlanSaveSuccess('🎉 Subscription plan pricing & offer updated successfully!');
+
+      setTimeout(() => {
+        setEditingPlan(null);
+        setPlanSaveSuccess('');
+      }, 1500);
+
+    } catch (err: any) {
+      setPlanSaveError(err.message || 'An error occurred while saving plan.');
+    } finally {
+      setPlanSaveLoading(false);
+    }
+  };
+
+  const handleApplyFuturePrice = async (planId: string) => {
+    if (!confirm('Are you sure you want to apply the scheduled future price as the regular price immediately?')) return;
+    setActionLoadingId(planId);
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const res = await fetch(`${baseUrl}/admin/subscription-plans/${planId}/apply-future`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to apply future price.');
+      }
+
+      const updated = await res.json();
+      setSubscriptionPlans(prev => prev.map(p => p.planId === updated.planId ? updated : p));
+      alert('Future price promoted to Regular Price successfully!');
+    } catch (err: any) {
+      alert(err.message || 'An error occurred.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleClearOffer = async (planId: string) => {
+    if (!confirm('Are you sure you want to clear the active offer for this plan?')) return;
+    setActionLoadingId(planId);
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const res = await fetch(`${baseUrl}/admin/subscription-plans/${planId}/offer`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to clear offer.');
+      }
+
+      const updated = await res.json();
+      setSubscriptionPlans(prev => prev.map(p => p.planId === updated.planId ? updated : p));
+      alert('Promotional offer cleared successfully.');
+    } catch (err: any) {
+      alert(err.message || 'An error occurred.');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -551,6 +724,18 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
         >
           ⏳ Pending UTR Verification ({pendingPayments.length})
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('PRICING')}
+          className={`admin-tab-btn ${activeTab === 'PRICING' ? 'active' : ''}`}
+          style={{
+            backgroundColor: activeTab === 'PRICING' ? '#4f46e5' : undefined,
+            color: activeTab === 'PRICING' ? '#ffffff' : undefined,
+            fontWeight: 700
+          }}
+        >
+          🏷️ Subscription Pricing & Offers ({subscriptionPlans.length})
+        </button>
       </div>
 
       {activeTab === 'WORKSPACES' ? (
@@ -816,7 +1001,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
             </table>
           </div>
         </>
-      ) : (
+      ) : activeTab === 'PENDING_PAYMENTS' ? (
         /* Pending Payments Table */
         <div style={{
           backgroundColor: '#ffffff',
@@ -909,6 +1094,444 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
               )}
             </tbody>
           </table>
+        </div>
+      ) : (
+        /* PRICING & OFFERS SECTION */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Header Bar */}
+          <div style={{
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            padding: '1.25rem 1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+          }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
+                🏷️ Subscription Charges & Promotional Offers Management
+              </h3>
+              <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+                Set current promotional prices, offer discount badges, or schedule upcoming future price updates with effective dates.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <span style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '0.4rem 0.75rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                🔥 Active Offers: {subscriptionPlans.filter(p => p.isOfferActive).length}
+              </span>
+              <span style={{ backgroundColor: '#fefce8', border: '1px solid #fef08a', color: '#854d0e', padding: '0.4rem 0.75rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                🗓️ Scheduled Changes: {subscriptionPlans.filter(p => p.futurePrice !== null && p.futurePrice !== undefined).length}
+              </span>
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))',
+            gap: '1.5rem'
+          }}>
+            {subscriptionPlans.map((plan) => {
+              const isOfferActive = plan.isOfferActive;
+              const hasFuturePrice = plan.futurePrice !== null && plan.futurePrice !== undefined;
+              return (
+                <div key={plan.id || plan.planId} style={{
+                  backgroundColor: '#ffffff',
+                  border: isOfferActive ? '2px solid #10b981' : hasFuturePrice ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+                  position: 'relative'
+                }}>
+                  <div>
+                    {/* Top Badges */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <span style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        padding: '0.2rem 0.6rem',
+                        borderRadius: '4px',
+                        backgroundColor: isOfferActive ? '#d1fae5' : '#f1f5f9',
+                        color: isOfferActive ? '#065f46' : '#475569',
+                        border: isOfferActive ? '1px solid #a7f3d0' : '1px solid #cbd5e1'
+                      }}>
+                        {isOfferActive ? '🔥 PROMO OFFER ACTIVE' : '⚡ STANDARD PRICING'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, fontFamily: 'monospace' }}>
+                        ID: {plan.planId}
+                      </span>
+                    </div>
+
+                    {/* Title & Description */}
+                    <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                      {plan.name}
+                    </h4>
+                    <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.825rem', minHeight: '36px' }}>
+                      {plan.description || 'No description provided.'}
+                    </p>
+
+                    {/* Price Section */}
+                    <div style={{
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #f1f5f9',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      marginBottom: '1rem'
+                    }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>
+                        Current Effective Price
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+                        {isOfferActive && (
+                          <span style={{ fontSize: '1.1rem', textDecoration: 'line-through', color: '#94a3b8', fontWeight: 600 }}>
+                            ₹{plan.regularPrice.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '1.85rem', fontWeight: 900, color: isOfferActive ? '#059669' : '#4f46e5' }}>
+                          ₹{(plan.effectivePrice ?? plan.regularPrice).toLocaleString('en-IN')}
+                        </span>
+                        {plan.billingCycleMonths && (
+                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            / {plan.billingCycleMonths} {plan.billingCycleMonths === 1 ? 'month' : 'months'}
+                          </span>
+                        )}
+                        {!plan.billingCycleMonths && (
+                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            {plan.planId === 'LIFETIME' ? 'one-time lifetime' : 'free trial'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Offer Discount Badge & Tags */}
+                      {isOfferActive && (
+                        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span style={{ backgroundColor: '#10b981', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                              SAVE {plan.savingsPercentage}% (₹{plan.savingsAmount?.toLocaleString('en-IN')})
+                            </span>
+                            {plan.offerBadge && (
+                              <span style={{ backgroundColor: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                                🏷️ {plan.offerBadge}
+                              </span>
+                            )}
+                          </div>
+                          {(plan.offerStartDate || plan.offerEndDate) && (
+                            <div style={{ fontSize: '0.725rem', color: '#047857', fontWeight: 600, marginTop: '0.15rem' }}>
+                              📅 Validity: {plan.offerStartDate ? formatDate(plan.offerStartDate) : 'Now'} to {plan.offerEndDate ? formatDate(plan.offerEndDate) : 'Ongoing'}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Scheduled Future Price Banner */}
+                    {hasFuturePrice && (
+                      <div style={{
+                        backgroundColor: '#fffbeb',
+                        border: '1px solid #fcd34d',
+                        borderRadius: '8px',
+                        padding: '0.75rem 1rem',
+                        marginBottom: '1rem',
+                        textAlign: 'left'
+                      }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span>🗓️ Scheduled Future Price Update</span>
+                        </div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#92400e', marginTop: '0.2rem' }}>
+                          Future Price: ₹{plan.futurePrice?.toLocaleString('en-IN')}
+                        </div>
+                        <div style={{ fontSize: '0.725rem', color: '#78350f', marginTop: '0.15rem' }}>
+                          Takes effect on: {plan.futurePriceEffectiveDate ? formatDate(plan.futurePriceEffectiveDate) : 'Immediate next cycle'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditPlan(plan)}
+                      style={{
+                        backgroundColor: '#4f46e5',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '0.6rem 1rem',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem',
+                        boxShadow: '0 2px 6px rgba(79, 70, 229, 0.2)'
+                      }}
+                    >
+                      ✏️ Edit Pricing & Offer
+                    </button>
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {hasFuturePrice && (
+                        <button
+                          type="button"
+                          disabled={actionLoadingId === plan.planId}
+                          onClick={() => handleApplyFuturePrice(plan.planId)}
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#fef3c7',
+                            border: '1px solid #fde68a',
+                            color: '#92400e',
+                            padding: '0.45rem',
+                            borderRadius: '6px',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🚀 Apply Future Price Now
+                        </button>
+                      )}
+
+                      {isOfferActive && (
+                        <button
+                          type="button"
+                          disabled={actionLoadingId === plan.planId}
+                          onClick={() => handleClearOffer(plan.planId)}
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#fef2f2',
+                            border: '1px solid #fecaca',
+                            color: '#991b1b',
+                            padding: '0.45rem',
+                            borderRadius: '6px',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ❌ Clear Offer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Manage Subscription Plan Pricing & Offers Modal */}
+      {editingPlan && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: '650px', padding: '1.75rem', overflowY: 'auto', backgroundColor: '#ffffff', color: '#0f172a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#0f172a', fontWeight: 800 }}>
+                  🏷️ Configure Plan Pricing & Offers
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#4f46e5', fontWeight: 700, display: 'block', marginTop: '0.15rem' }}>
+                  Plan ID: {editingPlan.planId} ({editingPlan.name})
+                </span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setEditingPlan(null)}
+                style={{ backgroundColor: 'transparent', border: 'none', color: '#64748b', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {planSaveError && (
+              <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                ⚠️ {planSaveError}
+              </div>
+            )}
+
+            {planSaveSuccess && (
+              <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                {planSaveSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleSavePlanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Part 1: Plan Basic Info */}
+              <div style={{ textAlign: 'left' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                  1. Plan Info & Regular Base Price
+                </h4>
+                <div className="grid-col-2">
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Plan Display Name *</label>
+                    <input 
+                      type="text"
+                      required
+                      value={planFormData.name}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, name: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Regular Base Price (₹) *</label>
+                    <input 
+                      type="number"
+                      required
+                      min="0"
+                      step="1"
+                      placeholder="e.g. 999"
+                      value={planFormData.regularPrice}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, regularPrice: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', fontWeight: 700, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '0.85rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Plan Short Description</label>
+                  <input 
+                    type="text"
+                    placeholder="Short description snippet..."
+                    value={planFormData.description}
+                    onChange={(e) => setPlanFormData(prev => ({ ...prev, description: e.target.value }))}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              {/* Part 2: Promotional Offer Setup */}
+              <div style={{ textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#059669', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span>🔥 2. Set Promotional Offer Price</span>
+                </h4>
+                
+                <div className="grid-col-2">
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Offer Price (₹)</label>
+                    <input 
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Leave blank for no offer"
+                      value={planFormData.offerPrice}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, offerPrice: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', fontWeight: 700, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Offer Badge / Tagline</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. 20% OFF, FESTIVE SPECIAL"
+                      value={planFormData.offerBadge}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, offerBadge: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid-col-2" style={{ marginTop: '0.85rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Offer Start Date (Optional)</label>
+                    <input 
+                      type="date"
+                      value={planFormData.offerStartDate}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, offerStartDate: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Offer Expiration Date (Optional)</label>
+                    <input 
+                      type="date"
+                      value={planFormData.offerEndDate}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, offerEndDate: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Part 3: Scheduled Future Price Change */}
+              <div style={{ textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#d97706', fontSize: '0.85rem', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span>🗓️ 3. Schedule Future Price Change</span>
+                </h4>
+                
+                <div className="grid-col-2">
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Scheduled Future Price (₹)</label>
+                    <input 
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Future scheduled price..."
+                      value={planFormData.futurePrice}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, futurePrice: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', fontWeight: 700, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Effective Start Date</label>
+                    <input 
+                      type="date"
+                      value={planFormData.futurePriceEffectiveDate}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, futurePriceEffectiveDate: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.25rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setEditingPlan(null)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: '1px solid #cbd5e1',
+                    color: '#64748b',
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={planSaveLoading}
+                  style={{
+                    backgroundColor: '#4f46e5',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '0.65rem 1.5rem',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    cursor: planSaveLoading ? 'not-allowed' : 'pointer',
+                    opacity: planSaveLoading ? 0.7 : 1,
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+                  }}
+                >
+                  {planSaveLoading ? 'Saving Settings...' : 'Save Plan Settings'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

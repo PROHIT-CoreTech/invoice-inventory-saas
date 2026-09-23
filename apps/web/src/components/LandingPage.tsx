@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface LandingPageProps {
   onOpenAdmin: () => void;
@@ -7,6 +7,33 @@ interface LandingPageProps {
 export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
   const [tenantName, setTenantName] = useState('');
   const [error, setError] = useState('');
+
+  const [dynamicPlans, setDynamicPlans] = useState<Record<string, any>>({
+    '1_MONTH': { planId: '1_MONTH', name: '1 Month Plan', regularPrice: 999, effectivePrice: 999 },
+    '6_MONTHS': { planId: '6_MONTHS', name: '6 Months Plan', regularPrice: 4999, effectivePrice: 4999 },
+    '1_YEAR': { planId: '1_YEAR', name: '1 Year Plan', regularPrice: 9999, effectivePrice: 9999 },
+    'LIFETIME': { planId: 'LIFETIME', name: 'Lifetime Plan', regularPrice: 20000, effectivePrice: 20000 }
+  });
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+        const res = await fetch(`${baseUrl}/subscription-plans`);
+        if (res.ok) {
+          const plansList = await res.json();
+          const plansMap: Record<string, any> = {};
+          plansList.forEach((p: any) => {
+            plansMap[p.planId] = p;
+          });
+          setDynamicPlans(prev => ({ ...prev, ...plansMap }));
+        }
+      } catch (e) {
+        console.error('Failed to load dynamic pricing plans:', e);
+      }
+    };
+    fetchPlans();
+  }, []);
 
   const getSuffix = () => {
     if (typeof window === 'undefined') return '.biling.prohitcoretech.com';
@@ -847,164 +874,234 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           alignItems: 'stretch'
         }}>
           {/* Plan 1: Monthly Starter */}
-          <div className="pricing-card" style={{
-            ...cardStyle,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            height: '100%',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
-            boxSizing: 'border-box'
-          }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>1 Month Plan</span>
-                <span style={{ fontSize: '0.7rem', color: '#94a3b8', backgroundColor: 'rgba(255,255,255,0.06)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 600 }}>Standard</span>
+          {(() => {
+            const plan = dynamicPlans['1_MONTH'] || { regularPrice: 999, effectivePrice: 999 };
+            const isOffer = plan.isOfferActive;
+            const price = plan.effectivePrice ?? plan.regularPrice;
+            return (
+              <div className="pricing-card" style={{
+                ...cardStyle,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                height: '100%',
+                border: isOffer ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.05)',
+                boxSizing: 'border-box',
+                position: 'relative'
+              }}>
+                {isOffer && (
+                  <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: '#10b981', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    🔥 {plan.offerBadge || `${plan.savingsPercentage}% OFF`}
+                  </div>
+                )}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>1 Month Plan</span>
+                    <span style={{ fontSize: '0.7rem', color: isOffer ? '#34d399' : '#94a3b8', backgroundColor: isOffer ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.06)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 600 }}>
+                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Standard'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '2.25rem', fontWeight: 900, color: isOffer ? '#34d399' : '#fff' }}>₹{price.toLocaleString('en-IN')}</span>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ month</span>
+                    </div>
+                    {isOffer && (
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
+                        Regular Price: ₹{plan.regularPrice.toLocaleString('en-IN')}
+                      </div>
+                    )}
+                  </div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                    <li>✓ Full Quotation & Billing Engine</li>
+                    <li>✓ Auto CGST / SGST Splitting</li>
+                    <li>✓ Custom Branding & Signature</li>
+                    <li>✓ Subdomain Isolation</li>
+                    <li>✓ PDF Export & Print Templates</li>
+                  </ul>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => handleOpenCheckout('1_MONTH', plan.name || '1 Month Plan', price)}
+                  style={pricingBtnStyle}
+                >
+                  Subscribe Starter
+                </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', marginBottom: '1.5rem' }}>
-                <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>₹999</span>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ month</span>
-              </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
-                <li>✓ Full Quotation & Billing Engine</li>
-                <li>✓ Auto CGST / SGST Splitting</li>
-                <li>✓ Custom Branding & Signature</li>
-                <li>✓ Subdomain Isolation</li>
-                <li>✓ PDF Export & Print Templates</li>
-              </ul>
-            </div>
-            <button 
-              type="button"
-              onClick={() => handleOpenCheckout('1_MONTH', '1 Month Plan', 999)}
-              style={pricingBtnStyle}
-            >
-              Subscribe Starter
-            </button>
-          </div>
+            );
+          })()}
 
           {/* Plan 2: Bi-Annual Pro */}
-          <div className="pricing-card" style={{
-            ...cardStyle,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            height: '100%',
-            border: '1px solid rgba(99, 102, 241, 0.3)',
-            position: 'relative',
-            backgroundColor: 'rgba(21, 28, 47, 0.6)',
-            boxSizing: 'border-box'
-          }}>
-            <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: '#6366f1', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Popular
-            </div>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>6 Months Plan</span>
-                <span style={{ fontSize: '0.7rem', color: '#818cf8', backgroundColor: 'rgba(99, 102, 241, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>Save ~10%</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem' }}>
-                  <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>₹4,999</span>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ 6 months</span>
+          {(() => {
+            const plan = dynamicPlans['6_MONTHS'] || { regularPrice: 4999, effectivePrice: 4999 };
+            const isOffer = plan.isOfferActive;
+            const price = plan.effectivePrice ?? plan.regularPrice;
+            return (
+              <div className="pricing-card" style={{
+                ...cardStyle,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                height: '100%',
+                border: isOffer ? '1px solid #10b981' : '1px solid rgba(99, 102, 241, 0.3)',
+                position: 'relative',
+                backgroundColor: 'rgba(21, 28, 47, 0.6)',
+                boxSizing: 'border-box'
+              }}>
+                <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: isOffer ? '#10b981' : '#6366f1', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {isOffer ? `🔥 ${plan.offerBadge || 'OFFER'}` : 'Popular'}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
-                  Original Price: ₹5,599
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>6 Months Plan</span>
+                    <span style={{ fontSize: '0.7rem', color: '#818cf8', backgroundColor: 'rgba(99, 102, 241, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>
+                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Save ~10%'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '2.25rem', fontWeight: 900, color: isOffer ? '#34d399' : '#fff' }}>₹{price.toLocaleString('en-IN')}</span>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ 6 months</span>
+                    </div>
+                    {isOffer && (
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
+                        Regular Price: ₹{plan.regularPrice.toLocaleString('en-IN')}
+                      </div>
+                    )}
+                  </div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                    <li>✓ <strong>All Starter features included</strong></li>
+                    <li>✓ Priority Database Syncing</li>
+                    <li>✓ Multi-device Workspace Session</li>
+                    <li>✓ Premium Document Layouts</li>
+                    <li>✓ Dedicated Developer Support</li>
+                  </ul>
                 </div>
+                <button 
+                  type="button"
+                  onClick={() => handleOpenCheckout('6_MONTHS', plan.name || '6 Months Plan', price)}
+                  style={{...pricingBtnStyle, background: 'linear-gradient(135deg, #6366f1, #4f46e5)'}}
+                >
+                  Subscribe Pro
+                </button>
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
-                <li>✓ <strong>All Starter features included</strong></li>
-                <li>✓ Priority Database Syncing</li>
-                <li>✓ Multi-device Workspace Session</li>
-                <li>✓ Premium Document Layouts</li>
-                <li>✓ Dedicated Developer Support</li>
-              </ul>
-            </div>
-            <button 
-              type="button"
-              onClick={() => handleOpenCheckout('6_MONTHS', '6 Months Plan', 4999)}
-              style={{...pricingBtnStyle, background: 'linear-gradient(135deg, #6366f1, #4f46e5)'}}
-            >
-              Subscribe Pro
-            </button>
-          </div>
+            );
+          })()}
 
           {/* Plan 3: Annual Enterprise */}
-          <div className="pricing-card" style={{
-            ...cardStyle,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            height: '100%',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
-            boxSizing: 'border-box'
-          }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>1 Year Plan</span>
-                <span style={{ fontSize: '0.7rem', color: '#fb923c', backgroundColor: 'rgba(251, 146, 60, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>Save ~10%</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem' }}>
-                  <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>₹9,999</span>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ year</span>
+          {(() => {
+            const plan = dynamicPlans['1_YEAR'] || { regularPrice: 9999, effectivePrice: 9999 };
+            const isOffer = plan.isOfferActive;
+            const price = plan.effectivePrice ?? plan.regularPrice;
+            return (
+              <div className="pricing-card" style={{
+                ...cardStyle,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                height: '100%',
+                border: isOffer ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.05)',
+                boxSizing: 'border-box',
+                position: 'relative'
+              }}>
+                {isOffer && (
+                  <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: '#10b981', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    🔥 {plan.offerBadge || `${plan.savingsPercentage}% OFF`}
+                  </div>
+                )}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>1 Year Plan</span>
+                    <span style={{ fontSize: '0.7rem', color: '#fb923c', backgroundColor: 'rgba(251, 146, 60, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>
+                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Save ~10%'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '2.25rem', fontWeight: 900, color: isOffer ? '#34d399' : '#fff' }}>₹{price.toLocaleString('en-IN')}</span>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ year</span>
+                    </div>
+                    {isOffer && (
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
+                        Regular Price: ₹{plan.regularPrice.toLocaleString('en-IN')}
+                      </div>
+                    )}
+                  </div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                    <li>✓ <strong>All Pro features included</strong></li>
+                    <li>✓ Zero Transaction Limits</li>
+                    <li>✓ Advanced Analytics Dashboard</li>
+                    <li>✓ Tally & ERP Compliant Exports</li>
+                    <li>✓ Premium 24/7 SLA Service</li>
+                  </ul>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
-                  Original Price: ₹11,099
-                </div>
+                <button 
+                  type="button"
+                  onClick={() => handleOpenCheckout('1_YEAR', plan.name || '1 Year Plan', price)}
+                  style={pricingBtnStyle}
+                >
+                  Subscribe Enterprise
+                </button>
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
-                <li>✓ <strong>All Pro features included</strong></li>
-                <li>✓ Zero Transaction Limits</li>
-                <li>✓ Advanced Analytics Dashboard</li>
-                <li>✓ Tally & ERP Compliant Exports</li>
-                <li>✓ Premium 24/7 SLA Service</li>
-              </ul>
-            </div>
-            <button 
-              type="button"
-              onClick={() => handleOpenCheckout('1_YEAR', '1 Year Plan', 9999)}
-              style={pricingBtnStyle}
-            >
-              Subscribe Enterprise
-            </button>
-          </div>
+            );
+          })()}
 
           {/* Plan 4: Lifetime Unlimited */}
-          <div className="pricing-card" style={{
-            ...cardStyle,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            height: '100%',
-            border: '1px solid rgba(168, 85, 247, 0.3)',
-            backgroundColor: 'rgba(26, 21, 47, 0.55)',
-            boxSizing: 'border-box'
-          }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>Lifetime</span>
-                <span style={{ fontSize: '0.7rem', color: '#c084fc', backgroundColor: 'rgba(168, 85, 247, 0.2)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>Best Value</span>
+          {(() => {
+            const plan = dynamicPlans['LIFETIME'] || { regularPrice: 20000, effectivePrice: 20000 };
+            const isOffer = plan.isOfferActive;
+            const price = plan.effectivePrice ?? plan.regularPrice;
+            return (
+              <div className="pricing-card" style={{
+                ...cardStyle,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                height: '100%',
+                border: isOffer ? '1px solid #10b981' : '1px solid rgba(168, 85, 247, 0.3)',
+                backgroundColor: 'rgba(26, 21, 47, 0.55)',
+                boxSizing: 'border-box',
+                position: 'relative'
+              }}>
+                <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: isOffer ? '#10b981' : '#a855f7', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {isOffer ? `🔥 ${plan.offerBadge || 'OFFER'}` : 'Best Value'}
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>Lifetime</span>
+                    <span style={{ fontSize: '0.7rem', color: '#c084fc', backgroundColor: 'rgba(168, 85, 247, 0.2)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>
+                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Best Value'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '2.25rem', fontWeight: 900, color: isOffer ? '#34d399' : '#fff' }}>₹{price.toLocaleString('en-IN')}</span>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ lifetime</span>
+                    </div>
+                    {isOffer && (
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
+                        Regular Price: ₹{plan.regularPrice.toLocaleString('en-IN')}
+                      </div>
+                    )}
+                  </div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                    <li>✓ <strong>All Enterprise features included</strong></li>
+                    <li>✓ Permanent Lifetime License</li>
+                    <li>✓ No Recurring Subscriptions</li>
+                    <li>✓ Future Platform Updates Free</li>
+                    <li>✓ VIP Priority Line Support</li>
+                  </ul>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => handleOpenCheckout('LIFETIME', plan.name || 'Lifetime Plan', price)}
+                  style={{...pricingBtnStyle, background: 'linear-gradient(135deg, #a855f7, #7c3aed)'}}
+                >
+                  Go Lifetime Unlimited
+                </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', marginBottom: '1.5rem' }}>
-                <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>₹20,000</span>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ lifetime</span>
-              </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
-                <li>✓ <strong>All Enterprise features included</strong></li>
-                <li>✓ Permanent Lifetime License</li>
-                <li>✓ No Recurring Subscriptions</li>
-                <li>✓ Future Platform Updates Free</li>
-                <li>✓ VIP Priority Line Support</li>
-              </ul>
-            </div>
-            <button 
-              type="button"
-              onClick={() => handleOpenCheckout('LIFETIME', 'Lifetime Plan', 20000)}
-              style={{...pricingBtnStyle, background: 'linear-gradient(135deg, #a855f7, #7c3aed)'}}
-            >
-              Go Lifetime Unlimited
-            </button>
-          </div>
+            );
+          })()}
         </div>
       </section>
 

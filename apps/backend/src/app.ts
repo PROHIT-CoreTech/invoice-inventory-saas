@@ -12,6 +12,7 @@ import adminRoutes from './routes/admin';
 import paymentRoutes from './routes/payments';
 import subscriptionRoutes from './routes/subscriptions';
 import clientLedgerRoutes from './routes/clientLedger';
+import subscriptionPlanRoutes from './routes/subscriptionPlans';
 
 const app = express();
 
@@ -69,6 +70,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/client-ledger', clientLedgerRoutes);
+app.use('/api/subscription-plans', subscriptionPlanRoutes);
 
 // Global Error Handler Middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
