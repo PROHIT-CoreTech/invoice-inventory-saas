@@ -43,6 +43,11 @@ interface SubscriptionPlanConfig {
   isOfferActive?: boolean;
   savingsAmount?: number;
   savingsPercentage?: number;
+  monthlyEquivalentPrice?: number | null;
+  savingsVsMonthlyAmount?: number;
+  savingsVsMonthlyPercentage?: number;
+  comparedToMonthlyText?: string;
+  isBestValue?: boolean;
 }
 
 interface AdminPortalProps {
@@ -74,7 +79,8 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     offerStartDate: '',
     offerEndDate: '',
     futurePrice: '',
-    futurePriceEffectiveDate: ''
+    futurePriceEffectiveDate: '',
+    isActive: true
   });
   const [planSaveLoading, setPlanSaveLoading] = useState(false);
   const [planSaveError, setPlanSaveError] = useState('');
@@ -253,7 +259,8 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       offerStartDate: formatDateInput(plan.offerStartDate),
       offerEndDate: formatDateInput(plan.offerEndDate),
       futurePrice: plan.futurePrice !== null && plan.futurePrice !== undefined ? String(plan.futurePrice) : '',
-      futurePriceEffectiveDate: formatDateInput(plan.futurePriceEffectiveDate)
+      futurePriceEffectiveDate: formatDateInput(plan.futurePriceEffectiveDate),
+      isActive: plan.isActive !== undefined ? Boolean(plan.isActive) : true
     });
   };
 
@@ -274,7 +281,8 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
           ...planFormData,
           regularPrice: parseFloat(planFormData.regularPrice),
           offerPrice: planFormData.offerPrice ? parseFloat(planFormData.offerPrice) : null,
-          futurePrice: planFormData.futurePrice ? parseFloat(planFormData.futurePrice) : null
+          futurePrice: planFormData.futurePrice ? parseFloat(planFormData.futurePrice) : null,
+          isActive: Boolean(planFormData.isActive)
         })
       });
 
@@ -528,7 +536,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
             marginBottom: '1rem',
             display: 'inline-block'
           }}>🔒</div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: '0 0 0.5rem 0' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
             System Administrator
           </h2>
           <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '2rem' }}>
@@ -617,7 +625,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img src="/images/hero.png" alt="Logo" style={{ height: '36px', width: '36px' }} />
           <div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
               PROCash Invoices Admin
             </h1>
             <p style={{ color: '#64748b', fontSize: '0.75rem', margin: 0 }}>
@@ -689,7 +697,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       }}>
         <div style={statCardStyle}>
           <span style={{ fontSize: '0.875rem', color: '#94a3b8' }}>Total Workspaces</span>
-          <span style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fff', marginTop: '0.5rem' }}>
+          <span style={{ fontSize: '2.25rem', fontWeight: 800, color: '#0f172a', marginTop: '0.5rem' }}>
             {tenants.length}
           </span>
         </div>
@@ -1135,7 +1143,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
             gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))',
             gap: '1.5rem'
           }}>
-            {subscriptionPlans.map((plan) => {
+            {subscriptionPlans.filter((plan, index, self) => self.findIndex(p => p.planId === plan.planId) === index).map((plan) => {
               const isOfferActive = plan.isOfferActive;
               const hasFuturePrice = plan.futurePrice !== null && plan.futurePrice !== undefined;
               return (
@@ -1154,17 +1162,15 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                     {/* Top Badges */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                       <span style={{
-                        fontSize: '0.7rem',
+                        fontSize: '0.675rem',
                         fontWeight: 800,
-                        letterSpacing: '0.05em',
-                        textTransform: 'uppercase',
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: '4px',
-                        backgroundColor: isOfferActive ? '#d1fae5' : '#f1f5f9',
-                        color: isOfferActive ? '#065f46' : '#475569',
-                        border: isOfferActive ? '1px solid #a7f3d0' : '1px solid #cbd5e1'
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '20px',
+                        backgroundColor: plan.isActive === false ? '#fef2f2' : isOfferActive ? '#d1fae5' : '#f1f5f9',
+                        color: plan.isActive === false ? '#991b1b' : isOfferActive ? '#065f46' : '#475569',
+                        border: plan.isActive === false ? '1px solid #fecaca' : isOfferActive ? '1px solid #a7f3d0' : '1px solid #cbd5e1'
                       }}>
-                        {isOfferActive ? '🔥 PROMO OFFER ACTIVE' : '⚡ STANDARD PRICING'}
+                        {plan.isActive === false ? '🚫 DISABLED / HIDDEN' : isOfferActive ? '🔥 PROMO OFFER ACTIVE' : '⚡ STANDARD PRICING'}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, fontFamily: 'monospace' }}>
                         ID: {plan.planId}
@@ -1230,6 +1236,38 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                               📅 Validity: {plan.offerStartDate ? formatDate(plan.offerStartDate) : 'Now'} to {plan.offerEndDate ? formatDate(plan.offerEndDate) : 'Ongoing'}
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Monthly Plan Comparison & Benefit Breakdown */}
+                      {plan.planId !== '1_MONTH' && plan.planId !== 'TRIAL' && (
+                        <div style={{
+                          marginTop: '0.75rem',
+                          backgroundColor: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          borderRadius: '8px',
+                          padding: '0.65rem 0.85rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.25rem'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>
+                              💡 Vs Monthly Plan (₹1,499/mo)
+                            </span>
+                            {plan.monthlyEquivalentPrice !== null && plan.monthlyEquivalentPrice !== undefined && (
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#047857', backgroundColor: '#dcfce7', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                                ₹{plan.monthlyEquivalentPrice.toLocaleString('en-IN')}/mo
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#15803d', marginTop: '0.1rem' }}>
+                            {plan.comparedToMonthlyText || (
+                              plan.billingCycleMonths ? (
+                                `Save ${plan.savingsVsMonthlyPercentage || 44}% (₹${(plan.savingsVsMonthlyAmount || (1499 * plan.billingCycleMonths - (plan.effectivePrice ?? plan.regularPrice))).toLocaleString('en-IN')}) vs Monthly Starter`
+                              ) : 'Pays for itself in ~17 months (Zero recurring fees)'
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1398,15 +1436,38 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
                   </div>
                 </div>
 
-                <div style={{ marginTop: '0.85rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Plan Short Description</label>
-                  <input 
-                    type="text"
-                    placeholder="Short description snippet..."
-                    value={planFormData.description}
-                    onChange={(e) => setPlanFormData(prev => ({ ...prev, description: e.target.value }))}
-                    style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                  />
+                <div style={{ marginTop: '0.85rem' }} className="grid-col-2">
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Plan Short Description</label>
+                    <input 
+                      type="text"
+                      placeholder="Short description snippet..."
+                      value={planFormData.description}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, description: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Plan Visibility & Availability *</label>
+                    <select
+                      value={planFormData.isActive ? 'active' : 'disabled'}
+                      onChange={(e) => setPlanFormData(prev => ({ ...prev, isActive: e.target.value === 'active' }))}
+                      style={{
+                        width: '100%',
+                        padding: '0.65rem 0.85rem',
+                        border: planFormData.isActive ? '1px solid #a7f3d0' : '1px solid #fca5a5',
+                        borderRadius: '8px',
+                        backgroundColor: planFormData.isActive ? '#f0fdf4' : '#fef2f2',
+                        color: planFormData.isActive ? '#166534' : '#991b1b',
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="active">🟢 ACTIVE (Visible to all Tenants)</option>
+                      <option value="disabled">🚫 DISABLED (Hidden from non-subscribed Tenants)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 

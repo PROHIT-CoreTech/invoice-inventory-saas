@@ -1034,7 +1034,7 @@ input::placeholder, textarea::placeholder {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid #e2e8f0;
   padding-bottom: 1.5rem;
   margin-bottom: 2rem;
 }

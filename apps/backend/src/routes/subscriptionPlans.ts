@@ -47,12 +47,25 @@ export const DEFAULT_PLANS = [
 ];
 
 export async function ensureDefaultPlansSeeded() {
-  const count = await prisma.subscriptionPlanConfig.count();
-  if (count === 0) {
-    for (const plan of DEFAULT_PLANS) {
+  for (const plan of DEFAULT_PLANS) {
+    const existing = await prisma.subscriptionPlanConfig.findFirst({
+      where: { planId: plan.planId }
+    });
+    if (!existing) {
       await prisma.subscriptionPlanConfig.create({
         data: plan
       });
+    }
+  }
+
+  // Deduplicate any accidental duplicate records in DB
+  const allPlans = await prisma.subscriptionPlanConfig.findMany();
+  const seenPlanIds = new Set<string>();
+  for (const p of allPlans) {
+    if (seenPlanIds.has(p.planId)) {
+      await prisma.subscriptionPlanConfig.delete({ where: { id: p.id } }).catch(() => {});
+    } else {
+      seenPlanIds.add(p.planId);
     }
   }
 }
@@ -79,7 +92,7 @@ export function evaluatePlanPricing(plan: any) {
           futurePrice: null,
           futurePriceEffectiveDate: null
         }
-      }).catch(err => console.error(`Failed to promote future price for ${plan.planId}:`, err));
+      }).catch((err: any) => console.error(`Failed to promote future price for ${plan.planId}:`, err));
     }
   }
 
@@ -116,16 +129,71 @@ export function evaluatePlanPricing(plan: any) {
   };
 }
 
-// GET: Fetch all active subscription plans with dynamic pricing logic
+export function attachPlanComparisons(plans: any[]) {
+  const monthlyPlan = plans.find(p => p.planId === '1_MONTH') || plans.find(p => p.billingCycleMonths === 1);
+  const monthlyBaselineRate = monthlyPlan ? monthlyPlan.effectivePrice : 1499;
+
+  return plans.map(plan => {
+    let monthlyEquivalentPrice: number | null = null;
+    let savingsVsMonthlyAmount = 0;
+    let savingsVsMonthlyPercentage = 0;
+    let comparedToMonthlyText = '';
+    let isBestValue = false;
+
+    if (plan.planId === 'TRIAL' || plan.regularPrice === 0) {
+      monthlyEquivalentPrice = 0;
+      comparedToMonthlyText = '100% Free 10-Day Trial';
+    } else if (plan.planId === '1_MONTH' || plan.billingCycleMonths === 1) {
+      monthlyEquivalentPrice = plan.effectivePrice;
+      comparedToMonthlyText = 'Standard Monthly Baseline Rate';
+    } else if (plan.billingCycleMonths && plan.billingCycleMonths > 1) {
+      const months = plan.billingCycleMonths;
+      monthlyEquivalentPrice = Math.round(plan.effectivePrice / months);
+      const fullMonthlyCostForPeriod = monthlyBaselineRate * months;
+      savingsVsMonthlyAmount = Math.max(0, fullMonthlyCostForPeriod - plan.effectivePrice);
+      savingsVsMonthlyPercentage = fullMonthlyCostForPeriod > 0 
+        ? Math.round((savingsVsMonthlyAmount / fullMonthlyCostForPeriod) * 100)
+        : 0;
+
+      if (months === 12) {
+        isBestValue = true;
+        comparedToMonthlyText = `Save ${savingsVsMonthlyPercentage}% (₹${savingsVsMonthlyAmount.toLocaleString('en-IN')}/yr) vs Monthly Starter`;
+      } else {
+        comparedToMonthlyText = `Save ${savingsVsMonthlyPercentage}% (₹${savingsVsMonthlyAmount.toLocaleString('en-IN')}) vs Monthly Starter`;
+      }
+    } else if (plan.planId === 'LIFETIME' || plan.billingCycleMonths === null) {
+      monthlyEquivalentPrice = null;
+      const breakEvenMonths = monthlyBaselineRate > 0 
+        ? (plan.effectivePrice / monthlyBaselineRate).toFixed(1)
+        : '16.7';
+      savingsVsMonthlyPercentage = 100;
+      comparedToMonthlyText = `Pays for itself in ~${breakEvenMonths} months (Zero recurring fees forever)`;
+    }
+
+    return {
+      ...plan,
+      monthlyBaselineRate,
+      monthlyEquivalentPrice,
+      savingsVsMonthlyAmount,
+      savingsVsMonthlyPercentage,
+      comparedToMonthlyText,
+      isBestValue
+    };
+  });
+}
+
+// GET: Fetch active (or all if includeAll=true) subscription plans with dynamic pricing logic & comparisons
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     await ensureDefaultPlansSeeded();
+    const includeAll = req.query.includeAll === 'true';
     const plans = await prisma.subscriptionPlanConfig.findMany({
-      where: { isActive: true }
+      where: includeAll ? {} : { isActive: true }
     });
 
     const evaluatedPlans = plans.map(evaluatePlanPricing);
-    res.json(evaluatedPlans);
+    const comparedPlans = attachPlanComparisons(evaluatedPlans);
+    res.json(comparedPlans);
   } catch (error) {
     next(error);
   }

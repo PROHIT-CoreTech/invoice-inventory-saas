@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import '../index.css';
 import {
   useGetQuotations,
@@ -107,7 +107,50 @@ export default function Dashboard() {
   const [renewalLoading, setRenewalLoading] = useState(false);
   const [renewalStatus, setRenewalStatus] = useState('');
 
+  // API Base URL resolver for production subdomains and local dev
+  const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return `${window.location.protocol}//${window.location.host}/api`;
+    }
+    return 'http://localhost:5001/api';
+  };
+
+  // Dynamic Subscription Plans State synced from Backend
+  const [dynamicPlansMap, setDynamicPlansMap] = useState<Record<string, any>>({});
+
+  const fetchSubscriptionPlans = useCallback(() => {
+    const plansApiUrl = getApiBaseUrl() + '/subscription-plans';
+    fetch(plansApiUrl)
+      .then(res => res.ok ? res.json() : [])
+      .then(list => {
+        if (Array.isArray(list)) {
+          const map: Record<string, any> = {};
+          list.forEach((p: any) => {
+            map[p.planId] = p;
+          });
+          setDynamicPlansMap(map);
+        }
+      })
+      .catch(err => console.error('Failed to fetch subscription plans in dashboard:', err));
+  }, []);
+
+  useEffect(() => {
+    fetchSubscriptionPlans();
+  }, [fetchSubscriptionPlans]);
+
+  // Refetch subscription plans whenever renewal modal opens to ensure real-time price accuracy
+  useEffect(() => {
+    if (isRenewalOpen) {
+      fetchSubscriptionPlans();
+    }
+  }, [isRenewalOpen, fetchSubscriptionPlans]);
+
   const getPlanPriceNum = (planId: string) => {
+    if (dynamicPlansMap[planId]) {
+      const p = dynamicPlansMap[planId];
+      return p.effectivePrice ?? p.regularPrice;
+    }
     switch (planId) {
       case '1_MONTH': return 999;
       case '6_MONTHS': return 4999;
@@ -161,7 +204,7 @@ export default function Dashboard() {
     const tenantId = window.location.hostname.split('.')[0];
 
     try {
-      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/subscriptions/submit-payment';
+      const apiUrl = getApiBaseUrl() + '/subscriptions/submit-payment';
       const activeTargetPlan = selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH';
       const res = await fetch(apiUrl, {
         method: 'POST',
@@ -227,15 +270,9 @@ export default function Dashboard() {
   };
 
   const getPlanPrice = (planId: string | undefined | null) => {
-    switch (planId) {
-      case 'TRIAL': return '₹0';
-      case '1_MONTH': return '₹999';
-      case '6_MONTHS': return '₹4,999';
-      case '1_YEAR': return '₹9,999';
-      case 'LIFETIME': return '₹20,000';
-      case 'FREE': return '₹0';
-      default: return '₹0';
-    }
+    if (!planId) return '₹0';
+    const num = getPlanPriceNum(planId);
+    return `₹${num.toLocaleString('en-IN')}`;
   };
 
   const formatDateTime = (dateStr: string | null | undefined) => {
@@ -273,7 +310,7 @@ export default function Dashboard() {
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/tenant-profile';
+      const apiUrl = getApiBaseUrl() + '/tenant-profile';
       const tenantId = window.location.hostname.split('.')[0];
       const res = await fetch(apiUrl, {
         method: 'POST',
@@ -300,7 +337,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/tenant-profile';
+    const apiUrl = getApiBaseUrl() + '/tenant-profile';
     const tenantId = window.location.hostname.split('.')[0];
     
     fetch(apiUrl, {
@@ -2056,11 +2093,41 @@ export default function Dashboard() {
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
               {[
-                { id: '1_MONTH', name: 'Monthly Starter', price: '₹999', period: 'per month', badge: 'Popular' },
-                { id: '6_MONTHS', name: '6 Months Pro', price: '₹4,999', period: 'for 6 months', badge: 'Save 17%' },
-                { id: '1_YEAR', name: '1 Year Enterprise', price: '₹9,999', period: 'per year', badge: 'Best Value' },
-                { id: 'LIFETIME', name: 'Lifetime Unlimited', price: '₹20,000', period: 'one-time', badge: 'VIP Access' }
-              ].map((plan) => {
+                { 
+                  id: '1_MONTH', 
+                  name: dynamicPlansMap['1_MONTH']?.name || 'Monthly Starter', 
+                  price: `₹${getPlanPriceNum('1_MONTH').toLocaleString('en-IN')}`, 
+                  period: 'per month', 
+                  badge: dynamicPlansMap['1_MONTH']?.isOfferActive ? `🔥 ${dynamicPlansMap['1_MONTH']?.offerBadge || 'OFFER'}` : 'Popular' 
+                },
+                { 
+                  id: '6_MONTHS', 
+                  name: dynamicPlansMap['6_MONTHS']?.name || '6 Months Pro', 
+                  price: `₹${getPlanPriceNum('6_MONTHS').toLocaleString('en-IN')}`, 
+                  period: `for 6 months (₹${(dynamicPlansMap['6_MONTHS']?.monthlyEquivalentPrice || Math.round(getPlanPriceNum('6_MONTHS') / 6)).toLocaleString('en-IN')}/mo)`, 
+                  badge: dynamicPlansMap['6_MONTHS']?.isOfferActive ? `🔥 ${dynamicPlansMap['6_MONTHS']?.offerBadge || 'OFFER'}` : `Save ${dynamicPlansMap['6_MONTHS']?.savingsVsMonthlyPercentage || 44}%` 
+                },
+                { 
+                  id: '1_YEAR', 
+                  name: dynamicPlansMap['1_YEAR']?.name || '1 Year Enterprise', 
+                  price: `₹${getPlanPriceNum('1_YEAR').toLocaleString('en-IN')}`, 
+                  period: `per year (₹${(dynamicPlansMap['1_YEAR']?.monthlyEquivalentPrice || Math.round(getPlanPriceNum('1_YEAR') / 12)).toLocaleString('en-IN')}/mo)`, 
+                  badge: dynamicPlansMap['1_YEAR']?.isOfferActive ? `🔥 ${dynamicPlansMap['1_YEAR']?.offerBadge || 'OFFER'}` : `Best Value (Save ${dynamicPlansMap['1_YEAR']?.savingsVsMonthlyPercentage || 44}%)` 
+                },
+                { 
+                  id: 'LIFETIME', 
+                  name: dynamicPlansMap['LIFETIME']?.name || 'Lifetime Unlimited', 
+                  price: `₹${getPlanPriceNum('LIFETIME').toLocaleString('en-IN')}`, 
+                  period: 'one-time lifetime', 
+                  badge: dynamicPlansMap['LIFETIME']?.isOfferActive ? `🔥 ${dynamicPlansMap['LIFETIME']?.offerBadge || 'OFFER'}` : 'VIP Access' 
+                }
+              ]
+              .filter(plan => {
+                const planData = dynamicPlansMap[plan.id];
+                const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
+                return isCurrent || (planData ? planData.isActive !== false : true);
+              })
+              .map((plan) => {
                 const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
                 return (
                   <div
@@ -3441,11 +3508,17 @@ export default function Dashboard() {
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
                 {[
-                  { id: '1_MONTH', label: 'Monthly Starter', price: '₹999 / mo' },
-                  { id: '6_MONTHS', label: '6 Months Pro', price: '₹4,999 / 6 mos' },
-                  { id: '1_YEAR', label: '1 Year Enterprise', price: '₹9,999 / yr' },
-                  { id: 'LIFETIME', label: 'Lifetime Unlimited', price: '₹20,000' }
-                ].map((plan) => (
+                  { id: '1_MONTH', label: dynamicPlansMap['1_MONTH']?.name || 'Monthly Starter', price: `₹${getPlanPriceNum('1_MONTH').toLocaleString('en-IN')} / mo` },
+                  { id: '6_MONTHS', label: dynamicPlansMap['6_MONTHS']?.name || '6 Months Pro', price: `₹${getPlanPriceNum('6_MONTHS').toLocaleString('en-IN')} / 6 mos` },
+                  { id: '1_YEAR', label: dynamicPlansMap['1_YEAR']?.name || '1 Year Enterprise', price: `₹${getPlanPriceNum('1_YEAR').toLocaleString('en-IN')} / yr` },
+                  { id: 'LIFETIME', label: dynamicPlansMap['LIFETIME']?.name || 'Lifetime Unlimited', price: `₹${getPlanPriceNum('LIFETIME').toLocaleString('en-IN')} one-time` }
+                ]
+                .filter(plan => {
+                  const planData = dynamicPlansMap[plan.id];
+                  const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
+                  return isCurrent || (planData ? planData.isActive !== false : true);
+                })
+                .map((plan) => (
                   <button
                     key={plan.id}
                     type="button"

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '@procash-invoices/database/server';
-import { ensureDefaultPlansSeeded, evaluatePlanPricing } from './subscriptionPlans';
+import { ensureDefaultPlansSeeded, evaluatePlanPricing, attachPlanComparisons } from './subscriptionPlans';
 
 const router = Router();
 
@@ -344,7 +344,8 @@ router.get('/subscription-plans', async (req: Request, res: Response, next: Next
     });
 
     const evaluated = plans.map(evaluatePlanPricing);
-    res.json(evaluated);
+    const compared = attachPlanComparisons(evaluated);
+    res.json(compared);
   } catch (error) {
     next(error);
   }

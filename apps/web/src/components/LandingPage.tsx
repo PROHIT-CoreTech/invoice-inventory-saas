@@ -875,7 +875,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
         }}>
           {/* Plan 1: Monthly Starter */}
           {(() => {
-            const plan = dynamicPlans['1_MONTH'] || { regularPrice: 999, effectivePrice: 999 };
+            const plan = dynamicPlans['1_MONTH'] || { regularPrice: 1499, effectivePrice: 1499 };
             const isOffer = plan.isOfferActive;
             const price = plan.effectivePrice ?? plan.regularPrice;
             return (
@@ -898,13 +898,13 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                     <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>1 Month Plan</span>
                     <span style={{ fontSize: '0.7rem', color: isOffer ? '#34d399' : '#94a3b8', backgroundColor: isOffer ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.06)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 600 }}>
-                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Standard'}
+                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Base Rate'}
                     </span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
                       <span style={{ fontSize: '2.25rem', fontWeight: 900, color: isOffer ? '#34d399' : '#fff' }}>₹{price.toLocaleString('en-IN')}</span>
-                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ month</span>
+                      <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>/ month</span>
                     </div>
                     {isOffer && (
                       <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
@@ -936,6 +936,9 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             const plan = dynamicPlans['6_MONTHS'] || { regularPrice: 4999, effectivePrice: 4999 };
             const isOffer = plan.isOfferActive;
             const price = plan.effectivePrice ?? plan.regularPrice;
+            const monthlyEquivalent = plan.monthlyEquivalentPrice || Math.round(price / 6);
+            const savingsVsMonthlyPct = plan.savingsVsMonthlyPercentage || 44;
+            const savingsAmount = plan.savingsVsMonthlyAmount || (1499 * 6 - price);
             return (
               <div className="pricing-card" style={{
                 ...cardStyle,
@@ -943,25 +946,29 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 height: '100%',
-                border: isOffer ? '1px solid #10b981' : '1px solid rgba(99, 102, 241, 0.3)',
+                border: isOffer ? '1px solid #10b981' : '1px solid rgba(99, 102, 241, 0.4)',
                 position: 'relative',
                 backgroundColor: 'rgba(21, 28, 47, 0.6)',
                 boxSizing: 'border-box'
               }}>
                 <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: isOffer ? '#10b981' : '#6366f1', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {isOffer ? `🔥 ${plan.offerBadge || 'OFFER'}` : 'Popular'}
+                  {isOffer ? `🔥 ${plan.offerBadge || 'OFFER'}` : `Save ${savingsVsMonthlyPct}%`}
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                     <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>6 Months Plan</span>
-                    <span style={{ fontSize: '0.7rem', color: '#818cf8', backgroundColor: 'rgba(99, 102, 241, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>
-                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Save ~10%'}
+                    <span style={{ fontSize: '0.7rem', color: '#34d399', backgroundColor: 'rgba(16, 185, 129, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>
+                      Save ₹{savingsAmount.toLocaleString('en-IN')}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
                       <span style={{ fontSize: '2.25rem', fontWeight: 900, color: isOffer ? '#34d399' : '#fff' }}>₹{price.toLocaleString('en-IN')}</span>
-                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ 6 months</span>
+                      <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>/ 6 months</span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span>💡 Just ₹{monthlyEquivalent.toLocaleString('en-IN')}/mo</span>
+                      <span style={{ opacity: 0.7, fontSize: '0.7rem' }}>(Save {savingsVsMonthlyPct}% vs Monthly)</span>
                     </div>
                     {isOffer && (
                       <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
@@ -993,6 +1000,9 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
             const plan = dynamicPlans['1_YEAR'] || { regularPrice: 9999, effectivePrice: 9999 };
             const isOffer = plan.isOfferActive;
             const price = plan.effectivePrice ?? plan.regularPrice;
+            const monthlyEquivalent = plan.monthlyEquivalentPrice || Math.round(price / 12);
+            const savingsVsMonthlyPct = plan.savingsVsMonthlyPercentage || 44;
+            const savingsAmount = plan.savingsVsMonthlyAmount || (1499 * 12 - price);
             return (
               <div className="pricing-card" style={{
                 ...cardStyle,
@@ -1000,26 +1010,28 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 height: '100%',
-                border: isOffer ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.05)',
+                border: isOffer ? '1px solid #10b981' : '1px solid rgba(251, 146, 60, 0.4)',
                 boxSizing: 'border-box',
                 position: 'relative'
               }}>
-                {isOffer && (
-                  <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: '#10b981', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    🔥 {plan.offerBadge || `${plan.savingsPercentage}% OFF`}
-                  </div>
-                )}
+                <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: isOffer ? '#10b981' : '#f97316', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {isOffer ? `🔥 ${plan.offerBadge || 'OFFER'}` : '🏆 Best Value (Save 44%)'}
+                </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                     <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>1 Year Plan</span>
                     <span style={{ fontSize: '0.7rem', color: '#fb923c', backgroundColor: 'rgba(251, 146, 60, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>
-                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Save ~10%'}
+                      Save ₹{savingsAmount.toLocaleString('en-IN')}/yr
                     </span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
                       <span style={{ fontSize: '2.25rem', fontWeight: 900, color: isOffer ? '#34d399' : '#fff' }}>₹{price.toLocaleString('en-IN')}</span>
-                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ year</span>
+                      <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>/ year</span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#fb923c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span>💡 Just ₹{monthlyEquivalent.toLocaleString('en-IN')}/mo</span>
+                      <span style={{ opacity: 0.7, fontSize: '0.7rem' }}>(Save {savingsVsMonthlyPct}% vs Monthly)</span>
                     </div>
                     {isOffer && (
                       <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
@@ -1038,7 +1050,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 <button 
                   type="button"
                   onClick={() => handleOpenCheckout('1_YEAR', plan.name || '1 Year Plan', price)}
-                  style={pricingBtnStyle}
+                  style={{...pricingBtnStyle, background: 'linear-gradient(135deg, #ea580c, #c2410c)'}}
                 >
                   Subscribe Enterprise
                 </button>
@@ -1048,7 +1060,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
           {/* Plan 4: Lifetime Unlimited */}
           {(() => {
-            const plan = dynamicPlans['LIFETIME'] || { regularPrice: 20000, effectivePrice: 20000 };
+            const plan = dynamicPlans['LIFETIME'] || { regularPrice: 24999, effectivePrice: 24999 };
             const isOffer = plan.isOfferActive;
             const price = plan.effectivePrice ?? plan.regularPrice;
             return (
@@ -1058,25 +1070,28 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 height: '100%',
-                border: isOffer ? '1px solid #10b981' : '1px solid rgba(168, 85, 247, 0.3)',
+                border: isOffer ? '1px solid #10b981' : '1px solid rgba(168, 85, 247, 0.4)',
                 backgroundColor: 'rgba(26, 21, 47, 0.55)',
                 boxSizing: 'border-box',
                 position: 'relative'
               }}>
                 <div style={{ position: 'absolute', top: '-12px', right: '1.5rem', backgroundColor: isOffer ? '#10b981' : '#a855f7', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.25rem 0.75rem', borderRadius: '30px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {isOffer ? `🔥 ${plan.offerBadge || 'OFFER'}` : 'Best Value'}
+                  {isOffer ? `🔥 ${plan.offerBadge || 'OFFER'}` : '⚡ Lifetime Deal'}
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                     <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>Lifetime</span>
                     <span style={{ fontSize: '0.7rem', color: '#c084fc', backgroundColor: 'rgba(168, 85, 247, 0.2)', padding: '0.25rem 0.6rem', borderRadius: '30px', fontWeight: 700 }}>
-                      {isOffer ? `Save ₹${plan.savingsAmount}` : 'Best Value'}
+                      Zero Renewal Fees
                     </span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
                       <span style={{ fontSize: '2.25rem', fontWeight: 900, color: isOffer ? '#34d399' : '#fff' }}>₹{price.toLocaleString('en-IN')}</span>
-                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ lifetime</span>
+                      <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>/ one-time</span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#c084fc', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span>⚡ Pays for itself in ~17 months</span>
                     </div>
                     {isOffer && (
                       <div style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'line-through' }}>
