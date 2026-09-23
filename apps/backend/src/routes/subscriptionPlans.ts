@@ -182,13 +182,12 @@ export function attachPlanComparisons(plans: any[]) {
   });
 }
 
-// GET: Fetch active (or all if includeAll=true) subscription plans with dynamic pricing logic & comparisons
+// GET: Fetch all subscription plans with dynamic pricing logic & comparisons (including isActive state)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     await ensureDefaultPlansSeeded();
-    const includeAll = req.query.includeAll === 'true';
     const plans = await prisma.subscriptionPlanConfig.findMany({
-      where: includeAll ? {} : { isActive: true }
+      orderBy: { regularPrice: 'asc' }
     });
 
     const evaluatedPlans = plans.map(evaluatePlanPricing);
