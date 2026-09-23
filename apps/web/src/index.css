@@ -1732,6 +1732,7 @@ input::placeholder, textarea::placeholder {
   .view-mode-btn {
     padding: 0.4rem 0.7rem;
     font-size: 0.75rem;
+  }
 }
 
 /* ==========================================================================
