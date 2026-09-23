@@ -49,17 +49,22 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<{ id: string; name: string; price: number } | null>(null);
+  const [checkoutStep, setCheckoutStep] = useState<'STEP1' | 'STEP2' | 'STEP3_PAYMENT'>('STEP1');
   const [checkoutForm, setCheckoutForm] = useState({
+    tenant: '',
+    companyName: '',
     name: '',
     email: '',
     phone: '',
-    tenant: ''
+    gstin: '',
+    pan: '',
+    bankName: '',
+    bankAccHolder: '',
+    bankAccNumber: '',
+    bankIfsc: ''
   });
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentStatusMessage, setPaymentStatusMessage] = useState('');
-  
-  // Custom UPI QR Step States
-  const [checkoutStep, setCheckoutStep] = useState<'FORM' | 'UPI_QR'>('FORM');
   const [utrNumber, setUtrNumber] = useState('');
 
   const getUpiUrl = () => {
@@ -89,67 +94,110 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
   };
 
   const handleOpenCheckout = (planId: string, planName: string, price: number) => {
+    const currentTenant = tenantName.trim();
     setSelectedPlan({ id: planId, name: planName, price: price });
     setCheckoutForm({
+      tenant: currentTenant,
+      companyName: currentTenant ? currentTenant.toUpperCase() + ' INVOICES' : '',
       name: '',
       email: '',
       phone: '',
-      tenant: tenantName
+      gstin: '',
+      pan: '',
+      bankName: '',
+      bankAccHolder: '',
+      bankAccNumber: '',
+      bankIfsc: ''
     });
-    setCheckoutStep('FORM');
+    setCheckoutStep('STEP1');
     setUtrNumber('');
     setPaymentStatusMessage('');
     setShowCheckoutModal(true);
   };
 
-  const handleCheckoutSubmit = async (e: React.FormEvent) => {
+  const handleStep1Next = (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkoutForm.tenant.trim()) {
-      alert('Please enter a workspace/tenant name.');
+      alert('Please enter a workspace subdomain.');
       return;
     }
-    
+    if (!checkoutForm.companyName.trim()) {
+      alert('Please enter a company / workspace name.');
+      return;
+    }
+    if (!checkoutForm.name.trim()) {
+      alert('Please enter your full name.');
+      return;
+    }
+    if (!checkoutForm.email.trim()) {
+      alert('Please enter your email address.');
+      return;
+    }
+    if (!checkoutForm.phone.trim()) {
+      alert('Please enter your phone number.');
+      return;
+    }
+    setCheckoutStep('STEP2');
+  };
+
+  const handleStep2Next = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedPlan?.id === 'TRIAL') {
+      handleTrialActivation();
+      return;
+    }
+    setCheckoutStep('STEP3_PAYMENT');
+  };
+
+  const handleTrialActivation = async () => {
+    setPaymentLoading(true);
+    setPaymentStatusMessage('Creating workspace & activating 10-day free trial...');
     const formattedTenant = checkoutForm.tenant.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
 
-    if (selectedPlan?.id === 'TRIAL') {
-      setPaymentLoading(true);
-      setPaymentStatusMessage('Initiating 10-day trial subscription...');
-      try {
-        const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/payments/start-trial';
-        const res = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Tenant-Id': formattedTenant
-          }
-        });
+    try {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/tenant-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-Id': formattedTenant
+        },
+        body: JSON.stringify({
+          companyName: checkoutForm.companyName || (formattedTenant.toUpperCase() + ' INVOICES'),
+          proprietorName: checkoutForm.name,
+          address: 'India',
+          gstin: checkoutForm.gstin || null,
+          pan: checkoutForm.pan || null,
+          bankName: checkoutForm.bankName || null,
+          bankAccHolder: checkoutForm.bankAccHolder || checkoutForm.name || null,
+          bankAccNumber: checkoutForm.bankAccNumber || null,
+          bankIfsc: checkoutForm.bankIfsc || null,
+          theme: 'DEFAULT',
+          tier: 'FREE'
+        })
+      });
 
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.message || 'Failed to activate free trial.');
+      const res = await fetch(`${baseUrl}/payments/start-trial`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-Id': formattedTenant
         }
+      });
 
-        setPaymentStatusMessage('🎉 Trial subscription activated successfully! Opening Onboarding Setup...');
-        setTimeout(() => {
-          setOnboardingTenant(formattedTenant);
-          setFormData(prev => ({
-            ...prev,
-            companyName: formattedTenant.toUpperCase() + ' INVOICES',
-            tier: 'PREMIUM'
-          }));
-          setShowCheckoutModal(false);
-          setShowOnboarding(true);
-        }, 1500);
-      } catch (err: any) {
-        setPaymentStatusMessage(`❌ Error: ${err.message}`);
-        setPaymentLoading(false);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to activate free trial.');
       }
-      return;
-    }
 
-    // For paid plans, transition to UPI QR step
-    setPaymentStatusMessage('');
-    setCheckoutStep('UPI_QR');
+      setPaymentStatusMessage('🎉 Free trial activated successfully! Opening workspace...');
+      setTimeout(() => {
+        window.location.href = getRedirectUrl(formattedTenant);
+      }, 1500);
+    } catch (err: any) {
+      setPaymentStatusMessage(`❌ Error: ${err.message}`);
+      setPaymentLoading(false);
+    }
   };
 
   const handleUtrSubmit = async (e: React.FormEvent) => {
@@ -161,12 +209,36 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
     }
 
     setPaymentLoading(true);
-    setPaymentStatusMessage('Submitting UTR reference code for ledger validation...');
+    setPaymentStatusMessage('Saving profile & submitting UTR payment for activation...');
     const formattedTenant = checkoutForm.tenant.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
 
     try {
-      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/subscriptions/submit-payment';
-      const res = await fetch(apiUrl, {
+      const baseUrl = getApiBaseUrl();
+
+      // 1. Save Workspace Profile with Tax & Bank Credentials
+      await fetch(`${baseUrl}/tenant-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-Id': formattedTenant
+        },
+        body: JSON.stringify({
+          companyName: checkoutForm.companyName || (formattedTenant.toUpperCase() + ' INVOICES'),
+          proprietorName: checkoutForm.name,
+          address: 'India',
+          gstin: checkoutForm.gstin || null,
+          pan: checkoutForm.pan || null,
+          bankName: checkoutForm.bankName || null,
+          bankAccHolder: checkoutForm.bankAccHolder || checkoutForm.name || null,
+          bankAccNumber: checkoutForm.bankAccNumber || null,
+          bankIfsc: checkoutForm.bankIfsc || null,
+          theme: 'DEFAULT',
+          tier: 'PREMIUM'
+        })
+      });
+
+      // 2. Submit Subscription UTR
+      const res = await fetch(`${baseUrl}/subscriptions/submit-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,66 +259,13 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
       const responseData = await res.json();
       setPaymentStatusMessage(`🎉 ${responseData.message || 'Payment submitted successfully!'}`);
       
-      // Auto-open onboarding setup after UTR submission
       setTimeout(() => {
-        setOnboardingTenant(formattedTenant);
-        setFormData(prev => ({
-          ...prev,
-          companyName: formattedTenant.toUpperCase() + ' INVOICES',
-          tier: 'PREMIUM'
-        }));
-        setShowCheckoutModal(false);
-        setShowOnboarding(true);
-      }, 3000);
+        window.location.href = getRedirectUrl(formattedTenant);
+      }, 2000);
 
     } catch (err: any) {
       console.error(err);
       setPaymentStatusMessage(`❌ Error: ${err.message || 'UTR submission failed.'}`);
-      setPaymentLoading(false);
-    }
-  };
-
-  const handleSimulatedSuccess = async () => {
-    if (!selectedPlan) return;
-    if (!checkoutForm.tenant.trim()) {
-      alert('Please enter a workspace/tenant name.');
-      return;
-    }
-    setPaymentLoading(true);
-    setPaymentStatusMessage('Simulating successful transaction...');
-    const formattedTenant = checkoutForm.tenant.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-
-    try {
-      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api') + '/payments/simulate-success';
-      const saveRes = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Tenant-Id': formattedTenant
-        },
-        body: JSON.stringify({
-          planId: selectedPlan.id
-        })
-      });
-
-      if (!saveRes.ok) {
-        const errData = await saveRes.json();
-        throw new Error(errData.message || 'Failed to update tenant subscription.');
-      }
-
-      setPaymentStatusMessage('🎉 Simulated payment success! Opening Onboarding Setup...');
-      setTimeout(() => {
-        setOnboardingTenant(formattedTenant);
-        setFormData(prev => ({
-          ...prev,
-          companyName: formattedTenant.toUpperCase() + ' INVOICES',
-          tier: 'PREMIUM'
-        }));
-        setShowCheckoutModal(false);
-        setShowOnboarding(true);
-      }, 1500);
-    } catch (err: any) {
-      setPaymentStatusMessage(`❌ Error: ${err.message}`);
       setPaymentLoading(false);
     }
   };
@@ -1504,235 +1523,364 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(7, 10, 19, 0.9)',
+          backgroundColor: 'rgba(7, 10, 19, 0.85)',
           backdropFilter: 'blur(16px)',
           zIndex: 1000,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '2rem',
+          padding: '1.5rem',
           overflowY: 'auto'
         }}>
           <div className="onboarding-modal-card" style={{
-            backgroundColor: '#151c2f',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '24px',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '20px',
             width: '100%',
             maxWidth: '520px',
-            padding: '2.5rem',
-            boxShadow: '0 30px 60px rgba(0, 0, 0, 0.6)',
+            padding: '2rem',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
             position: 'relative',
             boxSizing: 'border-box',
-            textAlign: 'left'
+            textAlign: 'left',
+            color: '#0f172a'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-                💳 Subscription Checkout
-              </h2>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.25rem' }}>⚡</span>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Subscription Setup & Checkout
+                </h2>
+              </div>
               <button 
                 type="button" 
                 onClick={() => setShowCheckoutModal(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '1.5rem', cursor: 'pointer', lineHeight: 1 }}
               >
                 ×
               </button>
             </div>
 
-            <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem' }}>
-              <span style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>Selected Plan</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>{selectedPlan.name}</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>₹{selectedPlan.price.toLocaleString()}</span>
+            {/* 3-Step Wizard Progress Indicator Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', backgroundColor: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <div style={{
+                  width: '20px', height: '20px', borderRadius: '50%',
+                  backgroundColor: checkoutStep === 'STEP1' ? '#4f46e5' : '#e2e8f0',
+                  color: checkoutStep === 'STEP1' ? '#fff' : '#64748b',
+                  fontSize: '0.7rem', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>1</div>
+                <span style={{ fontSize: '0.75rem', fontWeight: checkoutStep === 'STEP1' ? 700 : 500, color: checkoutStep === 'STEP1' ? '#4f46e5' : '#64748b' }}>
+                  Subdomain & Profile
+                </span>
+              </div>
+
+              <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>→</span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <div style={{
+                  width: '20px', height: '20px', borderRadius: '50%',
+                  backgroundColor: checkoutStep === 'STEP2' ? '#4f46e5' : '#e2e8f0',
+                  color: checkoutStep === 'STEP2' ? '#fff' : '#64748b',
+                  fontSize: '0.7rem', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>2</div>
+                <span style={{ fontSize: '0.75rem', fontWeight: checkoutStep === 'STEP2' ? 700 : 500, color: checkoutStep === 'STEP2' ? '#4f46e5' : '#64748b' }}>
+                  Tax & Bank Credentials
+                </span>
+              </div>
+
+              <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>→</span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <div style={{
+                  width: '20px', height: '20px', borderRadius: '50%',
+                  backgroundColor: checkoutStep === 'STEP3_PAYMENT' ? '#059669' : '#e2e8f0',
+                  color: checkoutStep === 'STEP3_PAYMENT' ? '#fff' : '#64748b',
+                  fontSize: '0.7rem', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>3</div>
+                <span style={{ fontSize: '0.75rem', fontWeight: checkoutStep === 'STEP3_PAYMENT' ? 700 : 500, color: checkoutStep === 'STEP3_PAYMENT' ? '#059669' : '#64748b' }}>
+                  QR Payment
+                </span>
               </div>
             </div>
 
-            {checkoutStep === 'FORM' ? (
-              <form onSubmit={handleCheckoutSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+            {/* STEP 1: Workspace Subdomain & Profile */}
+            {checkoutStep === 'STEP1' && (
+              <form onSubmit={handleStep1Next} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Workspace Subdomain *</label>
-                  <div className="checkout-subdomain-container">
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                    Workspace Subdomain *
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.65rem 0.85rem' }}>
                     <input 
                       type="text" 
                       required
                       placeholder="e.g. company-a"
                       value={checkoutForm.tenant}
-                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, tenant: e.target.value }))}
-                      style={{ flex: 1, backgroundColor: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '0.9rem', fontWeight: 600 }}
+                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, tenant: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                      style={{ flex: 1, backgroundColor: 'transparent', border: 'none', color: '#0f172a', outline: 'none', fontSize: '0.9rem', fontWeight: 600 }}
                     />
-                    <span style={{ color: '#818cf8', fontSize: '0.8rem', fontWeight: 700 }}>{getSuffix()}</span>
+                    <span style={{ color: '#4f46e5', fontSize: '0.8rem', fontWeight: 700 }}>{getSuffix()}</span>
                   </div>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
                     Your subscription will be linked to this workspace.
                   </span>
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Full Name *</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                    Company / Business Name *
+                  </label>
                   <input 
                     type="text" 
                     required
-                    placeholder="John Doe"
+                    placeholder="e.g. Acme Corp Invoices"
+                    value={checkoutForm.companyName}
+                    onChange={(e) => setCheckoutForm(prev => ({ ...prev, companyName: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      color: '#0f172a',
+                      padding: '0.65rem 0.85rem',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                    Full Name / Proprietor Name *
+                  </label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="e.g. John Doe"
                     value={checkoutForm.name}
                     onChange={(e) => setCheckoutForm(prev => ({ ...prev, name: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Email Address *</label>
-                  <input 
-                    type="email" 
-                    required
-                    placeholder="john@example.com"
-                    value={checkoutForm.email}
-                    onChange={(e) => setCheckoutForm(prev => ({ ...prev, email: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Phone Number *</label>
-                  <input 
-                    type="tel" 
-                    required
-                    placeholder="e.g. 9988776655"
-                    value={checkoutForm.phone}
-                    onChange={(e) => setCheckoutForm(prev => ({ ...prev, phone: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </div>
-
-                {paymentStatusMessage && (
-                  <div style={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '10px',
-                    padding: '0.85rem',
-                    fontSize: '0.85rem',
-                    color: '#e2e8f0',
-                    lineHeight: 1.4
-                  }}>
-                    {paymentStatusMessage}
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
-                  <button 
-                    type="submit" 
-                    disabled={paymentLoading}
                     style={{
-                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '0.85rem',
-                      borderRadius: '10px',
-                      fontSize: '1rem',
-                      fontWeight: 700,
-                      cursor: paymentLoading ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)',
-                      opacity: paymentLoading ? 0.7 : 1
+                      width: '100%',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      color: '#0f172a',
+                      padding: '0.65rem 0.85rem',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      boxSizing: 'border-box'
                     }}
-                  >
-                    {paymentLoading 
-                      ? 'Activating...' 
-                      : (selectedPlan.id === 'TRIAL' ? 'Activate 10-Day Free Trial →' : 'Proceed to Payment →')}
-                  </button>
-
-                  {selectedPlan.id !== 'TRIAL' && (
-                    <button 
-                      type="button"
-                      onClick={handleSimulatedSuccess}
-                      disabled={paymentLoading}
-                      style={{
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        border: '1px solid rgba(16, 185, 129, 0.3)',
-                        color: '#10b981',
-                        padding: '0.85rem',
-                        borderRadius: '10px',
-                        fontSize: '1rem',
-                        fontWeight: 700,
-                        cursor: paymentLoading ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      ⚡ Simulate Payment Success (No Wallet Required)
-                    </button>
-                  )}
+                  />
                 </div>
-              </form>
-            ) : (
-              <form onSubmit={handleUtrSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.5 }}>
-                    Open your favorite UPI App (GPay, PhonePe, Paytm, BHIM) on your mobile device and scan the QR code below to complete the transfer.
-                  </p>
-                  
-                  {/* Dynamic UPI QR Code via public API */}
-                  <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
-                    <div style={{ backgroundColor: '#fff', padding: '1rem', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}>
-                      <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(getUpiUrl())}`} 
-                        alt="UPI QR Code" 
-                        style={{ display: 'block', width: '200px', height: '200px' }} 
-                      />
-                    </div>
-                  </div>
 
-                  <div style={{ backgroundColor: '#0a0d16', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8rem', textAlign: 'left' }}>
-                    <div><span style={{ color: '#64748b' }}>Payee Name:</span> <strong style={{ color: '#fff' }}>ROHIT BARGE</strong></div>
-                    <div><span style={{ color: '#64748b' }}>VPA Address:</span> <strong style={{ color: '#fff', fontFamily: 'monospace' }}>rohitbarge22-3@okaxis</strong></div>
-                    <div><span style={{ color: '#64748b' }}>Amount:</span> <strong style={{ color: '#fff' }}>₹{selectedPlan.price.toLocaleString()}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>Transaction Note:</span> <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{getUpiNote()}</strong></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                      Email Address *
+                    </label>
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="john@example.com"
+                      value={checkoutForm.email}
+                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, email: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        color: '#0f172a',
+                        padding: '0.65rem 0.85rem',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                      Phone Number *
+                    </label>
+                    <input 
+                      type="tel" 
+                      required
+                      placeholder="e.g. 9988776655"
+                      value={checkoutForm.phone}
+                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, phone: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        color: '#0f172a',
+                        padding: '0.65rem 0.85rem',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  style={{
+                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    marginTop: '0.5rem',
+                    boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)'
+                  }}
+                >
+                  Next: Tax & Bank Credentials →
+                </button>
+              </form>
+            )}
+
+            {/* STEP 2: Government Tax Identifiers & Settlement Bank Credentials */}
+            {checkoutStep === 'STEP2' && (
+              <form onSubmit={handleStep2Next} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                      GSTIN Number (Optional)
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 27AAAAA0000A1Z5"
+                      value={checkoutForm.gstin}
+                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, gstin: e.target.value.toUpperCase() }))}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        color: '#0f172a',
+                        padding: '0.65rem 0.85rem',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                      PAN Number (Optional)
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. ABCDE1234F"
+                      value={checkoutForm.pan}
+                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, pan: e.target.value.toUpperCase() }))}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        color: '#0f172a',
+                        padding: '0.65rem 0.85rem',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Enter 12-digit UPI Transaction Ref / UTR Number *</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                    Settlement Bank Name (Optional)
+                  </label>
                   <input 
                     type="text" 
-                    required
-                    pattern="\d{12}"
-                    maxLength={12}
-                    placeholder="e.g. 123456789012"
-                    value={utrNumber}
-                    onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').substring(0, 12))}
-                    style={inputStyle}
+                    placeholder="e.g. HDFC Bank / ICICI Bank"
+                    value={checkoutForm.bankName}
+                    onChange={(e) => setCheckoutForm(prev => ({ ...prev, bankName: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      color: '#0f172a',
+                      padding: '0.65rem 0.85rem',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
                   />
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
-                    Enter the exact UTR from your bank app statement or payment screen.
-                  </span>
                 </div>
 
-                {paymentStatusMessage && (
-                  <div style={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '10px',
-                    padding: '0.85rem',
-                    fontSize: '0.85rem',
-                    color: '#e2e8f0',
-                    lineHeight: 1.4
-                  }}>
-                    {paymentStatusMessage}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                      Account Number (Optional)
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 50100123456789"
+                      value={checkoutForm.bankAccNumber}
+                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, bankAccNumber: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        color: '#0f172a',
+                        padding: '0.65rem 0.85rem',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
                   </div>
-                )}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', marginBottom: '0.35rem' }}>
+                      IFSC Code (Optional)
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. HDFC0001234"
+                      value={checkoutForm.bankIfsc}
+                      onChange={(e) => setCheckoutForm(prev => ({ ...prev, bankIfsc: e.target.value.toUpperCase() }))}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        color: '#0f172a',
+                        padding: '0.65rem 0.85rem',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
                   <button 
                     type="button" 
-                    onClick={() => {
-                      setCheckoutStep('FORM');
-                      setPaymentStatusMessage('');
-                    }}
+                    onClick={() => setCheckoutStep('STEP1')}
                     style={{
                       flex: 1,
-                      backgroundColor: 'transparent',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      color: '#94a3b8',
-                      padding: '0.85rem',
-                      borderRadius: '10px',
-                      fontSize: '1rem',
-                      fontWeight: 700,
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      color: '#475569',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
                       cursor: 'pointer'
                     }}
                   >
@@ -1743,19 +1891,178 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                     disabled={paymentLoading}
                     style={{
                       flex: 2,
-                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
                       border: 'none',
                       color: '#fff',
-                      padding: '0.85rem',
-                      borderRadius: '10px',
-                      fontSize: '1rem',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.95rem',
                       fontWeight: 700,
                       cursor: paymentLoading ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',
+                      boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)'
+                    }}
+                  >
+                    {selectedPlan.id === 'TRIAL' ? 'Activate 10-Day Free Trial →' : 'Next: Proceed to QR Payment →'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 3: QR Payment UI matching Screenshot 3 & Tenant Dashboard */}
+            {checkoutStep === 'STEP3_PAYMENT' && (
+              <form onSubmit={handleUtrSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Plan selector cards matching Screenshot 3 */}
+                {Object.keys(dynamicPlans).length > 0 && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
+                      SELECT / CHANGE SUBSCRIPTION PLAN:
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+                      {Object.values(dynamicPlans)
+                        .filter((p: any) => p.isActive !== false)
+                        .map((plan: any) => {
+                          const isSelected = selectedPlan?.id === plan.planId;
+                          return (
+                            <button
+                              key={plan.planId}
+                              type="button"
+                              onClick={() => setSelectedPlan({ id: plan.planId, name: plan.name, price: plan.price })}
+                              style={{
+                                backgroundColor: isSelected ? '#e0e7ff' : '#0f172a',
+                                border: isSelected ? '2px solid #6366f1' : '1px solid #1e293b',
+                                borderRadius: '8px',
+                                padding: '0.55rem 0.75rem',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <div style={{ color: isSelected ? '#4f46e5' : '#ffffff', fontWeight: 700, fontSize: '0.8rem' }}>
+                                {plan.name}
+                              </div>
+                              <div style={{ color: isSelected ? '#6366f1' : '#94a3b8', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                                ₹{plan.price.toLocaleString()} / {plan.duration || 'period'}
+                              </div>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Target plan summary banner matching Screenshot 3 */}
+                <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '10px', padding: '0.85rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>SELECTED TARGET PLAN</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.2rem' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{selectedPlan.name}</span>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#34d399', fontFamily: 'monospace' }}>₹{selectedPlan.price.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* QR Payment UI */}
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                    Scan the QR code below via GPay/PhonePe to make your payment, then enter the 12-digit UTR verification code.
+                  </p>
+
+                  {/* Dynamic UPI QR Code */}
+                  <div style={{ display: 'flex', justifyContent: 'center', margin: '0.5rem 0 0.75rem 0' }}>
+                    <div style={{ backgroundColor: '#ffffff', padding: '0.85rem', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.08)' }}>
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=5&data=${encodeURIComponent(getUpiUrl())}`} 
+                        alt="UPI QR Code" 
+                        style={{ display: 'block', width: '180px', height: '180px' }} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dark Payee Details Box */}
+                  <div style={{ backgroundColor: '#0f172a', padding: '0.65rem 0.85rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.75rem', textAlign: 'left' }}>
+                    <div><span style={{ color: '#64748b' }}>Payee Name:</span> <strong style={{ color: '#ffffff' }}>ROHIT BARGE</strong></div>
+                    <div><span style={{ color: '#64748b' }}>VPA:</span> <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>rohitbarge22-3@okaxis</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Transaction Note:</span> <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{getUpiNote()}</strong></div>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', marginBottom: '0.35rem' }}>
+                    Enter 12-digit UPI Ref / UTR Number *
+                  </label>
+                  <input 
+                    type="text" 
+                    required
+                    pattern="\d{12}"
+                    maxLength={12}
+                    placeholder="e.g. 123456789012"
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').substring(0, 12))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#0f172a',
+                      border: '1px solid #1e293b',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      padding: '0.65rem 0.85rem',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                {paymentStatusMessage && (
+                  <div style={{
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    fontSize: '0.8rem',
+                    color: '#0f172a',
+                    lineHeight: 1.4
+                  }}>
+                    {paymentStatusMessage}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setCheckoutStep('STEP2');
+                      setPaymentStatusMessage('');
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      color: '#475569',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={paymentLoading}
+                    style={{
+                      flex: 2,
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      border: 'none',
+                      color: '#ffffff',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      cursor: paymentLoading ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
                       opacity: paymentLoading ? 0.7 : 1
                     }}
                   >
-                    {paymentLoading ? 'Submitting...' : 'Submit Payment for Activation'}
+                    {paymentLoading ? 'Submitting...' : 'Submit Payment'}
                   </button>
                 </div>
               </form>
