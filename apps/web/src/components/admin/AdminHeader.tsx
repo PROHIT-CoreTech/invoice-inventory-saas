@@ -1,8 +1,8 @@
 import React from 'react';
 
 interface AdminHeaderProps {
-  activeTab: 'WORKSPACES' | 'PENDING_PAYMENTS' | 'PRICING';
-  setActiveTab: (tab: 'WORKSPACES' | 'PENDING_PAYMENTS' | 'PRICING') => void;
+  activeTab: 'WORKSPACES' | 'PENDING_PAYMENTS' | 'PRICING' | 'REVENUE';
+  setActiveTab: (tab: 'WORKSPACES' | 'PENDING_PAYMENTS' | 'PRICING' | 'REVENUE') => void;
   pendingCount: number;
   tenantsCount?: number;
   plansCount: number;
@@ -182,6 +182,24 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           }}
         >
           🏷️ Subscription Pricing & Offers ({plansCount})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('REVENUE')}
+          style={{
+            backgroundColor: activeTab === 'REVENUE' ? '#4f46e5' : 'transparent',
+            color: activeTab === 'REVENUE' ? '#ffffff' : '#64748b',
+            border: 'none',
+            padding: '0.65rem 1.25rem',
+            borderRadius: '8px',
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          📊 Revenue & Analytics
         </button>
       </div>
     </div>

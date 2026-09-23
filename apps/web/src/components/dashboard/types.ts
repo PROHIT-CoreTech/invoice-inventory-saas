@@ -19,6 +19,7 @@ export interface TenantProfile {
   theme?: string;
   tier?: string;
   subscriptionPlan?: string;
+  subscriptionAmount?: number | null;
   subscriptionStatus?: string;
   subscriptionExpiresAt?: string;
   createdAt?: string;

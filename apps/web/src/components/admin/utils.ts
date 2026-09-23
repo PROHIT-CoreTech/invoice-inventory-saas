@@ -12,7 +12,14 @@ export const getPlanLabel = (planId?: string): string => {
   }
 };
 
-export const getPlanPrice = (planId?: string, subscriptionPlans: SubscriptionPlanConfig[] = []): string => {
+export const getPlanPrice = (
+  planId?: string,
+  subscriptionPlans: SubscriptionPlanConfig[] = [],
+  subscriptionAmount?: number | null
+): string => {
+  if (typeof subscriptionAmount === 'number') {
+    return `₹${subscriptionAmount.toLocaleString('en-IN')}`;
+  }
   if (!planId || planId === 'FREE' || planId === 'TRIAL') return '₹0';
   
   const planConfig = subscriptionPlans.find(p => p.planId === planId);

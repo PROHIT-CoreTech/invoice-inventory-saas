@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Tenant, SubscriptionPlanConfig, PendingPayment } from './admin/types';
+import { Tenant, SubscriptionPlanConfig, PendingPayment, RevenueAnalytics } from './admin/types';
 import PasswordModal from './admin/PasswordModal';
 import { AdminHeader } from './admin/AdminHeader';
 import { AdminStats } from './admin/AdminStats';
 import { TenantsTable } from './admin/TenantsTable';
 import { PendingPaymentsTable } from './admin/PendingPaymentsTable';
 import { SubscriptionPlansManager } from './admin/SubscriptionPlansManager';
+import { AdminRevenueDashboard } from './admin/AdminRevenueDashboard';
 import EditPlanModal from './admin/EditPlanModal';
 import EditTenantModal from './admin/EditTenantModal';
 import CreateTenantModal from './admin/CreateTenantModal';
@@ -23,9 +24,11 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
   const [error, setError] = useState('');
 
   // Active Tab & Section states
-  const [activeTab, setActiveTab] = useState<'WORKSPACES' | 'PENDING_PAYMENTS' | 'PRICING'>('WORKSPACES');
+  const [activeTab, setActiveTab] = useState<'WORKSPACES' | 'PENDING_PAYMENTS' | 'PRICING' | 'REVENUE'>('WORKSPACES');
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlanConfig[]>([]);
+  const [revenueAnalytics, setRevenueAnalytics] = useState<RevenueAnalytics | null>(null);
+  const [revenueLoading, setRevenueLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // Plan Pricing Management States
@@ -122,6 +125,26 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       }
     } catch (e) {
       console.error('Failed to fetch subscription plans:', e);
+    }
+
+    // 4. Fetch Revenue Analytics & Audit Ledger
+    fetchRevenueData(adminPassword);
+  };
+
+  const fetchRevenueData = async (adminPassword = password) => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+    const revenueUrl = `${baseUrl}/admin/revenue?password=${encodeURIComponent(adminPassword)}`;
+    setRevenueLoading(true);
+    try {
+      const res = await fetch(revenueUrl);
+      if (res.ok) {
+        const data = await res.json();
+        setRevenueAnalytics(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch revenue analytics:', e);
+    } finally {
+      setRevenueLoading(false);
     }
   };
 
@@ -480,6 +503,14 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
             onOpenEditPlan={handleOpenEditPlan}
             onApplyFuturePrice={handleApplyFuturePrice}
             onClearOffer={handleClearOffer}
+          />
+        )}
+
+        {activeTab === 'REVENUE' && (
+          <AdminRevenueDashboard
+            analytics={revenueAnalytics}
+            loading={revenueLoading}
+            onRefresh={() => fetchRevenueData()}
           />
         )}
       </main>

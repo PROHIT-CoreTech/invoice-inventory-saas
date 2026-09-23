@@ -15,7 +15,8 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "generate": "prisma generate --schema=prisma/schema.prisma",
+    "build": "prisma generate --schema=prisma/schema.prisma && tsc",
     "dev": "tsc -w",
     "db:init": "ts-node scripts/setup.ts"
   },

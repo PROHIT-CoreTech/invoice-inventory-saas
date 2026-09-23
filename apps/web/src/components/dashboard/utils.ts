@@ -37,7 +37,14 @@ export const getPlanPriceNum = (planId: string, dynamicPlansMap: Record<string, 
   }
 };
 
-export const getPlanPrice = (planId: string | undefined | null, dynamicPlansMap: Record<string, any> = {}): string => {
+export const getPlanPrice = (
+  planId: string | undefined | null,
+  dynamicPlansMap: Record<string, any> = {},
+  subscriptionAmount?: number | null
+): string => {
+  if (typeof subscriptionAmount === 'number') {
+    return `₹${subscriptionAmount.toLocaleString('en-IN')}`;
+  }
   if (!planId) return '₹0';
   const num = getPlanPriceNum(planId, dynamicPlansMap);
   return `₹${num.toLocaleString('en-IN')}`;

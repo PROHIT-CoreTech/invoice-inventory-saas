@@ -15,7 +15,7 @@ interface TenantsTableProps {
   setSearchQuery: (query: string) => void;
   subscriptionPlans?: SubscriptionPlanConfig[];
   getPlanLabel?: (planId?: string) => string;
-  getPlanPrice?: (planId?: string) => string;
+  getPlanPrice?: (planId?: string, subscriptionPlans?: SubscriptionPlanConfig[], subscriptionAmount?: number | null) => string;
   getEffectiveStatus?: (t: Tenant) => string;
   formatDateTime?: (dateStr?: string | null) => string;
   formatDate?: (dateStr?: string | null) => string;
@@ -42,7 +42,7 @@ export const TenantsTable: React.FC<TenantsTableProps> = ({
   setSearchQuery,
   subscriptionPlans = [],
   getPlanLabel = defaultGetPlanLabel,
-  getPlanPrice = (planId) => defaultGetPlanPrice(planId, subscriptionPlans),
+  getPlanPrice = (planId, plans, amount) => defaultGetPlanPrice(planId, plans && plans.length > 0 ? plans : subscriptionPlans, amount),
   getEffectiveStatus = defaultGetEffectiveStatus,
   formatDateTime = defaultFormatDateTime,
   formatDate = defaultFormatDate,
@@ -206,7 +206,7 @@ export const TenantsTable: React.FC<TenantsTableProps> = ({
                       </div>
                       <div>
                         <span style={{ color: '#64748b', fontWeight: 600 }}>Amount: </span>
-                        <span style={{ color: '#334155', fontWeight: 600 }}>{getPlanPrice(t.subscriptionPlan)}</span>
+                        <span style={{ color: '#334155', fontWeight: 600 }}>{getPlanPrice(t.subscriptionPlan, subscriptionPlans, t.subscriptionAmount)}</span>
                       </div>
                       {(() => {
                         const effStatus = getEffectiveStatus(t);

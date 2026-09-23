@@ -17,10 +17,40 @@ export interface Tenant {
   theme?: string;
   tier?: string;
   subscriptionPlan?: string;
+  subscriptionAmount?: number | null;
   subscriptionStatus?: string;
   subscriptionExpiresAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SubscriptionHistoryRecord {
+  id: string;
+  tenantId: string;
+  planId: string;
+  planName: string;
+  amount: number;
+  paymentStatus: string;
+  paymentMode?: string;
+  utrNumber?: string;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+}
+
+export interface RevenueAnalytics {
+  totalRevenue: number;
+  mrr: number;
+  activePayingCount: number;
+  freeTrialCount: number;
+  arpu: number;
+  revenueByPlan: {
+    planId: string;
+    planName: string;
+    totalAmount: number;
+    count: number;
+  }[];
+  subscriptionLogs: SubscriptionHistoryRecord[];
 }
 
 export interface SubscriptionPlanConfig {

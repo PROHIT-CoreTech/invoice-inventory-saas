@@ -83,7 +83,7 @@ export const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
           <div className="stat-header">
             <span>Active Plan</span>
             <span style={{ color: '#4f46e5', fontWeight: 700 }}>
-              {getPlanPrice(tenantProfile?.subscriptionPlan || 'FREE', dynamicPlansMap)}
+              {getPlanPrice(tenantProfile?.subscriptionPlan || 'FREE', dynamicPlansMap, tenantProfile?.subscriptionAmount)}
             </span>
           </div>
           <div className="stat-value" style={{ fontSize: '1.35rem' }}>

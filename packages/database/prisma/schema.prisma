@@ -107,6 +107,7 @@ model TenantProfile {
   theme          String?  @default("DEFAULT")
   tier           String?  @default("FREE")
   subscriptionPlan      String?  @default("FREE")
+  subscriptionAmount    Float?
   subscriptionStatus    String?  @default("INACTIVE")
   subscriptionExpiresAt DateTime?
   createdAt      DateTime @default(now())
@@ -130,4 +131,22 @@ model SubscriptionPlanConfig {
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 }
+
+model SubscriptionHistory {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId           String
+  planId             String
+  planName           String
+  amount             Float
+  paymentStatus      String   // 'VERIFIED' | 'PENDING' | 'REJECTED' | 'MANUAL_GRANT'
+  paymentMode        String?  // 'UPI' | 'BANK_TRANSFER' | 'MANUAL' | 'FREE'
+  utrNumber          String?
+  startDate          DateTime @default(now())
+  endDate            DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
 
