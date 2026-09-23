@@ -139,7 +139,7 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction) 
     // Also log a cash payment record in the Mongoose payment tracking collection
     const amountMap: Record<string, number> = {
       'TRIAL': 0,
-      '1_MONTH': 999,
+      '1_MONTH': 1499,
       '6_MONTHS': 4999,
       '1_YEAR': 9999,
       'LIFETIME': 20000,

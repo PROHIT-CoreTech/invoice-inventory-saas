@@ -16,7 +16,7 @@ export const DEFAULT_PLANS = [
     planId: '1_MONTH',
     name: 'Monthly Starter',
     description: 'Flexible monthly plan for growing businesses',
-    regularPrice: 999,
+    regularPrice: 1499,
     billingCycleMonths: 1,
     isActive: true
   },

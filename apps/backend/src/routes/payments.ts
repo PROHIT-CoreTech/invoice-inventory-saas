@@ -11,7 +11,7 @@ router.use(tenantMiddleware);
 // Map of plan details fallback: ID -> price, duration (months)
 const PLANS: Record<string, { price: number; months: number | null; label: string }> = {
   'TRIAL': { price: 0, months: null, label: '10-Day Free Trial' },
-  '1_MONTH': { price: 999, months: 1, label: 'Monthly Starter' },
+  '1_MONTH': { price: 1499, months: 1, label: 'Monthly Starter' },
   '6_MONTHS': { price: 4999, months: 6, label: 'Bi-Annual Pro' },
   '1_YEAR': { price: 9999, months: 12, label: 'Annual Enterprise' },
   'LIFETIME': { price: 20000, months: null, label: 'Lifetime Unlimited' }

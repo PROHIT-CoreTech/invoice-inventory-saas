@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import '../index.css';
 import {
   useGetQuotations,
@@ -20,59 +20,32 @@ import {
   useDeleteFinalInvoice,
   useGetClientLedger,
   useRecordClientPayment,
-  useDeletePaymentRecord,
 } from '@procash-invoices/api-client';
 import { type Quotation, type ProformaInvoice, type FinalInvoice } from '@procash-invoices/database';
 import { generateDocumentHtml } from '@procash-invoices/document-templates';
 import ExcelJS from 'exceljs';
 
-const IframePreview = React.forwardRef<HTMLIFrameElement, { srcDoc: string }>((props, ref) => {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [scale, setScale] = React.useState(1);
-
-  React.useEffect(() => {
-    if (!containerRef.current) return;
-    const updateScale = () => {
-      const width = containerRef.current?.offsetWidth || 0;
-      if (width > 0 && width < 800) {
-        setScale(width / 800);
-      } else {
-        setScale(1);
-      }
-    };
-    
-    updateScale();
-    const timer = setTimeout(updateScale, 100);
-
-    window.addEventListener('resize', updateScale);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updateScale);
-    };
-  }, []);
-
-  return (
-    <div ref={containerRef} style={{ width: '100%', overflow: 'hidden', height: `${750 * scale}px`, position: 'relative' }}>
-      <iframe
-        ref={ref}
-        title="Print Preview"
-        style={{
-          width: '800px',
-          height: '750px',
-          border: 'none',
-          background: '#fff',
-          display: 'block',
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left',
-          position: 'absolute',
-          top: 0,
-          left: 0
-        }}
-        srcDoc={props.srcDoc}
-      />
-    </div>
-  );
-});
+import { TenantProfile, ViewMode, DocumentItem, Client } from './dashboard/types';
+import {
+  getApiBaseUrl,
+  getPlanPriceNum,
+  getFinancialYear,
+  getDocumentData,
+  isToday
+} from './dashboard/utils';
+import { DashboardHeader } from './dashboard/DashboardHeader';
+import { DashboardStats } from './dashboard/DashboardStats';
+import { QuotationsSection } from './dashboard/QuotationsSection';
+import { ProformaSection } from './dashboard/ProformaSection';
+import { InvoicesSection } from './dashboard/InvoicesSection';
+import { ClientLedgerSection } from './dashboard/ClientLedgerSection';
+import { SubscriptionSection } from './dashboard/SubscriptionSection';
+import { CreateDocumentModal } from './dashboard/modals/CreateDocumentModal';
+import { SubscriptionModal } from './dashboard/modals/SubscriptionModal';
+import { TenantSettingsModal } from './dashboard/modals/TenantSettingsModal';
+import { RecordPaymentModal } from './dashboard/modals/RecordPaymentModal';
+import { ExcelPreviewModal } from './dashboard/modals/ExcelPreviewModal';
+import { PrintPreviewModal } from './dashboard/modals/PrintPreviewModal';
 
 export default function Dashboard() {
   // Querying using shared TanStack Query hooks from @procash-invoices/api-client
@@ -95,10 +68,27 @@ export default function Dashboard() {
   const deleteProforma = useDeleteProformaInvoice();
   const deleteInvoice = useDeleteFinalInvoice();
 
-  const [tenantProfile, setTenantProfile] = useState<any>(null);
+  const [tenantProfile, setTenantProfile] = useState<TenantProfile | null>(null);
 
   // Workspace Settings Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsData, setSettingsData] = useState<any>({
+    companyName: '',
+    proprietorName: '',
+    address: '',
+    gstin: '',
+    pan: '',
+    bankName: '',
+    bankAccHolder: '',
+    bankAccType: 'Current A/C',
+    bankAccNumber: '',
+    bankIfsc: '',
+    bankBranch: '',
+    logoUrl: '',
+    signatureUrl: '',
+    theme: 'DEFAULT',
+    tier: 'FREE'
+  });
 
   // Expiration Renewal & Plan Change Modal States
   const [isRenewalOpen, setIsRenewalOpen] = useState(false);
@@ -106,15 +96,6 @@ export default function Dashboard() {
   const [renewalUtr, setRenewalUtr] = useState('');
   const [renewalLoading, setRenewalLoading] = useState(false);
   const [renewalStatus, setRenewalStatus] = useState('');
-
-  // API Base URL resolver for production subdomains and local dev
-  const getApiBaseUrl = () => {
-    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return `${window.location.protocol}//${window.location.host}/api`;
-    }
-    return 'http://localhost:5001/api';
-  };
 
   // Dynamic Subscription Plans State synced from Backend
   const [dynamicPlansMap, setDynamicPlansMap] = useState<Record<string, any>>({});
@@ -139,57 +120,11 @@ export default function Dashboard() {
     fetchSubscriptionPlans();
   }, [fetchSubscriptionPlans]);
 
-  // Refetch subscription plans whenever renewal modal opens to ensure real-time price accuracy
   useEffect(() => {
     if (isRenewalOpen) {
       fetchSubscriptionPlans();
     }
   }, [isRenewalOpen, fetchSubscriptionPlans]);
-
-  const getPlanPriceNum = (planId: string) => {
-    if (dynamicPlansMap[planId]) {
-      const p = dynamicPlansMap[planId];
-      return p.effectivePrice ?? p.regularPrice;
-    }
-    switch (planId) {
-      case '1_MONTH': return 999;
-      case '6_MONTHS': return 4999;
-      case '1_YEAR': return 9999;
-      case 'LIFETIME': return 20000;
-      case 'TRIAL': return 0;
-      case 'FREE': return 0;
-      default: return 999;
-    }
-  };
-
-  const getRenewalUpiUrl = (targetPlan?: string) => {
-    if (!tenantProfile) return '';
-    const formattedTenant = tenantProfile.tenantId.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-    const planId = targetPlan || selectedPlan || tenantProfile.subscriptionPlan || '1_MONTH';
-    
-    let planCode = 'MON';
-    if (planId === '6_MONTHS') planCode = 'PRO';
-    else if (planId === '1_YEAR') planCode = 'ENT';
-    else if (planId === 'LIFETIME') planCode = 'LIF';
-    else if (planId === 'TRIAL') planCode = 'TRL';
-
-    const tn = `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
-    const amount = getPlanPriceNum(planId);
-    
-    return `upi://pay?pa=rohitbarge22-3@okaxis&pn=ROHIT%20BARGE&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`;
-  };
-
-  const getRenewalUpiNote = (targetPlan?: string) => {
-    if (!tenantProfile) return '';
-    const formattedTenant = tenantProfile.tenantId.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-    const planId = targetPlan || selectedPlan || tenantProfile.subscriptionPlan || '1_MONTH';
-    let planCode = 'MON';
-    if (planId === '6_MONTHS') planCode = 'PRO';
-    else if (planId === '1_YEAR') planCode = 'ENT';
-    else if (planId === 'LIFETIME') planCode = 'LIF';
-    else if (planId === 'TRIAL') planCode = 'TRL';
-    return `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
-  };
 
   const handleRenewalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,7 +149,7 @@ export default function Dashboard() {
         },
         body: JSON.stringify({
           planTier: activeTargetPlan,
-          amountPaid: getPlanPriceNum(activeTargetPlan),
+          amountPaid: getPlanPriceNum(activeTargetPlan, dynamicPlansMap),
           utrNumber: cleanUtr
         })
       });
@@ -236,52 +171,8 @@ export default function Dashboard() {
     } catch (err: any) {
       console.error(err);
       setRenewalStatus(`❌ Error: ${err.message || 'UTR submission failed.'}`);
+    } finally {
       setRenewalLoading(false);
-    }
-  };
-  const [settingsData, setSettingsData] = useState<any>({
-    companyName: '',
-    proprietorName: '',
-    address: '',
-    gstin: '',
-    pan: '',
-    bankName: '',
-    bankAccHolder: '',
-    bankAccType: 'Current A/C',
-    bankAccNumber: '',
-    bankIfsc: '',
-    bankBranch: '',
-    logoUrl: '',
-    signatureUrl: '',
-    theme: 'DEFAULT',
-    tier: 'FREE'
-  });
-
-  const getPlanLabel = (planId: string | undefined | null) => {
-    switch (planId) {
-      case 'TRIAL': return '10-Day Free Trial';
-      case '1_MONTH': return 'Monthly Starter';
-      case '6_MONTHS': return '6 Months Pro';
-      case '1_YEAR': return '1 Year Enterprise';
-      case 'LIFETIME': return 'Lifetime Unlimited';
-      case 'FREE': return 'Free Tier';
-      default: return 'Free Tier';
-    }
-  };
-
-  const getPlanPrice = (planId: string | undefined | null) => {
-    if (!planId) return '₹0';
-    const num = getPlanPriceNum(planId);
-    return `₹${num.toLocaleString('en-IN')}`;
-  };
-
-  const formatDateTime = (dateStr: string | null | undefined) => {
-    if (!dateStr) return 'N/A';
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    } catch {
-      return 'N/A';
     }
   };
 
@@ -377,7 +268,7 @@ export default function Dashboard() {
       .catch(err => console.log('No tenant profile active yet:', err.message));
   }, []);
 
-  const isApiError = errorQuotes || errorProformas || errorInvoices;
+  const isApiError = Boolean(errorQuotes || errorProformas || errorInvoices);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -385,82 +276,9 @@ export default function Dashboard() {
   const [printDoc, setPrintDoc] = useState<Quotation | ProformaInvoice | FinalInvoice | null>(null);
   const [editingDoc, setEditingDoc] = useState<Quotation | ProformaInvoice | FinalInvoice | null>(null);
   const [logoUrl, setLogoUrl] = useState('');
-  
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  const getFinancialYear = (date: Date = new Date()) => {
-    const currentYear = date.getFullYear();
-    const currentMonth = date.getMonth(); // 0-indexed, April is 3
-    const startYear = currentMonth >= 3 ? currentYear : currentYear - 1;
-    const endYear = (startYear + 1) % 100;
-    return `${startYear}-${String(endYear).padStart(2, '0')}`;
-  };
-
-  const getDocumentData = (doc: Quotation | ProformaInvoice | FinalInvoice) => {
-    return {
-      documentType: doc.documentType,
-      documentNumber: doc.documentNumber || (doc as any).quoteNumber || (doc as any).proformaNumber || (doc as any).invoiceNumber || '',
-      issueDate: doc.issueDate,
-      dueDate: (doc as any).dueDate,
-      validUntil: (doc as any).validUntil,
-      clientInfo: {
-        name: doc.clientInfo?.name || '',
-        email: doc.clientInfo?.email,
-        billingAddress: doc.clientInfo?.billingAddress,
-        billingAndShippingAddress: doc.clientInfo?.billingAddress,
-        gstin: doc.clientInfo?.gstin,
-        stateName: (doc.clientInfo as any)?.stateName || 'Maharashtra',
-        stateCode: (doc.clientInfo as any)?.stateCode || '27',
-      },
-      items: (doc.items || []).map(item => ({
-        description: item.description,
-        quantity: item.quantity,
-        price: item.price,
-        taxRate: item.taxRate,
-        hsnSac: (item as any).hsnSac || '998311',
-        per: (item as any).per || 'nos',
-        discountPercent: (item as any).discountPercent || 0,
-      })),
-      notes: doc.notes,
-      currency: doc.currency,
-      applyGst: (doc as any).applyGst !== false,
-      logoUrl: tenantProfile?.logoUrl || (doc as any).logoUrl || `${window.location.origin}/images/hero.png`,
-      tenantProfile: tenantProfile || undefined,
-    };
-  };
-
-  const handlePrint = () => {
-    const originalTitle = document.title;
-    if (printDoc) {
-      const docNum = printDoc.documentNumber || (printDoc as any).quoteNumber || (printDoc as any).proformaNumber || (printDoc as any).invoiceNumber || '';
-      // Replace '/' with '-' to avoid path issues on macOS/Linux
-      const safeNum = docNum.replace(/\//g, '-');
-      if (safeNum) {
-        document.title = safeNum;
-      }
-    }
-
-    if (iframeRef.current && iframeRef.current.contentWindow) {
-      try {
-        const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document;
-        if (iframeDoc) {
-          iframeDoc.title = document.title;
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      iframeRef.current.contentWindow.print();
-    } else {
-      window.print();
-    }
-
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 1000);
-  };
 
   const handleDownloadHtml = (doc: any) => {
-    const docData = getDocumentData(doc);
+    const docData = getDocumentData(doc, tenantProfile);
     const htmlContent = generateDocumentHtml(docData);
     const docNum = doc.documentNumber || doc.quoteNumber || doc.proformaNumber || doc.invoiceNumber || 'document';
     const safeNum = docNum.replace(/\//g, '-');
@@ -477,7 +295,7 @@ export default function Dashboard() {
   };
 
   // Daily Mode, History, Ledger & Subscription States
-  const [viewMode, setViewMode] = useState<'daily' | 'history' | 'ledger' | 'subscription'>('daily');
+  const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -486,9 +304,8 @@ export default function Dashboard() {
 
   // Ledger State & Hooks
   const [selectedLedgerClientId, setSelectedLedgerClientId] = useState<string>('');
-  const { data: ledgerData, isLoading: loadingLedger, refetch: refetchLedger } = useGetClientLedger(selectedLedgerClientId);
+  const { data: ledgerData, isLoading: loadingLedger } = useGetClientLedger(selectedLedgerClientId);
   const recordPaymentMutation = useRecordClientPayment();
-  const deletePaymentMutation = useDeletePaymentRecord();
 
   // Payment Recording Modal State
   const [isRecordPaymentModalOpen, setIsRecordPaymentModalOpen] = useState(false);
@@ -524,7 +341,7 @@ export default function Dashboard() {
   const [currency, setCurrency] = useState('INR');
   const [notes, setNotes] = useState('');
   const [dateVal, setDateVal] = useState('');
-  const [items, setItems] = useState<Array<{ description: string; quantity: number | undefined; price: number; taxRate: number; hsnSac: string; discountPercent?: number }>>([
+  const [items, setItems] = useState<DocumentItem[]>([
     { description: '', quantity: 1, price: 0, taxRate: 18, hsnSac: '998311', discountPercent: 0 }
   ]);
   const [quotationRef, setQuotationRef] = useState('');
@@ -543,20 +360,9 @@ export default function Dashboard() {
     }
   };
 
-  // Date and Search Helpers
-  const isToday = (dateStr?: Date | string) => {
-    if (!dateStr) return false;
-    const date = new Date(dateStr);
-    const today = new Date();
-    return date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear();
-  };
-
   const filterBySearchAndDate = (list: any[]) => {
     let filtered = list;
     
-    // Search query filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(item => {
@@ -567,7 +373,6 @@ export default function Dashboard() {
       });
     }
     
-    // Date range filter
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -601,173 +406,9 @@ export default function Dashboard() {
     ? invoices.filter((i: any) => isToday(i.createdAt || i.issueDate))
     : filterBySearchAndDate(invoices);
 
-  // Aggregate values for display
-  const totalQuoteVolume = (quotations as Quotation[]).reduce((sum: number, q: Quotation) => sum + (q.totalAmount || 0), 0);
-  const totalProformaVolume = (proformas as ProformaInvoice[]).reduce((sum: number, p: ProformaInvoice) => sum + (p.totalAmount || 0), 0);
-  const totalInvoiceVolume = (invoices as FinalInvoice[]).reduce((sum: number, i: FinalInvoice) => sum + (i.totalAmount || 0), 0);
-
-  const handleExportToExcel = async () => {
-    const workbook = new ExcelJS.Workbook();
-    
-    // Configure default properties
-    workbook.creator = 'PROCash Invoices';
-    workbook.lastModifiedBy = 'PROCash Invoices';
-    workbook.created = new Date();
-    workbook.modified = new Date();
-
-    const generateSheet = (sheetName: string, title: string, headers: string[], rows: any[]) => {
-      const sheet = workbook.addWorksheet(sheetName, {
-        views: [{ showGridLines: true }] // Ensure grid lines are visible
-      });
-
-      // 1. Add Title row
-      sheet.addRow([title]);
-      const titleCell = sheet.getCell('A1');
-      titleCell.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: 'FF4F46E5' } };
-      sheet.getRow(1).height = 35;
-      sheet.mergeCells(1, 1, 1, headers.length); // Merge across header length
-
-      // Blank space
-      sheet.addRow([]);
-      sheet.getRow(2).height = 15;
-
-      // 2. Add Header row
-      sheet.addRow(headers);
-      const headerRow = sheet.getRow(3);
-      headerRow.height = 25;
-      
-      headerRow.eachCell((cell) => {
-        cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF4F46E5' }
-        };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF312E81' } },
-          bottom: { style: 'thin', color: { argb: 'FF312E81' } },
-          left: { style: 'thin', color: { argb: 'FF312E81' } },
-          right: { style: 'thin', color: { argb: 'FF312E81' } }
-        };
-      });
-
-      // 3. Add Data rows
-      if (rows.length === 0) {
-        sheet.addRow(['No records found']);
-        sheet.mergeCells(4, 1, 4, headers.length);
-        const emptyCell = sheet.getCell('A4');
-        emptyCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        emptyCell.font = { name: 'Segoe UI', italic: true };
-        sheet.getRow(4).height = 22;
-      } else {
-        rows.forEach((rowData) => {
-          const r = sheet.addRow(rowData);
-          r.height = 22;
-          
-          r.eachCell((cell, colNumber) => {
-            cell.font = { name: 'Segoe UI', size: 10, color: { argb: 'FF1E293B' } };
-            cell.border = {
-              top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-              bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-              left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-              right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
-            };
-
-            // Format numbers to align Right
-            if (typeof cell.value === 'number') {
-              cell.alignment = { horizontal: 'right', vertical: 'middle' };
-              if (colNumber >= 6 && colNumber <= 8) {
-                cell.numFmt = '"₹"#,##0.00'; // Format as INR Currency
-              }
-            } else {
-              cell.alignment = { horizontal: 'left', vertical: 'middle' };
-            }
-          });
-        });
-      }
-
-      // 4. Set Column Widths dynamically
-      const colWidths = [20, 25, 25, 15, 15, 18, 18, 18, 15];
-      colWidths.forEach((width, index) => {
-        const col = sheet.getColumn(index + 1);
-        if (col) col.width = width;
-      });
-    };
-
-    // 1. Prepare data rows for Quotations
-    const quotesData = filteredQuotes.map((q: any) => [
-      q.quoteNumber || q.documentNumber || '',
-      q.clientInfo?.name || '',
-      q.clientInfo?.email || '',
-      q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '',
-      q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '',
-      q.subtotal || 0,
-      q.taxAmount || 0,
-      q.totalAmount || 0,
-      q.status || ''
-    ]);
-
-    // 2. Prepare data rows for Proformas
-    const proformasData = filteredProformas.map((p: any) => [
-      p.proformaNumber || p.documentNumber || '',
-      p.clientInfo?.name || '',
-      p.clientInfo?.email || '',
-      p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '',
-      p.dueDate ? new Date(p.dueDate).toLocaleDateString() : '',
-      p.subtotal || 0,
-      p.taxAmount || 0,
-      p.totalAmount || 0,
-      p.status || ''
-    ]);
-
-    // 3. Prepare data rows for Final Invoices
-    const invoicesData = filteredInvoices.map((i: any) => [
-      i.invoiceNumber || i.documentNumber || '',
-      i.clientInfo?.name || '',
-      i.clientInfo?.email || '',
-      i.createdAt ? new Date(i.createdAt).toLocaleDateString() : '',
-      i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '',
-      i.subtotal || 0,
-      i.taxAmount || 0,
-      i.totalAmount || 0,
-      i.status || ''
-    ]);
-
-    // Generate sheets
-    generateSheet(
-      'Quotations',
-      'Quotations Billing Archive Report',
-      ['Quote Number', 'Client Name', 'Client Email', 'Date', 'Valid Until', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
-      quotesData
-    );
-
-    generateSheet(
-      'Proformas',
-      'Proforma Invoices Billing Archive Report',
-      ['Proforma Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
-      proformasData
-    );
-
-    generateSheet(
-      'Final Invoices',
-      'Final Invoices Billing Archive Report',
-      ['Invoice Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
-      invoicesData
-    );
-
-    // Save workbook binary file
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Billing_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  const totalQuoteVolume = quotations.reduce((sum: number, q: any) => sum + (q.totalAmount || 0), 0);
+  const totalProformaVolume = proformas.reduce((sum: number, p: any) => sum + (p.totalAmount || 0), 0);
+  const totalInvoiceVolume = invoices.reduce((sum: number, i: any) => sum + (i.totalAmount || 0), 0);
 
   const todayQuoteVolume = (quotations as Quotation[]).filter((q: any) => isToday(q.createdAt || q.issueDate)).reduce((sum, q) => sum + (q.totalAmount || 0), 0);
   const todayProformaVolume = (proformas as ProformaInvoice[]).filter((p: any) => isToday(p.createdAt || p.issueDate)).reduce((sum, p) => sum + (p.totalAmount || 0), 0);
@@ -781,86 +422,153 @@ export default function Dashboard() {
   const activeProformaCount = viewMode === 'daily' ? filteredProformas.length : proformas.length;
   const activeInvoiceCount = viewMode === 'daily' ? filteredInvoices.length : invoices.length;
 
-  const formatCurrency = (val: number, curr = 'USD') => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(val);
-  };
+  const handleExportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = tenantProfile?.companyName || 'PROCash Invoice ERP';
+    workbook.created = new Date();
 
-  const formatDate = (dateStr?: Date | string) => {
-    if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+    const generateSheet = (sheetName: string, titleText: string, headers: string[], dataList: any[]) => {
+      const sheet = workbook.addWorksheet(sheetName, {
+        views: [{ showGridLines: true }]
+      });
 
-  const renderAuditTrail = (doc: any) => {
-    const history: React.ReactNode[] = [];
-    const docId = doc.id || doc._id;
+      sheet.mergeCells('A1:I1');
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = titleText;
+      titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FF4F46E5' } };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-    if (doc.documentType === 'QUOTATION') {
-      const relatedProforma: any = proformas.find((p: any) => p.quotationRef === docId);
-      if (relatedProforma) {
-        history.push(
-          <div key="to-proforma" className="audit-trail-item">
-            <span>➔ Converted to Proforma Invoice:</span> <strong>{relatedProforma.documentNumber || relatedProforma.proformaNumber}</strong>
-          </div>
-        );
-        const relatedInvoice: any = invoices.find((i: any) => i.proformaRef === relatedProforma.id || i.proformaRef === relatedProforma._id);
-        if (relatedInvoice) {
-          history.push(
-            <div key="to-invoice" className="audit-trail-item">
-              <span>➔ Converted to Final Invoice:</span> <strong>{relatedInvoice.documentNumber || relatedInvoice.invoiceNumber}</strong>
-            </div>
-          );
-        }
-      }
-    } else if (doc.documentType === 'PROFORMA') {
-      const relatedQuotation: any = quotations.find((q: any) => (q.id || q._id) === doc.quotationRef);
-      if (relatedQuotation) {
-        history.push(
-          <div key="from-quote" className="audit-trail-item">
-            <span>← Converted from Quotation:</span> <strong>{relatedQuotation.documentNumber || relatedQuotation.quoteNumber}</strong>
-          </div>
-        );
-      }
-      const relatedInvoice: any = invoices.find((i: any) => i.proformaRef === docId);
-      if (relatedInvoice) {
-        history.push(
-          <div key="to-invoice" className="audit-trail-item">
-            <span>➔ Converted to Final Invoice:</span> <strong>{relatedInvoice.documentNumber || relatedInvoice.invoiceNumber}</strong>
-          </div>
-        );
-      }
-    } else if (doc.documentType === 'FINAL_INVOICE') {
-      const relatedProforma: any = proformas.find((p: any) => (p.id || p._id) === doc.proformaRef);
-      if (relatedProforma) {
-        history.push(
-          <div key="from-proforma" className="audit-trail-item">
-            <span>← Converted from Proforma Invoice:</span> <strong>{relatedProforma.documentNumber || relatedProforma.proformaNumber}</strong>
-          </div>
-        );
-        const relatedQuotation: any = quotations.find((q: any) => (q.id || q._id) === relatedProforma.quotationRef);
-        if (relatedQuotation) {
-          history.push(
-            <div key="from-quote" className="audit-trail-item">
-              <span>← Source Quotation:</span> <strong>{relatedQuotation.documentNumber || relatedQuotation.quoteNumber}</strong>
-            </div>
-          );
-        }
-      }
-    }
+      const headerRow = sheet.addRow(headers);
+      headerRow.height = 24;
 
-    if (history.length === 0) return null;
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4F46E5' }
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF312E81' } },
+          left: { style: 'thin', color: { argb: 'FF312E81' } },
+          bottom: { style: 'medium', color: { argb: 'FF312E81' } },
+          right: { style: 'thin', color: { argb: 'FF312E81' } }
+        };
+      });
 
-    return (
-      <div className="audit-trail-container no-print" style={{ padding: '1rem', margin: '0 0 1rem 0' }}>
-        <h4 className="audit-trail-title" style={{ color: '#eab308', margin: '0 0 0.5rem 0', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.5px' }}>⛓️ Document Reference History</h4>
-        <div className="audit-trail-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          {history}
-        </div>
-      </div>
+      dataList.forEach((rowVal: any[], rowIndex: number) => {
+        const row = sheet.addRow(rowVal);
+        row.height = 20;
+
+        const isEven = rowIndex % 2 === 0;
+        const bgHex = isEven ? 'FFFFFFFF' : 'FFF8FAFC';
+
+        row.eachCell((cell, colNumber) => {
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: bgHex }
+          };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          };
+
+          if (colNumber >= 6 && colNumber <= 8) {
+            cell.numFmt = '₹#,##0.00';
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          } else if (colNumber === 4 || colNumber === 5) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+        });
+      });
+
+      sheet.columns = [
+        { width: 22 },
+        { width: 28 },
+        { width: 28 },
+        { width: 14 },
+        { width: 14 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 16 }
+      ];
+    };
+
+    const quotesData = filteredQuotes.map((q: any) => [
+      q.quoteNumber || q.documentNumber || '',
+      q.clientInfo?.name || '',
+      q.clientInfo?.email || '',
+      q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '',
+      q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '',
+      q.subtotal || 0,
+      q.taxAmount || 0,
+      q.totalAmount || 0,
+      q.status || ''
+    ]);
+
+    generateSheet(
+      'Quotations',
+      'Quotations Billing Archive Report',
+      ['Quote Number', 'Client Name', 'Client Email', 'Date', 'Valid Until', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
+      quotesData
     );
+
+    const proformasData = filteredProformas.map((p: any) => [
+      p.proformaNumber || p.documentNumber || '',
+      p.clientInfo?.name || '',
+      p.clientInfo?.email || '',
+      p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '',
+      p.dueDate ? new Date(p.dueDate).toLocaleDateString() : '',
+      p.subtotal || 0,
+      p.taxAmount || 0,
+      p.totalAmount || 0,
+      p.status || ''
+    ]);
+
+    generateSheet(
+      'Proforma Invoices',
+      'Proforma Invoices Billing Archive Report',
+      ['Proforma Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
+      proformasData
+    );
+
+    const invoicesData = filteredInvoices.map((i: any) => [
+      i.invoiceNumber || i.documentNumber || '',
+      i.clientInfo?.name || '',
+      i.clientInfo?.email || '',
+      i.createdAt ? new Date(i.createdAt).toLocaleDateString() : '',
+      i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '',
+      i.subtotal || 0,
+      i.taxAmount || 0,
+      i.totalAmount || 0,
+      i.status || ''
+    ]);
+
+    generateSheet(
+      'Final Invoices',
+      'Final Invoices Billing Archive Report',
+      ['Invoice Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status'],
+      invoicesData
+    );
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Billing_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // Form Handlers
@@ -932,7 +640,6 @@ export default function Dashboard() {
     setEditingDoc(null);
     setLogoUrl('');
     
-    // Auto-generate financial year format Document Number (e.g. 2026-27/CFS-QT-001)
     const listLen = type === 'QUOTATION' ? quotations.length : type === 'PROFORMA' ? proformas.length : invoices.length;
     const nextNum = String(listLen + 1).padStart(3, '0');
     const fy = getFinancialYear();
@@ -944,20 +651,20 @@ export default function Dashboard() {
   const handleImportQuotation = (qId: string) => {
     setQuotationRef(qId);
     if (!qId) return;
-    const q = quotations.find(item => (item.id || (item as any)._id) === qId);
+    const q = quotations.find((item: any) => (item.id || item._id) === qId);
     if (q) {
       setSelectedClientId(q.clientRef?.id || q.clientRef || '');
       setCurrency(q.currency);
       setNotes(q.notes || '');
       setLogoUrl((q as any).logoUrl || '');
       setProformaRef('');
-      setItems((q.items || []).map(item => ({
+      setItems((q.items || []).map((item: any) => ({
         description: item.description,
         quantity: item.quantity,
         price: item.price,
         taxRate: item.taxRate,
-        hsnSac: (item as any).hsnSac || '998311',
-        discountPercent: (item as any).discountPercent || 0
+        hsnSac: item.hsnSac || '998311',
+        discountPercent: item.discountPercent || 0
       })));
     }
   };
@@ -965,20 +672,20 @@ export default function Dashboard() {
   const handleImportProforma = (pId: string) => {
     setProformaRef(pId);
     if (!pId) return;
-    const p = proformas.find(item => (item.id || (item as any)._id) === pId);
+    const p = proformas.find((item: any) => (item.id || item._id) === pId);
     if (p) {
       setSelectedClientId(p.clientRef?.id || p.clientRef || '');
       setCurrency(p.currency);
       setNotes(p.notes || '');
       setLogoUrl((p as any).logoUrl || '');
       setQuotationRef(p.quotationRef || '');
-      setItems((p.items || []).map(item => ({
+      setItems((p.items || []).map((item: any) => ({
         description: item.description,
         quantity: item.quantity,
         price: item.price,
         taxRate: item.taxRate,
-        hsnSac: (item as any).hsnSac || '998311',
-        discountPercent: (item as any).discountPercent || 0
+        hsnSac: item.hsnSac || '998311',
+        discountPercent: item.discountPercent || 0
       })));
     }
   };
@@ -1010,13 +717,13 @@ export default function Dashboard() {
       setDateVal('');
     }
     
-    setItems((doc.items || []).map(item => ({
+    setItems((doc.items || []).map((item: any) => ({
       description: item.description,
       quantity: item.quantity,
       price: item.price,
       taxRate: item.taxRate,
-      hsnSac: (item as any).hsnSac || '998311',
-      discountPercent: (item as any).discountPercent || 0
+      hsnSac: item.hsnSac || '998311',
+      discountPercent: item.discountPercent || 0
     })));
     
     setIsModalOpen(true);
@@ -1048,32 +755,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!checkSubscriptionStatus()) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Data = (reader.result as string).split(',')[1];
-      try {
-        const response = await fetch('http://localhost:5001/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: file.name, data: base64Data }),
-        });
-        if (!response.ok) throw new Error('Upload failed');
-        const result = await response.json();
-        setLogoUrl(result.url);
-        alert('Logo uploaded successfully!');
-      } catch (err) {
-        console.error(err);
-        alert('Failed to upload logo.');
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleCreateClient = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!checkSubscriptionStatus()) return;
@@ -1088,7 +769,7 @@ export default function Dashboard() {
         billingAddress: newClientData.billingAddress || 'N/A'
       };
       const created = await createClientMutation.mutateAsync(clientPayload);
-      const createdId = created.id || created._id;
+      const createdId = created.id || (created as any)._id;
       setSelectedClientId(createdId);
       setIsCreatingClient(false);
     } catch (err: any) {
@@ -1099,102 +780,87 @@ export default function Dashboard() {
 
   const handleConvertQuote = async (id: string) => {
     if (!checkSubscriptionStatus()) return;
-    if (!confirm('Are you sure you want to convert this quotation to a Proforma Invoice?')) return;
     try {
       await convertQuote.mutateAsync(id);
-      alert('Quotation successfully converted to Proforma Invoice!');
-      setPrintDoc(null);
+      alert('Quotation converted to Proforma Invoice successfully!');
+      if (printDoc && (printDoc.id === id || (printDoc as any)._id === id)) {
+        setPrintDoc(null);
+      }
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to convert Quotation.');
+      alert(err.response?.data?.message || 'Failed to convert quotation.');
     }
   };
 
   const handleConvertQuoteToInvoiceDirect = async (id: string) => {
     if (!checkSubscriptionStatus()) return;
-    if (!confirm('Are you sure you want to convert this quotation directly to a Final Invoice (bypassing Proforma)?')) return;
     try {
       await convertQuoteToInvoice.mutateAsync(id);
-      alert('Quotation successfully converted directly to Final Invoice!');
-      setPrintDoc(null);
+      alert('Quotation converted directly to Final Invoice successfully!');
+      if (printDoc && (printDoc.id === id || (printDoc as any)._id === id)) {
+        setPrintDoc(null);
+      }
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to convert Quotation.');
+      alert(err.response?.data?.message || 'Failed to convert quotation.');
     }
   };
 
   const handleConvertProforma = async (id: string) => {
     if (!checkSubscriptionStatus()) return;
-    if (!confirm('Are you sure you want to convert this Proforma Invoice to a Final Invoice?')) return;
     try {
       await convertProforma.mutateAsync(id);
-      alert('Proforma Invoice successfully converted to Final Invoice!');
-      setPrintDoc(null);
+      alert('Proforma Invoice converted to Final Invoice successfully!');
+      if (printDoc && (printDoc.id === id || (printDoc as any)._id === id)) {
+        setPrintDoc(null);
+      }
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to convert Proforma Invoice.');
+      alert(err.response?.data?.message || 'Failed to convert proforma invoice.');
     }
   };
 
-  const handleUpdateQuoteStatus = async (id: string, status: string) => {
+  const handleUpdateQuoteStatus = async (id: string, status: 'ACCEPTED' | 'DECLINED') => {
     if (!checkSubscriptionStatus()) return;
     try {
-      await updateQuotation.mutateAsync({ id, data: { status: status as any } });
+      await updateQuotation.mutateAsync({ id, data: { status } });
       alert(`Quotation status updated to ${status}!`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to update Quotation status.');
+      alert(err.response?.data?.message || 'Failed to update status.');
     }
   };
 
-  const handleUpdateProformaStatus = async (id: string, status: string) => {
-    if (!checkSubscriptionStatus()) return;
-    try {
-      await updateProforma.mutateAsync({ id, data: { status: status as any } });
-      alert(`Proforma status updated to ${status}!`);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to update Proforma status.');
-    }
-  };
-
-  const handleMarkInvoicePaid = async (id: string) => {
-    if (!checkSubscriptionStatus()) return;
-    try {
-      await updateInvoice.mutateAsync({ id, data: { status: 'PAID' as any, paymentStatus: 'PAID' as any } });
-      alert('Invoice successfully marked as PAID!');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to mark Invoice as paid.');
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSaveDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkSubscriptionStatus()) return;
+
     if (!selectedClientId) {
-      alert('Please select or register a client.');
-      return;
-    }
-    if (!docNumber) {
-      alert('Please specify a document number.');
+      alert('Please select a client');
       return;
     }
     if (!dateVal) {
-      alert('Please select a validity or due date.');
+      alert(docType === 'FINAL_INVOICE' ? 'Please select Due Date' : 'Please select Valid Until date');
+      return;
+    }
+    if (items.some(i => !i.description.trim() || i.price <= 0)) {
+      alert('Please provide valid description and positive price for all items');
       return;
     }
 
-    const selectedClient = clients.find(c => c.id === selectedClientId || (c as any)._id === selectedClientId);
-    if (!selectedClient) return;
+    const selectedClient = clients.find((c: any) => (c.id || c._id) === selectedClientId);
+    if (!selectedClient) {
+      alert('Selected client not found');
+      return;
+    }
 
-    const mappedItems = items.map(item => ({
-      description: item.description,
-      quantity: item.quantity !== undefined && item.quantity !== null && String(item.quantity) !== '' ? Number(item.quantity) : undefined,
-      price: Number(item.price) || 0,
-      taxRate: Number(item.taxRate) || 0,
-      hsnSac: item.hsnSac || '998311',
-      discountPercent: Number(item.discountPercent) || 0,
+    const mappedItems = items.map(i => ({
+      description: i.description,
+      quantity: getItemQty(i.quantity),
+      price: Number(i.price),
+      taxRate: Number(i.taxRate),
+      hsnSac: i.hsnSac || '998311',
+      discountPercent: Number(i.discountPercent) || 0
     }));
 
     try {
@@ -1355,148 +1021,25 @@ export default function Dashboard() {
     }
   };
 
+  const isSaving = createQuotation.isPending || createProforma.isPending || createInvoice.isPending || updateQuotation.isPending || updateProforma.isPending || updateInvoice.isPending;
+
   return (
     <div className="app-container">
-      {tenantProfile?.subscriptionStatus === 'EXPIRED' && (
-        <div style={{
-          backgroundColor: '#ef4444',
-          color: '#fff',
-          padding: '0.75rem 1.5rem',
-          fontSize: '0.9rem',
-          fontWeight: 700,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)',
-          position: 'relative',
-          zIndex: 100
-        }}>
-          <span>
-            ⚠️ Your workspace subscription has expired. You are in **Read-Only Mode**. All creation and editing actions are locked.
-          </span>
-          <button
-            type="button"
-            onClick={() => setIsRenewalOpen(true)}
-            style={{
-              backgroundColor: '#fff',
-              color: '#ef4444',
-              border: 'none',
-              padding: '0.4rem 1.25rem',
-              borderRadius: '20px',
-              fontSize: '0.8rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-              transition: 'transform 0.15s',
-              fontFamily: 'inherit'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            ⚡ Renew Subscription Now
-          </button>
-        </div>
-      )}
-      {/* Top Header */}
-      <header className="header">
-        {/* Line 1: Logo, Company Name, Settings Button & Subscription Badge */}
-        <div className="header-line-1">
-          <div className="header-brand-group">
-            <img 
-              src={tenantProfile?.logoUrl || "/images/hero.png"} 
-              alt="Logo" 
-              className="header-logo"
-              onError={(e) => { e.currentTarget.src = "/images/hero.png"; }} 
-            />
-            <h1 className="header-company-name">
-              {tenantProfile?.companyName || "PROCash Invoice ERP"}
-            </h1>
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="header-settings-btn"
-              title="Workspace Profile Settings"
-            >
-              <span className="settings-icon">⚙️</span>
-              <span>Settings</span>
-            </button>
-          </div>
-
-          {tenantProfile && (
-            <div 
-              className="sub-badge" 
-              onClick={() => setViewMode('subscription')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.4rem 0.9rem',
-                borderRadius: '20px',
-                backgroundColor: tenantProfile.subscriptionStatus === 'EXPIRED' ? '#fee2e2' : '#e0e7ff',
-                border: tenantProfile.subscriptionStatus === 'EXPIRED' ? '1px solid #fca5a5' : '1px solid #c7d2fe',
-                fontSize: '0.8125rem',
-                color: tenantProfile.subscriptionStatus === 'EXPIRED' ? '#991b1b' : '#3730a3',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                transition: 'all 0.15s ease'
-              }}
-              title="Click to view Subscription & Plan Details"
-            >
-              👑 {getPlanLabel(tenantProfile.subscriptionPlan || 'FREE')} ({tenantProfile.subscriptionPlan === 'LIFETIME' ? 'Lifetime' : (tenantProfile.subscriptionPlan === 'FREE' ? 'Free Tier' : `Expires: ${formatDateTime(tenantProfile.subscriptionExpiresAt)}`)})
-            </div>
-          )}
-        </div>
-
-        {/* Line 2: All Menu Navigation Tabs & API Status Pill */}
-        <div className="header-line-2">
-          <div className="view-mode-tabs">
-            <button 
-              type="button"
-              className={`view-mode-btn ${viewMode === 'daily' ? 'active' : ''}`} 
-              onClick={() => setViewMode('daily')}
-            >
-              📅 Daily Workspace
-            </button>
-            <button 
-              type="button"
-              className={`view-mode-btn ${viewMode === 'history' ? 'active' : ''}`} 
-              onClick={() => setViewMode('history')}
-            >
-              📜 Archive & History
-            </button>
-            <button 
-              type="button"
-              className={`view-mode-btn ${viewMode === 'ledger' ? 'active' : ''}`} 
-              onClick={() => {
-                setViewMode('ledger');
-                if (!selectedLedgerClientId && clients.length > 0) {
-                  setSelectedLedgerClientId(clients[0].id || (clients[0] as any)._id);
-                }
-              }}
-            >
-              📒 Client Ledger History
-            </button>
-            <button 
-              type="button"
-              className={`view-mode-btn ${viewMode === 'subscription' ? 'active' : ''}`} 
-              onClick={() => setViewMode('subscription')}
-            >
-              👑 Subscription Details
-            </button>
-          </div>
-
-          <div className="connection-pill">
-            <div className="connection-dot" style={{ backgroundColor: isApiError ? '#f87171' : '#34d399', boxShadow: isApiError ? '0 0 8px #f87171' : '0 0 8px #34d399' }} />
-            <span>API: {isApiError ? 'Disconnected' : 'Connected'}</span>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader 
+        tenantProfile={tenantProfile}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        isApiError={isApiError}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenRenewal={() => setIsRenewalOpen(true)}
+        clients={clients}
+        setSelectedLedgerClientId={setSelectedLedgerClientId}
+        selectedLedgerClientId={selectedLedgerClientId}
+      />
 
       {/* Global Search Bar & Filters (Only in History mode) */}
       {viewMode === 'history' && (
         <div className="search-bar-container">
-          {/* Search Query */}
           <div className="search-field-query">
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               Search Query
@@ -1521,7 +1064,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Start Date */}
           <div className="search-field-date">
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               Start Date
@@ -1545,7 +1087,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* End Date */}
           <div className="search-field-date">
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
               End Date
@@ -1569,7 +1110,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Export & Preview Buttons */}
           <div className="search-actions">
             <button 
               type="button" 
@@ -1589,16 +1129,8 @@ export default function Dashboard() {
                 gap: '0.5rem',
                 boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-              }}
             >
-              👁️ Preview Excel
+              📊 Live Excel Preview
             </button>
             <button 
               type="button" 
@@ -1618,14 +1150,6 @@ export default function Dashboard() {
                 gap: '0.5rem',
                 boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
-              }}
             >
               📥 Export to Excel
             </button>
@@ -1635,2152 +1159,235 @@ export default function Dashboard() {
 
       {/* Main Content Area */}
       {viewMode === 'ledger' ? (
-        <section className="client-ledger-section" style={{ marginTop: '1.5rem' }}>
-          {/* Client Selection Header & Control Bar */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: '#ffffff',
-            padding: '1.25rem 1.5rem',
-            borderRadius: '12px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            marginBottom: '1.5rem',
-            flexWrap: 'wrap',
-            gap: '1rem'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '280px' }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Select Client:
-              </label>
-              <select
-                value={selectedLedgerClientId}
-                onChange={(e) => setSelectedLedgerClientId(e.target.value)}
-                style={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  color: '#0f172a',
-                  padding: '0.65rem 1rem',
-                  fontSize: '0.95rem',
-                  fontWeight: 600,
-                  outline: 'none',
-                  minWidth: '250px'
-                }}
-              >
-                <option value="">-- Choose Client --</option>
-                {clients.map((c: any) => (
-                  <option key={c.id || c._id} value={c.id || c._id}>
-                    {c.name} ({c.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedLedgerClientId && (
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentModalData({
-                      clientId: selectedLedgerClientId,
-                      invoiceId: '',
-                      invoiceNumber: '',
-                      amount: 0,
-                      type: 'ADVANCE_PAYMENT',
-                      paymentMode: 'CASH',
-                      referenceNo: '',
-                      notes: '',
-                    });
-                    setIsRecordPaymentModalOpen(true);
-                  }}
-                  style={{
-                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                    color: '#fff',
-                    border: 'none',
-                    padding: '0.65rem 1.25rem',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)'
-                  }}
-                >
-                  💳 + Record Payment / Advance
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!ledgerData) return;
-                    const headers = ['Date', 'Type', 'Ref / Doc No', 'Notes', 'Debit (+Billed)', 'Credit (-Paid)', 'Running Balance'];
-                    const rows = ledgerData.entries.map(e => [
-                      e.date ? new Date(e.date).toLocaleDateString() : '',
-                      e.type || '',
-                      e.documentNumber || e.referenceNo || '-',
-                      `"${(e.notes || '').replace(/"/g, '""')}"`,
-                      e.debit || 0,
-                      e.credit || 0,
-                      e.runningBalance || 0
-                    ]);
-                    const csvContent = [
-                      headers.join(','),
-                      ...rows.map(row => row.join(','))
-                    ].join('\n');
-                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.setAttribute('href', url);
-                    const safeClientName = (ledgerData.client?.name || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
-                    link.setAttribute('download', `Ledger_${safeClientName}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
-                  }}
-                  style={{
-                    backgroundColor: '#f1f5f9',
-                    color: '#334155',
-                    border: '1px solid #cbd5e1',
-                    padding: '0.65rem 1.25rem',
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  📥 Export CSV
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Client Summary KPI Cards */}
-          {selectedLedgerClientId && ledgerData && (
-            <>
-              <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
-                <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
-                  <div className="stat-header">
-                    <span>Total Billed</span>
-                    <span style={{ color: '#2563eb' }}>Invoices</span>
-                  </div>
-                  <div className="stat-value">₹{ledgerData.summary.totalInvoiced.toLocaleString('en-IN')}</div>
-                  <div className="stat-footer">Gross invoices issued</div>
-                </div>
-
-                <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
-                  <div className="stat-header">
-                    <span>Total Paid</span>
-                    <span style={{ color: '#059669' }}>Collected</span>
-                  </div>
-                  <div className="stat-value">₹{ledgerData.summary.totalPaid.toLocaleString('en-IN')}</div>
-                  <div className="stat-footer">Payments & Advances</div>
-                </div>
-
-                <div className="stat-card" style={{ borderLeft: ledgerData.summary.netBalanceDue > 0 ? '4px solid #ef4444' : '4px solid #10b981' }}>
-                  <div className="stat-header">
-                    <span>Net Balance Due</span>
-                    <span style={{ color: ledgerData.summary.netBalanceDue > 0 ? '#dc2626' : '#059669' }}>
-                      {ledgerData.summary.netBalanceDue > 0 ? 'Outstanding' : 'Cleared'}
-                    </span>
-                  </div>
-                  <div className="stat-value" style={{ color: ledgerData.summary.netBalanceDue > 0 ? '#dc2626' : '#059669' }}>
-                    ₹{ledgerData.summary.netBalanceDue.toLocaleString('en-IN')}
-                  </div>
-                  <div className="stat-footer">Current net client balance</div>
-                </div>
-
-                <div className="stat-card" style={{ borderLeft: '4px solid #a855f7' }}>
-                  <div className="stat-header">
-                    <span>Advance Credit</span>
-                    <span style={{ color: '#9333ea' }}>Unallocated</span>
-                  </div>
-                  <div className="stat-value">₹{ledgerData.summary.totalAdvance.toLocaleString('en-IN')}</div>
-                  <div className="stat-footer">Advance deposits on account</div>
-                </div>
-              </div>
-
-              {/* Ledger Statement Table */}
-              <div style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                padding: '1.5rem'
-              }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>📜 Transaction Ledger Statement for {ledgerData.client?.name}</span>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 400 }}>
-                    {ledgerData.entries.length} Transaction Records
-                  </span>
-                </h3>
-
-                {loadingLedger ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading ledger entries...</div>
-                ) : ledgerData.entries.length === 0 ? (
-                  <div className="empty-state" style={{ padding: '3rem 1rem', color: '#64748b' }}>
-                    No invoices or payment transactions recorded for this client yet.
-                  </div>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table className="items-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #cbd5e1', textAlign: 'left' }}>
-                          <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>Date</th>
-                          <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>Type</th>
-                          <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>Ref / Doc #</th>
-                          <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>Details / Notes</th>
-                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Debit (+Billed)</th>
-                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Credit (-Paid)</th>
-                          <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#475569' }}>Balance</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ledgerData.entries.map((entry) => (
-                          <tr key={entry.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                            <td style={{ padding: '0.75rem 1rem', color: '#475569', fontSize: '0.85rem' }}>
-                              {new Date(entry.date).toLocaleDateString()}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem' }}>
-                              <span style={{
-                                padding: '0.2rem 0.6rem',
-                                borderRadius: '4px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                backgroundColor: entry.type === 'INVOICE'
-                                  ? '#dbeafe'
-                                  : entry.type === 'ADVANCE_PAYMENT'
-                                  ? '#f3e8ff'
-                                  : '#d1fae5',
-                                color: entry.type === 'INVOICE'
-                                  ? '#1d4ed8'
-                                  : entry.type === 'ADVANCE_PAYMENT'
-                                  ? '#7e22ce'
-                                  : '#047857'
-                              }}>
-                                {entry.type === 'INVOICE' ? '🧾 FINAL INVOICE' : entry.type === 'ADVANCE_PAYMENT' ? '💳 ADVANCE' : '💵 PAYMENT'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
-                              {entry.documentNumber || entry.referenceNo || '-'}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.85rem' }}>
-                              {entry.notes || (entry.paymentMode ? `Paid via ${entry.paymentMode}` : 'Invoice issued')}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: entry.debit > 0 ? '#dc2626' : '#94a3b8', fontWeight: entry.debit > 0 ? 600 : 400 }}>
-                              {entry.debit > 0 ? `₹${entry.debit.toLocaleString('en-IN')}` : '-'}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: entry.credit > 0 ? '#059669' : '#94a3b8', fontWeight: entry.credit > 0 ? 600 : 400 }}>
-                              {entry.credit > 0 ? `₹${entry.credit.toLocaleString('en-IN')}` : '-'}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: entry.runningBalance > 0 ? '#dc2626' : '#059669' }}>
-                              ₹{entry.runningBalance.toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {!selectedLedgerClientId && (
-            <div className="empty-state" style={{ padding: '4rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#64748b', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              Please select a client from the dropdown above to view their complete financial ledger history, advance credits, and transaction timeline.
-            </div>
-          )}
-        </section>
+        <ClientLedgerSection 
+          selectedLedgerClientId={selectedLedgerClientId}
+          setSelectedLedgerClientId={setSelectedLedgerClientId}
+          clients={clients}
+          ledgerData={ledgerData}
+          loadingLedger={loadingLedger}
+          onOpenRecordPayment={() => {
+            setPaymentModalData({
+              clientId: selectedLedgerClientId,
+              invoiceId: '',
+              invoiceNumber: '',
+              amount: 0,
+              type: 'ADVANCE_PAYMENT',
+              paymentMode: 'CASH',
+              referenceNo: '',
+              notes: '',
+            });
+            setIsRecordPaymentModalOpen(true);
+          }}
+        />
       ) : viewMode === 'subscription' ? (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
-          {/* Subscription Banner / Title */}
-          <div style={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            borderRadius: '12px',
-            padding: '1.5rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '1rem'
-          }}>
-            <div>
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.35rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                👑 Workspace Subscription & Billing Details
-              </h2>
-              <p style={{ margin: '0.35rem 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>
-                Comprehensive overview of your active plan, expiration timeline, and workspace tier settings.
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button
-                type="button"
-                onClick={() => setIsRenewalOpen(true)}
-                style={{
-                  backgroundColor: '#6366f1',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '0.65rem 1.25rem',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.25)'
-                }}
-              >
-                ⚡ Renew / Upgrade Subscription
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsSettingsOpen(true)}
-                style={{
-                  backgroundColor: '#f1f5f9',
-                  color: '#334155',
-                  border: '1px solid #cbd5e1',
-                  padding: '0.65rem 1.25rem',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  cursor: 'pointer'
-                }}
-              >
-                ⚙️ Workspace Profile
-              </button>
-            </div>
-          </div>
-
-          {/* Subscription KPI Cards */}
-          <div className="stats-grid">
-            <div className="stat-card" style={{ borderLeft: '4px solid #6366f1' }}>
-              <div className="stat-header">
-                <span>Active Plan</span>
-                <span style={{ color: '#4f46e5', fontWeight: 700 }}>
-                  {getPlanPrice(tenantProfile?.subscriptionPlan || 'FREE')}
-                </span>
-              </div>
-              <div className="stat-value" style={{ fontSize: '1.35rem' }}>
-                {getPlanLabel(tenantProfile?.subscriptionPlan || 'FREE')}
-              </div>
-              <div className="stat-footer">Billing Plan Tier</div>
-            </div>
-
-            <div className="stat-card" style={{ borderLeft: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '4px solid #ef4444' : '4px solid #10b981' }}>
-              <div className="stat-header">
-                <span>Subscription Status</span>
-                <span style={{ color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#dc2626' : '#059669', fontWeight: 700 }}>
-                  {tenantProfile?.subscriptionStatus === 'EXPIRED' ? 'EXPIRED' : 'ACTIVE'}
-                </span>
-              </div>
-              <div className="stat-value" style={{ fontSize: '1.35rem', color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#dc2626' : '#059669' }}>
-                {tenantProfile?.subscriptionStatus === 'EXPIRED' ? 'Read-Only Mode' : 'Full Access'}
-              </div>
-              <div className="stat-footer">Current workspace state</div>
-            </div>
-
-            <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
-              <div className="stat-header">
-                <span>Expiration Date</span>
-                <span style={{ color: '#d97706', fontWeight: 700 }}>Timeline</span>
-              </div>
-              <div className="stat-value" style={{ fontSize: '1.25rem' }}>
-                {tenantProfile?.subscriptionPlan === 'LIFETIME' ? 'Never (Lifetime)' : (tenantProfile?.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(tenantProfile?.subscriptionExpiresAt))}
-              </div>
-              <div className="stat-footer">
-                {tenantProfile?.subscriptionPlan === 'LIFETIME' 
-                  ? 'Unlimited validity' 
-                  : (tenantProfile?.subscriptionExpiresAt ? `${Math.max(0, Math.ceil((new Date(tenantProfile.subscriptionExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} Days Remaining` : 'Free Tier')}
-              </div>
-            </div>
-
-            <div className="stat-card" style={{ borderLeft: '4px solid #a855f7' }}>
-              <div className="stat-header">
-                <span>Subdomain Workspace</span>
-                <span style={{ color: '#7e22ce', fontWeight: 700 }}>Multi-Tenant</span>
-              </div>
-              <div className="stat-value" style={{ fontSize: '1.25rem', fontFamily: 'monospace', color: '#7e22ce' }}>
-                {tenantProfile?.tenantId || 'default'}
-              </div>
-              <div className="stat-footer">Subdomain identifier</div>
-            </div>
-          </div>
-
-          {/* Account Details & Feature Entitlements Card */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '1.5rem'
-          }}>
-            {/* Account Profile Card */}
-            <div style={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-              borderRadius: '12px',
-              padding: '1.5rem'
-            }}>
-              <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.1rem', fontWeight: 700 }}>
-                🏢 Tenant Account Profile
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#64748b' }}>Company Name:</span>
-                  <strong style={{ color: '#0f172a' }}>{tenantProfile?.companyName || 'Not Set'}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#64748b' }}>Proprietor:</span>
-                  <span style={{ color: '#334155' }}>{tenantProfile?.proprietorName || 'Not Set'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#64748b' }}>GSTIN / Tax ID:</span>
-                  <span style={{ color: '#334155', fontFamily: 'monospace' }}>{tenantProfile?.gstin || 'None'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#64748b' }}>PAN Number:</span>
-                  <span style={{ color: '#334155', fontFamily: 'monospace' }}>{tenantProfile?.pan || 'None'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-                  <span style={{ color: '#64748b' }}>Primary Theme:</span>
-                  <span style={{ color: '#4f46e5', fontWeight: 600 }}>{tenantProfile?.theme || 'DEFAULT'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Plan Entitlements Card */}
-            <div style={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-              borderRadius: '12px',
-              padding: '1.5rem'
-            }}>
-              <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.1rem', fontWeight: 700 }}>
-                🚀 Plan Features & Entitlements
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.85rem' }}>
-                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#334155' }}>Unlimited Quotation & Proforma Generation</span>
-                </div>
-                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#334155' }}>Final Invoices & Advance Payment Tracking</span>
-                </div>
-                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#334155' }}>Client Ledger Statements & Transaction History</span>
-                </div>
-                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#334155' }}>Instant Excel Report & CSV Data Exports</span>
-                </div>
-                <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>✓</span> <span style={{ color: '#334155' }}>WhatsApp & Email One-Click Invoice Sharing</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Change Subscription Plan Options */}
-          <div style={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            borderRadius: '12px',
-            padding: '1.5rem'
-          }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              💳 Select or Change Subscription Plan
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-              {[
-                { 
-                  id: '1_MONTH', 
-                  name: dynamicPlansMap['1_MONTH']?.name || 'Monthly Starter', 
-                  price: `₹${getPlanPriceNum('1_MONTH').toLocaleString('en-IN')}`, 
-                  period: 'per month', 
-                  badge: dynamicPlansMap['1_MONTH']?.isOfferActive ? `🔥 ${dynamicPlansMap['1_MONTH']?.offerBadge || 'OFFER'}` : 'Popular' 
-                },
-                { 
-                  id: '6_MONTHS', 
-                  name: dynamicPlansMap['6_MONTHS']?.name || '6 Months Pro', 
-                  price: `₹${getPlanPriceNum('6_MONTHS').toLocaleString('en-IN')}`, 
-                  period: `for 6 months (₹${(dynamicPlansMap['6_MONTHS']?.monthlyEquivalentPrice || Math.round(getPlanPriceNum('6_MONTHS') / 6)).toLocaleString('en-IN')}/mo)`, 
-                  badge: dynamicPlansMap['6_MONTHS']?.isOfferActive ? `🔥 ${dynamicPlansMap['6_MONTHS']?.offerBadge || 'OFFER'}` : `Save ${dynamicPlansMap['6_MONTHS']?.savingsVsMonthlyPercentage || 44}%` 
-                },
-                { 
-                  id: '1_YEAR', 
-                  name: dynamicPlansMap['1_YEAR']?.name || '1 Year Enterprise', 
-                  price: `₹${getPlanPriceNum('1_YEAR').toLocaleString('en-IN')}`, 
-                  period: `per year (₹${(dynamicPlansMap['1_YEAR']?.monthlyEquivalentPrice || Math.round(getPlanPriceNum('1_YEAR') / 12)).toLocaleString('en-IN')}/mo)`, 
-                  badge: dynamicPlansMap['1_YEAR']?.isOfferActive ? `🔥 ${dynamicPlansMap['1_YEAR']?.offerBadge || 'OFFER'}` : `Best Value (Save ${dynamicPlansMap['1_YEAR']?.savingsVsMonthlyPercentage || 44}%)` 
-                },
-                { 
-                  id: 'LIFETIME', 
-                  name: dynamicPlansMap['LIFETIME']?.name || 'Lifetime Unlimited', 
-                  price: `₹${getPlanPriceNum('LIFETIME').toLocaleString('en-IN')}`, 
-                  period: 'one-time lifetime', 
-                  badge: dynamicPlansMap['LIFETIME']?.isOfferActive ? `🔥 ${dynamicPlansMap['LIFETIME']?.offerBadge || 'OFFER'}` : 'VIP Access' 
-                }
-              ]
-              .filter(plan => {
-                const planData = dynamicPlansMap[plan.id];
-                const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
-                if (isCurrent) return true;
-                if (!planData || planData.isActive === false) return false;
-                return true;
-              })
-              .map((plan) => {
-                const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
-                return (
-                  <div
-                    key={plan.id}
-                    style={{
-                      backgroundColor: isCurrent ? '#f4f4ff' : '#f8fafc',
-                      border: isCurrent ? '2px solid #4f46e5' : '1px solid #e2e8f0',
-                      borderRadius: '10px',
-                      padding: '1.25rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      position: 'relative'
-                    }}
-                  >
-                    {isCurrent && (
-                      <span style={{
-                        position: 'absolute',
-                        top: '-10px',
-                        right: '12px',
-                        backgroundColor: '#4f46e5',
-                        color: '#fff',
-                        fontSize: '0.65rem',
-                        fontWeight: 800,
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '10px',
-                        textTransform: 'uppercase'
-                      }}>
-                        Current Plan
-                      </span>
-                    )}
-                    <div>
-                      <span style={{ color: '#4f46e5', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{plan.badge}</span>
-                      <div style={{ color: '#0f172a', fontSize: '1.1rem', fontWeight: 800, marginTop: '0.2rem' }}>{plan.name}</div>
-                      <div style={{ color: '#059669', fontSize: '1.35rem', fontWeight: 900, fontFamily: 'monospace', margin: '0.35rem 0' }}>{plan.price}</div>
-                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{plan.period}</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedPlan(plan.id);
-                        setIsRenewalOpen(true);
-                      }}
-                      style={{
-                        backgroundColor: isCurrent ? '#059669' : '#4f46e5',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '0.55rem',
-                        borderRadius: '6px',
-                        fontWeight: 700,
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                        marginTop: '1rem'
-                      }}
-                    >
-                      {isCurrent ? '🔄 Renew Current Plan' : `⚡ Select & Upgrade`}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        <SubscriptionSection 
+          tenantProfile={tenantProfile}
+          dynamicPlansMap={dynamicPlansMap}
+          onOpenRenewal={() => setIsRenewalOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onSelectPlan={(planId) => {
+            setSelectedPlan(planId);
+            setIsRenewalOpen(true);
+          }}
+        />
       ) : (
         <>
-          {/* Metrics Row */}
-          <section className="stats-grid">
-            <div className="stat-card quotation">
-              <div className="stat-header">
-                <span>Quotations</span>
-                <span style={{ color: 'var(--info)' }}>{activeQuoteCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
-              </div>
-              <div className="stat-value">{formatCurrency(activeQuoteVolume, quotations[0]?.currency || 'INR')}</div>
-              <div className="stat-footer">{viewMode === 'daily' ? "Today's pipe volume" : "Estimated sales pipe volume"}</div>
-            </div>
+          <DashboardStats 
+            viewMode={viewMode}
+            activeQuoteCount={activeQuoteCount}
+            activeProformaCount={activeProformaCount}
+            activeInvoiceCount={activeInvoiceCount}
+            activeQuoteVolume={activeQuoteVolume}
+            activeProformaVolume={activeProformaVolume}
+            activeInvoiceVolume={activeInvoiceVolume}
+          />
 
-            <div className="stat-card proforma">
-              <div className="stat-header">
-                <span>Proforma Invoices</span>
-                <span style={{ color: 'var(--warning)' }}>{activeProformaCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
-              </div>
-              <div className="stat-value">{formatCurrency(activeProformaVolume, proformas[0]?.currency || 'INR')}</div>
-              <div className="stat-footer">{viewMode === 'daily' ? "Today's pending" : "Awaiting confirmations"}</div>
-            </div>
-
-            <div className="stat-card invoice">
-              <div className="stat-header">
-                <span>Final Invoices</span>
-                <span style={{ color: 'var(--primary)' }}>{activeInvoiceCount} {viewMode === 'daily' ? 'Today' : 'Total'}</span>
-              </div>
-              <div className="stat-value">{formatCurrency(activeInvoiceVolume, invoices[0]?.currency || 'INR')}</div>
-              <div className="stat-footer">{viewMode === 'daily' ? "Today's revenue" : "Total billed revenue"}</div>
-            </div>
-          </section>
-
-          {/* Lists Section */}
           <section className="lists-container">
-            {/* 1. Quotations List */}
-            <div>
-              <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span><span style={{ color: 'var(--info)' }}>●</span> {viewMode === 'daily' ? "Today's Quotations" : "Quotations Archive"}</span>
-                <button className="btn-create" onClick={() => openModal('QUOTATION')}>+ Create</button>
-              </h2>
-              <div className="document-list">
-                <div className="list-header">
-                  <span>Quote #</span>
-                  <span>Client</span>
-                  <span>Valid Until</span>
-                  <span>Amount</span>
-                  <span>Status</span>
-                  <span>Action</span>
-                </div>
-                {loadingQuotes ? (
-                  <div className="empty-state">Loading quotations...</div>
-                ) : filteredQuotes.length === 0 ? (
-                  <div className="empty-state">{viewMode === 'daily' ? "No quotations created today." : "No quotations found in history."}</div>
-                ) : (
-                  (filteredQuotes as Quotation[]).map((q: Quotation) => (
-                    <div key={q.id || q.documentNumber || q.quoteNumber} className="list-row">
-                      <span className="doc-number">{q.documentNumber || q.quoteNumber}</span>
-                      <div className="client-info">
-                        <span className="client-name">{q.clientInfo.name}</span>
-                        <span className="client-email">{q.clientInfo.email}</span>
-                      </div>
-                      <span className="doc-date">{formatDate(q.validUntil)}</span>
-                      <span className="doc-amount">{formatCurrency(q.totalAmount, q.currency)}</span>
-                      <div>
-                        <span className={`status-badge ${q.status.toLowerCase()}`}>{q.status}</span>
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Quotation" onClick={() => setPrintDoc(q)}>👁️</button>
-                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(q)}>📥</button>
-                          <button className="btn-status-action text-info" title="Edit Quotation" onClick={() => openEditModal(q)}>✏️</button>
-                          <button className="btn-status-action text-danger" title="Delete Quotation" onClick={() => handleDeleteDoc(q.id || (q as any)._id, 'QUOTATION')}>🗑️</button>
-                          {q.status !== 'CONVERTED' && q.status !== 'DECLINED' && (
-                            <>
-                              <button className="btn-status-action text-success" title="Accept & Convert to Proforma" onClick={() => handleConvertQuote(q.id || (q as any)._id)}>✅</button>
-                              <button className="btn-status-action text-danger" title="Decline Quote" onClick={() => handleUpdateQuoteStatus(q.id || (q as any)._id, 'DECLINED')}>❌</button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <QuotationsSection 
+              viewMode={viewMode}
+              loadingQuotes={loadingQuotes}
+              quotations={filteredQuotes as Quotation[]}
+              onOpenCreateModal={() => openModal('QUOTATION')}
+              onSetPrintDoc={(doc) => setPrintDoc(doc)}
+              onDownloadHtml={handleDownloadHtml}
+              onOpenEditModal={openEditModal}
+              onDeleteDoc={(id) => handleDeleteDoc(id, 'QUOTATION')}
+              onConvertQuote={handleConvertQuote}
+              onUpdateQuoteStatus={handleUpdateQuoteStatus}
+            />
 
-            {/* 2. Proforma Invoices List */}
-            <div>
-              <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span><span style={{ color: 'var(--warning)' }}>●</span> {viewMode === 'daily' ? "Today's Proformas" : "Proformas Archive"}</span>
-                <button className="btn-create" onClick={() => openModal('PROFORMA')}>+ Create</button>
-              </h2>
-              <div className="document-list">
-                <div className="list-header">
-                  <span>Proforma #</span>
-                  <span>Client</span>
-                  <span>Valid Until</span>
-                  <span>Amount</span>
-                  <span>Status</span>
-                  <span>Action</span>
-                </div>
-                {loadingProformas ? (
-                  <div className="empty-state">Loading proforma invoices...</div>
-                ) : filteredProformas.length === 0 ? (
-                  <div className="empty-state">{viewMode === 'daily' ? "No proforma invoices created today." : "No proforma invoices found in history."}</div>
-                ) : (
-                  (filteredProformas as ProformaInvoice[]).map((p: ProformaInvoice) => (
-                    <div key={p.id || p.documentNumber || p.proformaNumber} className="list-row">
-                      <span className="doc-number">{p.documentNumber || p.proformaNumber}</span>
-                      <div className="client-info">
-                        <span className="client-name">{p.clientInfo.name}</span>
-                        <span className="client-email">{p.clientInfo.email}</span>
-                      </div>
-                      <span className="doc-date">{formatDate(p.validUntil)}</span>
-                      <span className="doc-amount">{formatCurrency(p.totalAmount, p.currency)}</span>
-                      <div>
-                        <span className={`status-badge ${p.status.toLowerCase()}`}>{p.status}</span>
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Proforma" onClick={() => setPrintDoc(p)}>👁️</button>
-                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(p)}>📥</button>
-                          <button className="btn-status-action text-info" title="Edit Proforma" onClick={() => openEditModal(p)}>✏️</button>
-                          <button className="btn-status-action text-danger" title="Delete Proforma" onClick={() => handleDeleteDoc(p.id || (p as any)._id, 'PROFORMA')}>🗑️</button>
-                          {p.status !== 'CONVERTED' && (
-                            <button className="btn-status-action text-success" title="Confirm Payment & Convert to Invoice" onClick={() => handleConvertProforma(p.id || (p as any)._id)}>✅</button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <ProformaSection 
+              viewMode={viewMode}
+              loadingProformas={loadingProformas}
+              proformas={filteredProformas as ProformaInvoice[]}
+              onOpenCreateModal={() => openModal('PROFORMA')}
+              onSetPrintDoc={(doc) => setPrintDoc(doc)}
+              onDownloadHtml={handleDownloadHtml}
+              onOpenEditModal={openEditModal}
+              onDeleteDoc={(id) => handleDeleteDoc(id, 'PROFORMA')}
+              onConvertProforma={handleConvertProforma}
+            />
 
-            {/* 3. Final Invoices List */}
-            <div>
-              <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span><span style={{ color: 'var(--primary)' }}>●</span> {viewMode === 'daily' ? "Today's Final Invoices" : "Final Invoices Archive"}</span>
-                <button className="btn-create" onClick={() => openModal('FINAL_INVOICE')}>+ Create</button>
-              </h2>
-              <div className="document-list">
-                <div className="list-header">
-                  <span>Invoice #</span>
-                  <span>Client</span>
-                  <span>Due Date</span>
-                  <span>Amount & Paid</span>
-                  <span>Status</span>
-                  <span>Action</span>
-                </div>
-                {loadingInvoices ? (
-                  <div className="empty-state">Loading final invoices...</div>
-                ) : filteredInvoices.length === 0 ? (
-                  <div className="empty-state">{viewMode === 'daily' ? "No final invoices created today." : "No final invoices found in history."}</div>
-                ) : (
-                  (filteredInvoices as FinalInvoice[]).map((i: FinalInvoice) => (
-                    <div key={i.id || i.documentNumber || i.invoiceNumber} className="list-row">
-                      <span className="doc-number">{i.documentNumber || i.invoiceNumber}</span>
-                      <div className="client-info">
-                        <span className="client-name">{i.clientInfo.name}</span>
-                        <span className="client-email">{i.clientInfo.email}</span>
-                      </div>
-                      <span className="doc-date">{formatDate(i.dueDate)}</span>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="doc-amount">{formatCurrency(i.totalAmount, i.currency)}</span>
-                        <span style={{ fontSize: '0.75rem', color: ((i as any).paidAmount || 0) >= i.totalAmount ? '#34d399' : ((i as any).paidAmount || 0) > 0 ? '#fbbf24' : '#94a3b8' }}>
-                          Paid: {formatCurrency((i as any).paidAmount || 0, i.currency)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className={`status-badge ${(i.paymentStatus || i.status).toLowerCase()}`}>
-                          {i.paymentStatus || i.status}
-                        </span>
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }} title="View Invoice" onClick={() => setPrintDoc(i)}>👁️</button>
-                          <button className="btn-print" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }} title="Download HTML" onClick={() => handleDownloadHtml(i)}>📥</button>
-                          <button className="btn-status-action text-info" title="Edit Invoice" onClick={() => openEditModal(i)}>✏️</button>
-                          <button className="btn-status-action text-danger" title="Delete Invoice" onClick={() => handleDeleteDoc(i.id || (i as any)._id, 'FINAL_INVOICE')}>🗑️</button>
-                          <button
-                            className="btn-status-action"
-                            style={{ color: '#a855f7' }}
-                            title="Record Payment against Invoice"
-                            onClick={() => {
-                              setPaymentModalData({
-                                clientId: i.clientRef?.id || i.clientRef || '',
-                                invoiceId: i.id || (i as any)._id,
-                                invoiceNumber: i.documentNumber || i.invoiceNumber || '',
-                                amount: Math.max(0, Number((i.totalAmount - ((i as any).paidAmount || 0)).toFixed(2))),
-                                type: 'PAYMENT_RECEIVED',
-                                paymentMode: 'CASH',
-                                referenceNo: '',
-                                notes: '',
-                              });
-                              setIsRecordPaymentModalOpen(true);
-                            }}
-                          >
-                            💳
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <InvoicesSection 
+              viewMode={viewMode}
+              loadingInvoices={loadingInvoices}
+              invoices={filteredInvoices as FinalInvoice[]}
+              onOpenCreateModal={() => openModal('FINAL_INVOICE')}
+              onSetPrintDoc={(doc) => setPrintDoc(doc)}
+              onDownloadHtml={handleDownloadHtml}
+              onOpenEditModal={openEditModal}
+              onDeleteDoc={(id) => handleDeleteDoc(id, 'FINAL_INVOICE')}
+              onRecordPayment={(i) => {
+                setPaymentModalData({
+                  clientId: i.clientRef?.id || i.clientRef || '',
+                  invoiceId: i.id || (i as any)._id,
+                  invoiceNumber: i.documentNumber || i.invoiceNumber || '',
+                  amount: Math.max(0, Number((i.totalAmount - ((i as any).paidAmount || 0)).toFixed(2))),
+                  type: 'PAYMENT_RECEIVED',
+                  paymentMode: 'CASH',
+                  referenceNo: '',
+                  notes: '',
+                });
+                setIsRecordPaymentModalOpen(true);
+              }}
+            />
           </section>
         </>
       )}
 
-      {/* FLOATING CREATION/EDIT MODAL */}
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <form onSubmit={handleSubmit} className="modal-card">
-            <div className="modal-header">
-              <h3>{editingDoc ? 'Edit' : 'Create New'} {docType === 'QUOTATION' ? 'Quotation' : docType === 'PROFORMA' ? 'Proforma Invoice' : 'Final Invoice'}</h3>
-              <button type="button" className="btn-close" onClick={() => setIsModalOpen(false)}>&times;</button>
-            </div>
-            <div className="modal-body">
-                {/* Import from existing documents (Only on creation) */}
-                {!editingDoc && (docType === 'PROFORMA' || docType === 'FINAL_INVOICE') && (
-                  <div className="form-row" style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
-                    {docType === 'PROFORMA' && (
-                      <div className="form-group">
-                        <label>Import details from Quotation</label>
-                        <select
-                          className="form-select"
-                          value={quotationRef}
-                          onChange={(e) => handleImportQuotation(e.target.value)}
-                        >
-                          <option value="">-- Select Quotation to Import --</option>
-                          {quotations.map(q => (
-                            <option key={q.id || (q as any)._id} value={q.id || (q as any)._id}>
-                              {q.documentNumber || (q as any).quoteNumber} - {q.clientInfo.name} ({formatCurrency(q.totalAmount, q.currency)})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    {docType === 'FINAL_INVOICE' && (
-                      <div style={{ width: '100%', backgroundColor: 'var(--bg-card, #f8fafc)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)', marginBottom: '0.5rem' }}>
-                        <label style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.6rem', color: 'var(--text-main, #1e293b)' }}>
-                          📥 Import Line Items & Data Source:
-                        </label>
-                        <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: importSource !== 'NONE' ? '1rem' : '0' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
-                            <input
-                              type="radio"
-                              name="importSource"
-                              value="NONE"
-                              checked={importSource === 'NONE'}
-                              onChange={() => handleImportSourceChange('NONE')}
-                            />
-                            None (Fresh Invoice)
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
-                            <input
-                              type="radio"
-                              name="importSource"
-                              value="QUOTATION"
-                              checked={importSource === 'QUOTATION'}
-                              onChange={() => handleImportSourceChange('QUOTATION')}
-                            />
-                            From Quotation
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
-                            <input
-                              type="radio"
-                              name="importSource"
-                              value="PROFORMA"
-                              checked={importSource === 'PROFORMA'}
-                              onChange={() => handleImportSourceChange('PROFORMA')}
-                            />
-                            From Proforma Invoice
-                          </label>
-                        </div>
+      {/* Modals */}
+      <CreateDocumentModal 
+        isOpen={isModalOpen}
+        docType={docType}
+        editingDoc={editingDoc}
+        docNumber={docNumber}
+        setDocNumber={setDocNumber}
+        dateVal={dateVal}
+        setDateVal={setDateVal}
+        currency={currency}
+        setCurrency={setCurrency}
+        notes={notes}
+        setNotes={setNotes}
+        selectedClientId={selectedClientId}
+        setSelectedClientId={setSelectedClientId}
+        clients={clients}
+        isCreatingClient={isCreatingClient}
+        setIsCreatingClient={setIsCreatingClient}
+        newClientData={newClientData}
+        setNewClientData={setNewClientData}
+        handleCreateClient={handleCreateClient}
+        quotationRef={quotationRef}
+        setQuotationRef={setQuotationRef}
+        proformaRef={proformaRef}
+        setProformaRef={setProformaRef}
+        importSource={importSource}
+        handleImportSourceChange={handleImportSourceChange}
+        handleImportQuotation={handleImportQuotation}
+        handleImportProforma={handleImportProforma}
+        quotations={quotations}
+        proformas={proformas}
+        items={items}
+        handleAddItem={handleAddItem}
+        handleRemoveItem={handleRemoveItem}
+        handleItemChange={handleItemChange}
+        getItemQty={getItemQty}
+        formSubTotal={formSubTotal}
+        formTaxAmount={formTaxAmount}
+        formTotalAmount={formTotalAmount}
+        initialPayment={initialPayment}
+        setInitialPayment={setInitialPayment}
+        initialPaymentMode={initialPaymentMode}
+        setInitialPaymentMode={setInitialPaymentMode}
+        initialPaymentRef={initialPaymentRef}
+        setInitialPaymentRef={setInitialPaymentRef}
+        isSaving={isSaving}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSaveDocument}
+      />
 
-                        {importSource === 'QUOTATION' && (
-                          <div className="form-group" style={{ marginTop: '0.75rem' }}>
-                            <label style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Select Quotation to Import</label>
-                            <select
-                              className="form-select"
-                              value={quotationRef}
-                              onChange={(e) => {
-                                setQuotationRef(e.target.value);
-                                handleImportQuotation(e.target.value);
-                              }}
-                            >
-                              <option value="">-- Select Quotation to Import --</option>
-                              {quotations.map(q => (
-                                <option key={q.id || (q as any)._id} value={q.id || (q as any)._id}>
-                                  {q.documentNumber || (q as any).quoteNumber} - {q.clientInfo.name} ({formatCurrency(q.totalAmount, q.currency)})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {importSource === 'PROFORMA' && (
-                          <div className="form-group" style={{ marginTop: '0.75rem' }}>
-                            <label style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Select Proforma Invoice to Import</label>
-                            <select
-                              className="form-select"
-                              value={proformaRef}
-                              onChange={(e) => {
-                                setProformaRef(e.target.value);
-                                handleImportProforma(e.target.value);
-                              }}
-                            >
-                              <option value="">-- Select Proforma to Import --</option>
-                              {proformas.map(p => (
-                                <option key={p.id || (p as any)._id} value={p.id || (p as any)._id}>
-                                  {p.documentNumber || (p as any).proformaNumber} - {p.clientInfo.name} ({formatCurrency(p.totalAmount, p.currency)})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Client selection row */}
-                <div className="form-group">
-                  <label>Client</label>
-                  {!isCreatingClient ? (
-                    <div className="client-selection-row">
-                      <select
-                        className="form-select"
-                        value={selectedClientId}
-                        onChange={(e) => setSelectedClientId(e.target.value)}
-                        required
-                      >
-                        <option value="">-- Select Client --</option>
-                        {clients.map((c) => (
-                          <option key={c.id || (c as any)._id} value={c.id || (c as any)._id}>
-                            {c.name} ({c.email})
-                          </option>
-                        ))}
-                      </select>
-                      <button className="btn-inline-action" onClick={(e) => { e.preventDefault(); setIsCreatingClient(true); }}>
-                        + New Client
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="inline-client-card" style={{ padding: '1.25rem', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', marginTop: '0.5rem' }}>
-                      <h4 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontWeight: 700, fontSize: '1rem' }}>✨ Register New Client Inline</h4>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Client Name *</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Acme Corp"
-                            className="form-input"
-                            value={newClientData.name}
-                            onChange={(e) => setNewClientData({ ...newClientData, name: e.target.value })}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Client Email *</label>
-                          <input
-                            type="email"
-                            placeholder="billing@acme.com"
-                            className="form-input"
-                            value={newClientData.email}
-                            onChange={(e) => setNewClientData({ ...newClientData, email: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="form-row" style={{ marginTop: '0.5rem' }}>
-                        <div className="form-group">
-                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>GSTIN (15 Digits - Smart Auto-Fill)</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 27AAAAA0000A1Z5"
-                            className="form-input"
-                            value={newClientData.gstin}
-                            onChange={(e) => {
-                              const gVal = e.target.value.toUpperCase().trim();
-                              let panVal = newClientData.pan;
-                              let taxIdVal = newClientData.taxId;
-                              if (gVal.length >= 10) {
-                                const extPan = gVal.substring(2, 12);
-                                if (/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(extPan)) {
-                                  panVal = extPan;
-                                }
-                              }
-                              if (!taxIdVal || taxIdVal === 'N/A' || taxIdVal === '') {
-                                taxIdVal = gVal || 'N/A';
-                              }
-                              setNewClientData({
-                                ...newClientData,
-                                gstin: gVal,
-                                pan: panVal,
-                                taxId: taxIdVal
-                              });
-                            }}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>PAN Number (Auto-Extracted)</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. AAAAA0000A"
-                            className="form-input"
-                            value={newClientData.pan}
-                            onChange={(e) => setNewClientData({ ...newClientData, pan: e.target.value.toUpperCase() })}
-                          />
-                        </div>
-                      </div>
-                      <div className="form-row" style={{ marginTop: '0.5rem' }}>
-                        <div className="form-group">
-                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Tax ID / Reg Code *</label>
-                          <input
-                            type="text"
-                            placeholder="Tax ID or Reg Code"
-                            className="form-input"
-                            value={newClientData.taxId}
-                            onChange={(e) => setNewClientData({ ...newClientData, taxId: e.target.value })}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Billing Address *</label>
-                          <input
-                            type="text"
-                            placeholder="Full Address, City, State"
-                            className="form-input"
-                            value={newClientData.billingAddress}
-                            onChange={(e) => setNewClientData({ ...newClientData, billingAddress: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
-                        <button className="btn-secondary-action" style={{ padding: '0.4rem 1rem' }} onClick={(e) => { e.preventDefault(); setIsCreatingClient(false); }}>
-                          Cancel
-                        </button>
-                        <button className="btn-primary-action" style={{ padding: '0.4rem 1.25rem' }} onClick={handleCreateClient}>
-                          Save Client
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Doc Details */}
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Document Number</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={docNumber}
-                      onChange={(e) => setDocNumber(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>{docType === 'FINAL_INVOICE' ? 'Due Date' : 'Valid Until'}</label>
-                    <input
-                      type="date"
-                      className="form-input"
-                      value={dateVal}
-                      onChange={(e) => setDateVal(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Currency</label>
-                    <select
-                      className="form-select"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                    >
-                      <option value="USD">USD ($)</option>
-                      <option value="INR">INR (₹)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="GBP">GBP (£)</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Notes</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Thank you for your business"
-                      className="form-input"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-
-                {/* Items Section */}
-                <div className="items-section-title">Line Items</div>
-                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', marginBottom: '1.25rem' }}>
-                  <table className="items-table" style={{ minWidth: '700px', margin: 0 }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: '32%' }}>Description *</th>
-                        <th style={{ width: '13%' }}>HSN/SAC</th>
-                        <th style={{ width: '10%' }}>Qty</th>
-                        <th style={{ width: '12%' }}>Price *</th>
-                        <th style={{ width: '10%' }}>Disc (%)</th>
-                        <th style={{ width: '10%' }}>Tax (%)</th>
-                        <th style={{ width: '10%', textAlign: 'right' }}>Total</th>
-                        <th style={{ width: '3%' }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item, idx) => {
-                        const baseVal = getItemQty(item.quantity) * item.price;
-                        const discAmt = baseVal * ((Number(item.discountPercent) || 0) / 100);
-                        const itemSubTotal = baseVal - discAmt;
-                        const itemTax = itemSubTotal * (item.taxRate / 100);
-                        const itemTotal = itemSubTotal + itemTax;
-                        return (
-                          <tr key={idx} className="item-row">
-                            <td>
-                              <input
-                                type="text"
-                                value={item.description}
-                                onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                                placeholder="Service / Product name"
-                                required
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                value={item.hsnSac}
-                                onChange={(e) => handleItemChange(idx, 'hsnSac', e.target.value)}
-                                placeholder="998311"
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                value={item.quantity === undefined || item.quantity === null ? '' : item.quantity}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === '' || /^\d*$/.test(val)) {
-                                    let cleaned = val;
-                                    if (/^0\d+/.test(val)) {
-                                      cleaned = val.replace(/^0+/, '');
-                                    }
-                                    handleItemChange(idx, 'quantity', cleaned === '' ? undefined : Number(cleaned));
-                                  }
-                                }}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                value={item.price === 0 ? '' : item.price}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                    let cleaned = val;
-                                    if (/^0\d+/.test(val) && !val.startsWith('0.')) {
-                                      cleaned = val.replace(/^0+/, '');
-                                    }
-                                    handleItemChange(idx, 'price', cleaned === '' ? 0 : Number(cleaned));
-                                  }
-                                }}
-                                placeholder="0.00"
-                                required
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                value={item.discountPercent === 0 ? '' : item.discountPercent}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                    let cleaned = val;
-                                    if (/^0\d+/.test(val) && !val.startsWith('0.')) {
-                                      cleaned = val.replace(/^0+/, '');
-                                    }
-                                    handleItemChange(idx, 'discountPercent', cleaned === '' ? 0 : Number(cleaned));
-                                  }
-                                }}
-                                placeholder="0"
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                value={item.taxRate === 0 ? '' : item.taxRate}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === '' || /^\d*$/.test(val)) {
-                                    let cleaned = val;
-                                    if (/^0\d+/.test(val)) {
-                                      cleaned = val.replace(/^0+/, '');
-                                    }
-                                    handleItemChange(idx, 'taxRate', cleaned === '' ? 0 : Number(cleaned));
-                                  }
-                                }}
-                              />
-                            </td>
-                            <td style={{ textAlign: 'right', fontWeight: '500' }}>
-                              {formatCurrency(itemTotal, currency)}
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn-delete-item"
-                                disabled={items.length === 1}
-                                onClick={() => handleRemoveItem(idx)}
-                              >
-                                &times;
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <button type="button" className="btn-inline-action" onClick={handleAddItem}>
-                  + Add Item
-                </button>
-
-                {/* Advance / Initial Payment Collection (For Final Invoices) */}
-                {docType === 'FINAL_INVOICE' && !editingDoc && (
-                  <div style={{
-                    marginTop: '1.25rem',
-                    padding: '1rem',
-                    backgroundColor: 'rgba(30, 41, 59, 0.7)',
-                    border: '1px solid rgba(99, 102, 241, 0.25)',
-                    borderRadius: '8px'
-                  }}>
-                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#818cf8', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      💳 Advance Payment / Initial Collection (Optional)
-                    </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem' }}>
-                          Advance Received (₹)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max={formTotalAmount}
-                          step="any"
-                          value={initialPayment || ''}
-                          onChange={(e) => setInitialPayment(Number(e.target.value) || 0)}
-                          placeholder="0.00"
-                          style={{
-                            width: '100%',
-                            backgroundColor: '#0f172a',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            borderRadius: '6px',
-                            color: '#fff',
-                            padding: '0.4rem 0.6rem',
-                            fontSize: '0.85rem'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem' }}>
-                          Payment Mode
-                        </label>
-                        <select
-                          value={initialPaymentMode}
-                          onChange={(e) => setInitialPaymentMode(e.target.value)}
-                          style={{
-                            width: '100%',
-                            backgroundColor: '#0f172a',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            borderRadius: '6px',
-                            color: '#fff',
-                            padding: '0.4rem 0.6rem',
-                            fontSize: '0.85rem'
-                          }}
-                        >
-                          <option value="CASH">💵 Cash</option>
-                          <option value="UPI">📱 UPI / QR</option>
-                          <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
-                          <option value="CHEQUE">📜 Cheque</option>
-                          <option value="OTHER">✨ Other</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem' }}>
-                          Txn Ref / Cheque #
-                        </label>
-                        <input
-                          type="text"
-                          value={initialPaymentRef}
-                          onChange={(e) => setInitialPaymentRef(e.target.value)}
-                          placeholder="e.g. UPI-129381"
-                          style={{
-                            width: '100%',
-                            backgroundColor: '#0f172a',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            borderRadius: '6px',
-                            color: '#fff',
-                            padding: '0.4rem 0.6rem',
-                            fontSize: '0.85rem'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Totals Summary */}
-                <div className="totals-summary">
-                  <div>Subtotal: {formatCurrency(formSubTotal, currency)}</div>
-                  <div>Tax Amount: {formatCurrency(formTaxAmount, currency)}</div>
-                  <div className="grand-total">Total Amount: {formatCurrency(formTotalAmount, currency)}</div>
-                  {docType === 'FINAL_INVOICE' && initialPayment > 0 && (
-                    <>
-                      <div style={{ color: '#34d399', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-                        Advance / Paid: -{formatCurrency(initialPayment, currency)}
-                      </div>
-                      <div style={{ color: '#f87171', fontWeight: 800, fontSize: '1rem', marginTop: '0.25rem' }}>
-                        Balance Due: {formatCurrency(Math.max(0, formTotalAmount - initialPayment), currency)}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn-secondary-action" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-action"
-                  disabled={createQuotation.isPending || createProforma.isPending || createInvoice.isPending || updateQuotation.isPending || updateProforma.isPending || updateInvoice.isPending}
-                >
-                  {createQuotation.isPending || createProforma.isPending || createInvoice.isPending || updateQuotation.isPending || updateProforma.isPending || updateInvoice.isPending ? 'Saving...' : editingDoc ? 'Save Changes' : 'Create Document'}
-                </button>
-              </div>
-          </form>
-        </div>
-      )}
-
-      {/* EXCEL SPREADSHEET PREVIEW MODAL */}
-      {isExcelPreviewOpen && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
-          <div className="modal-card" style={{ width: '90%', maxWidth: '1200px', height: '80vh', display: 'flex', flexDirection: 'column', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', padding: 0 }}>
-            {/* Modal Header */}
-            <div className="modal-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                📊 Excel Spreadsheet Live Preview
-              </h3>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <button 
-                  type="button" 
-                  onClick={handleExportToExcel}
-                  style={{
-                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                    color: '#fff',
-                    border: 'none',
-                    padding: '0.45rem 1rem',
-                    borderRadius: '6px',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  📥 Export .xlsx
-                </button>
-                <button type="button" className="btn-close" style={{ color: '#94a3b8' }} onClick={() => setIsExcelPreviewOpen(false)}>&times;</button>
-              </div>
-            </div>
-
-            {/* Tab Selection */}
-            <div style={{ display: 'flex', backgroundColor: '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              {(['Quotations', 'Proformas', 'Final Invoices'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setExcelPreviewTab(tab)}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    border: 'none',
-                    background: excelPreviewTab === tab ? '#0f172a' : 'transparent',
-                    color: excelPreviewTab === tab ? '#3b82f6' : '#94a3b8',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    borderTop: excelPreviewTab === tab ? '3px solid #3b82f6' : '3px solid transparent',
-                    transition: 'all 0.15s'
-                  }}
-                >
-                  📁 {tab}
-                </button>
-              ))}
-            </div>
-
-            {/* Modal Body / Spreadsheet View */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', backgroundColor: '#f8fafc' }}>
-              <div style={{
-                backgroundColor: '#fff',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                border: '1px solid #e2e8f0',
-                fontFamily: '"Segoe UI", sans-serif',
-                overflow: 'hidden',
-                width: 'fit-content',
-                minWidth: '100%'
-              }}>
-                {/* Excel Coordinates Header (A, B, C...) */}
-                <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                  <div style={{ width: '40px', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}></div>
-                  {Array.from({ length: 9 }).map((_, i) => (
-                    <div key={i} style={{ width: i === 0 ? '140px' : i === 1 || i === 2 ? '180px' : i === 3 || i === 4 ? '90px' : i === 5 || i === 6 || i === 7 ? '110px' : '100px', borderRight: '1px solid #cbd5e1', padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
-                      {String.fromCharCode(65 + i)}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Row 1: Merged Title */}
-                <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1' }}>
-                  <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>1</div>
-                  <div style={{ flex: 1, padding: '0.75rem', fontSize: '1.15rem', fontWeight: 700, color: '#4f46e5', textAlign: 'left' }}>
-                    {excelPreviewTab === 'Quotations' ? 'Quotations Billing Archive Report' : excelPreviewTab === 'Proformas' ? 'Proforma Invoices Billing Archive Report' : 'Final Invoices Billing Archive Report'}
-                  </div>
-                </div>
-
-                {/* Row 2: Spacer */}
-                <div style={{ display: 'flex', height: '15px', borderBottom: '1px solid #cbd5e1' }}>
-                  <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>2</div>
-                  <div style={{ flex: 1, backgroundColor: '#fff' }}></div>
-                </div>
-
-                {/* Row 3: Indigo Table Header */}
-                <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1' }}>
-                  <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>3</div>
-                  {(excelPreviewTab === 'Quotations' 
-                    ? ['Quote Number', 'Client Name', 'Client Email', 'Date', 'Valid Until', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status']
-                    : excelPreviewTab === 'Proformas'
-                    ? ['Proforma Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status']
-                    : ['Invoice Number', 'Client Name', 'Client Email', 'Date', 'Due Date', 'Subtotal (INR)', 'Tax Amount (INR)', 'Total Amount (INR)', 'Status']
-                  ).map((h, i) => (
-                    <div key={i} style={{
-                      width: i === 0 ? '140px' : i === 1 || i === 2 ? '180px' : i === 3 || i === 4 ? '90px' : i === 5 || i === 6 || i === 7 ? '110px' : '100px',
-                      borderRight: '1px solid #312e81',
-                      backgroundColor: '#4f46e5',
-                      color: '#fff',
-                      padding: '8px',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      textAlign: 'center'
-                    }}>
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Row 4+: Data Rows */}
-                {(() => {
-                  const data = excelPreviewTab === 'Quotations' 
-                    ? filteredQuotes.map((q: any) => [q.quoteNumber || q.documentNumber || '', q.clientInfo?.name || '', q.clientInfo?.email || '', q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '', q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '', q.subtotal || 0, q.taxAmount || 0, q.totalAmount || 0, q.status || ''])
-                    : excelPreviewTab === 'Proformas'
-                    ? filteredProformas.map((p: any) => [p.proformaNumber || p.documentNumber || '', p.clientInfo?.name || '', p.clientInfo?.email || '', p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '', p.dueDate ? new Date(p.dueDate).toLocaleDateString() : '', p.subtotal || 0, p.taxAmount || 0, p.totalAmount || 0, p.status || ''])
-                    : filteredInvoices.map((i: any) => [i.invoiceNumber || i.documentNumber || '', i.clientInfo?.name || '', i.clientInfo?.email || '', i.createdAt ? new Date(i.createdAt).toLocaleDateString() : '', i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '', i.subtotal || 0, i.taxAmount || 0, i.totalAmount || 0, i.status || '']);
-
-                  if (data.length === 0) {
-                    return (
-                      <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1' }}>
-                        <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>4</div>
-                        <div style={{ flex: 1, padding: '12px', fontSize: '0.85rem', color: '#cbd5e1', fontStyle: 'italic', textAlign: 'center' }}>No records found</div>
-                      </div>
-                    );
-                  }
-
-                  return data.map((rowVal: any[], rowIndex: number) => (
-                    <div key={rowIndex} style={{ display: 'flex', borderBottom: '1px solid #cbd5e1', backgroundColor: rowIndex % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                      <div style={{ width: '40px', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>{rowIndex + 4}</div>
-                      {rowVal.map((val: any, cellIdx: number) => {
-                        const isNum = typeof val === 'number';
-                        return (
-                          <div key={cellIdx} style={{
-                            width: cellIdx === 0 ? '140px' : cellIdx === 1 || cellIdx === 2 ? '180px' : cellIdx === 3 || cellIdx === 4 ? '90px' : cellIdx === 5 || cellIdx === 6 || cellIdx === 7 ? '110px' : '100px',
-                            borderRight: '1px solid #cbd5e1',
-                            padding: '6px 8px',
-                            fontSize: '0.8rem',
-                            color: '#334155',
-                            textAlign: isNum ? 'right' : 'left',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {isNum ? `₹${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : val}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ));
-                })()}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                Preview matches exact columns, formatting, and row styles exported to .xlsx workbook sheets.
-              </span>
-              <button type="button" className="btn-secondary-action" onClick={() => setIsExcelPreviewOpen(false)}>Close Preview</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FLOATING PRINT PREVIEW MODAL */}
-      {printDoc && (
-        <div className="modal-overlay print-overlay">
-          <div className="modal-card print-preview-card">
-            <div className="modal-header no-print">
-              <h3>Print Preview</h3>
-              <button type="button" className="btn-close" onClick={() => setPrintDoc(null)}>&times;</button>
-            </div>
-            <div className="modal-body" style={{ background: '#f8f9fa', padding: 0 }}>
-              {renderAuditTrail(printDoc)}
-              <IframePreview
-                ref={iframeRef}
-                srcDoc={generateDocumentHtml(getDocumentData(printDoc))}
-              />
-              <div className="print-area" style={{ display: 'none' }} dangerouslySetInnerHTML={{ __html: generateDocumentHtml(getDocumentData(printDoc)) }} />
-            </div>
-            <div className="modal-footer no-print">
-              <button type="button" className="btn-secondary-action" onClick={() => setPrintDoc(null)}>Close</button>
-              {printDoc.documentType === 'QUOTATION' && printDoc.status !== 'CONVERTED' && (
-                <>
-                  <button type="button" className="btn-primary-action" style={{ background: '#eab308', borderColor: '#eab308' }} onClick={() => handleConvertQuote(printDoc.id || (printDoc as any)._id)}>
-                    Convert to Proforma
-                  </button>
-                  <button type="button" className="btn-primary-action" style={{ background: '#3b82f6', borderColor: '#3b82f6' }} onClick={() => handleConvertQuoteToInvoiceDirect(printDoc.id || (printDoc as any)._id)}>
-                    Convert to Final Invoice
-                  </button>
-                </>
-              )}
-              {printDoc.documentType === 'PROFORMA' && printDoc.status !== 'CONVERTED' && (
-                <button type="button" className="btn-primary-action" style={{ background: '#f97316', borderColor: '#f97316' }} onClick={() => handleConvertProforma(printDoc.id || (printDoc as any)._id)}>
-                  Convert to Final Invoice
-                </button>
-              )}
-              <button type="button" className="btn-primary-action" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderColor: '#059669' }} onClick={() => handleDownloadHtml(printDoc)}>Download HTML</button>
-              <button type="button" className="btn-primary-action" onClick={handlePrint}>Print / Save PDF</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Workspace Settings Modal */}
-      {isSettingsOpen && (
-        <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: '750px', padding: '1.75rem', overflowY: 'auto', backgroundColor: '#ffffff', color: '#0f172a' }}>
-            <div style={{ marginBottom: '1.75rem', textAlign: 'left' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                ⚙️ Workspace Profile Settings
-              </h2>
-              <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                Update branding, tax details, bank account, and UI styling for your workspace.
-              </p>
-            </div>
-
-            <form onSubmit={handleSettingsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              
-              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.25rem', textAlign: 'left' }}>
-                <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                  1. Company Profile
-                </h4>
-                <div className="grid-col-2">
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Company Name *</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={settingsData.companyName}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, companyName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. Acme Corp"
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Proprietor / Owner Name</label>
-                    <input 
-                      type="text"
-                      value={settingsData.proprietorName}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, proprietorName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. John Doe"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid-col-3" style={{ marginTop: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Official Billing Address *</label>
-                    <textarea 
-                      required
-                      value={settingsData.address}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, address: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box', height: '70px', resize: 'none' }}
-                      placeholder="e.g. 2b/706, 7th Floor..."
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Company Logo</label>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={handleWorkspaceLogoUpload}
-                      style={{ width: '100%', padding: '0.35rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                    />
-                    {settingsData.logoUrl && (
-                      <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <img src={settingsData.logoUrl} alt="Preview" style={{ height: '24px', maxWidth: '80px', objectFit: 'contain', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>✓ Logo Uploaded</span>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Digital Signature (Optional)</label>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={handleWorkspaceSignatureUpload}
-                      style={{ width: '100%', padding: '0.35rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                    />
-                    {settingsData.signatureUrl && (
-                      <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <img src={settingsData.signatureUrl} alt="Preview" style={{ height: '24px', maxWidth: '80px', objectFit: 'contain', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>✓ Signature Uploaded</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.25rem', textAlign: 'left' }}>
-                <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                  2. Tax Details
-                </h4>
-                <div className="grid-col-2">
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>GSTIN / Tax ID</label>
-                    <input 
-                      type="text" 
-                      value={settingsData.gstin}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, gstin: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. 27ALQPB3481K1ZR"
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>PAN Number</label>
-                    <input 
-                      type="text" 
-                      value={settingsData.pan}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, pan: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. ALQPB3481K"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.25rem', textAlign: 'left' }}>
-                <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                  3. Bank Account Details
-                </h4>
-                <div className="grid-col-2">
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Holder Name</label>
-                    <input 
-                      type="text"
-                      value={settingsData.bankAccHolder}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankAccHolder: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. Acme Corp Invoices"
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Bank Name</label>
-                    <input 
-                      type="text"
-                      value={settingsData.bankName}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankName: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. YES BANK"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid-col-3" style={{ marginTop: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Account Number</label>
-                    <input 
-                      type="text"
-                      value={settingsData.bankAccNumber}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankAccNumber: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. 021261900003481"
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>IFSC Code</label>
-                    <input 
-                      type="text"
-                      value={settingsData.bankIfsc}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankIfsc: e.target.value.toUpperCase() }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. YESB0000212"
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Branch Name</label>
-                    <input 
-                      type="text"
-                      value={settingsData.bankBranch}
-                      onChange={(e) => setSettingsData((prev: any) => ({ ...prev, bankBranch: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                      placeholder="e.g. Kandivali East"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                    4. Workspace Styling & Subscription Tier
-                  </h4>
-                  <span style={{ color: '#475569', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#f1f5f9', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 600 }}>
-                    🔒 Managed by Administrator only
-                  </span>
-                </div>
-                <div className="grid-col-2" style={{ gap: '1.5rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Workspace Theme</label>
-                    <div className="theme-selection-container" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      {[
-                        { id: 'DEFAULT', name: 'Classic Orange', color: '#fb923c' },
-                        { id: 'EMERALD', name: 'Emerald Green', color: '#10b981' },
-                        { id: 'SAPPHIRE', name: 'Sapphire Blue', color: '#3b82f6' },
-                        { id: 'ROYAL', name: 'Royal Gold', color: '#fbbf24' }
-                      ].map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          disabled
-                          style={{
-                            flex: 1,
-                            backgroundColor: settingsData.theme === t.id ? '#ffffff' : '#f8fafc',
-                            border: `2px solid ${settingsData.theme === t.id ? t.color : '#cbd5e1'}`,
-                            borderRadius: '8px',
-                            padding: '0.5rem',
-                            color: '#0f172a',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'not-allowed',
-                            opacity: settingsData.theme === t.id ? 1 : 0.6,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            transition: 'all 0.2s',
-                            boxShadow: settingsData.theme === t.id ? '0 2px 4px rgba(0,0,0,0.06)' : 'none'
-                          }}
-                        >
-                          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: t.color }} />
-                          {t.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>Workspace Subscription Tier</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', marginBottom: '1.25rem' }}>
-                      {[
-                        { id: 'FREE', name: 'Free Tier', badge: 'Standard Features' },
-                        { id: 'PREMIUM', name: 'Premium Tier 👑', badge: 'Advanced Layouts' }
-                      ].map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          disabled
-                          style={{
-                            flex: 1,
-                            backgroundColor: settingsData.tier === p.id ? '#e0e7ff' : '#f8fafc',
-                            border: `2px solid ${settingsData.tier === p.id ? '#4f46e5' : '#cbd5e1'}`,
-                            borderRadius: '8px',
-                            padding: '0.5rem',
-                            color: settingsData.tier === p.id ? '#3730a3' : '#475569',
-                            fontSize: '0.75rem',
-                            cursor: 'not-allowed',
-                            opacity: settingsData.tier === p.id ? 1 : 0.6,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          <span style={{ fontWeight: settingsData.tier === p.id ? 'bold' : 'normal' }}>{p.name}</span>
-                          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{p.badge}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.45rem' }}>Active Subscription Details</label>
-                    <div className="grid-col-2" style={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '10px',
-                      padding: '1rem 1.25rem',
-                      fontSize: '0.85rem',
-                      boxSizing: 'border-box',
-                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)'
-                    }}>
-                      <div>
-                        <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Plan</span>
-                        <strong style={{ color: '#0f172a' }}>
-                          {getPlanLabel(tenantProfile?.subscriptionPlan || 'FREE')}
-                        </strong>
-                      </div>
-                      <div>
-                        <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Amount</span>
-                        <strong style={{ color: '#0f172a' }}>
-                          {getPlanPrice(tenantProfile?.subscriptionPlan || 'FREE')}
-                        </strong>
-                      </div>
-                      <div>
-                        <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Start/Sync Date</span>
-                        <span style={{ color: '#334155', fontWeight: 500 }}>
-                          {formatDateTime(tenantProfile?.updatedAt)}
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ color: '#64748b', display: 'block', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.15rem' }}>Expires On</span>
-                        <span style={{ 
-                          color: tenantProfile?.subscriptionStatus === 'EXPIRED' ? '#dc2626' : '#059669', 
-                          fontWeight: 700 
-                        }}>
-                          {tenantProfile?.subscriptionPlan === 'LIFETIME' ? 'Never (Lifetime)' : (tenantProfile?.subscriptionPlan === 'FREE' ? 'N/A' : formatDateTime(tenantProfile?.subscriptionExpiresAt))}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="settings-footer" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsSettingsOpen(false)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: '1px solid #475569',
-                    color: '#94a3b8',
-                    padding: '0.65rem 1.5rem',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  style={{
-                    backgroundColor: 'var(--primary)',
-                    border: 'none',
-                    color: '#000',
-                    padding: '0.65rem 1.5rem',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px var(--primary-glow)'
-                  }}
-                >
-                  Save Settings
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Workspace Renewal Modal */}
       {isRenewalOpen && (
-        <div className="renewal-overlay">
-          <div className="renewal-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-                ⚡ Renew Subscription
-              </h2>
-              <button 
-                type="button" 
-                onClick={() => setIsRenewalOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.35rem', cursor: 'pointer' }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                Select / Change Subscription Plan:
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-                {[
-                  { id: '1_MONTH', label: dynamicPlansMap['1_MONTH']?.name || 'Monthly Starter', price: `₹${getPlanPriceNum('1_MONTH').toLocaleString('en-IN')} / mo` },
-                  { id: '6_MONTHS', label: dynamicPlansMap['6_MONTHS']?.name || '6 Months Pro', price: `₹${getPlanPriceNum('6_MONTHS').toLocaleString('en-IN')} / 6 mos` },
-                  { id: '1_YEAR', label: dynamicPlansMap['1_YEAR']?.name || '1 Year Enterprise', price: `₹${getPlanPriceNum('1_YEAR').toLocaleString('en-IN')} / yr` },
-                  { id: 'LIFETIME', label: dynamicPlansMap['LIFETIME']?.name || 'Lifetime Unlimited', price: `₹${getPlanPriceNum('LIFETIME').toLocaleString('en-IN')} one-time` }
-                ]
-                .filter(plan => {
-                  const planData = dynamicPlansMap[plan.id];
-                  const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
-                  if (isCurrent) return true;
-                  if (!planData || planData.isActive === false) return false;
-                  return true;
-                })
-                .map((plan) => (
-                  <button
-                    key={plan.id}
-                    type="button"
-                    onClick={() => setSelectedPlan(plan.id)}
-                    style={{
-                      backgroundColor: (selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id ? 'rgba(99, 102, 241, 0.2)' : '#0f172a',
-                      border: (selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id ? '2px solid #6366f1' : '1px solid #334155',
-                      borderRadius: '8px',
-                      padding: '0.55rem 0.75rem',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ color: (selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id ? '#818cf8' : '#fff', fontWeight: 700, fontSize: '0.8rem' }}>
-                      {plan.label}
-                    </div>
-                    <div style={{ color: '#94a3b8', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                      {plan.price}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '10px', padding: '0.85rem', marginBottom: '1.25rem' }}>
-              <span style={{ fontSize: '0.75rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>Selected Target Plan</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.2rem' }}>
-                <span style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{getPlanLabel(selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH')}</span>
-                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#34d399', fontFamily: 'monospace' }}>₹{getPlanPriceNum(selectedPlan || tenantProfile?.subscriptionPlan || '1_MONTH').toLocaleString()}</span>
-              </div>
-            </div>
-
-            <form onSubmit={handleRenewalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-                <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: '0.85rem', lineHeight: 1.4 }}>
-                  Scan the QR code below via GPay/PhonePe to make your payment, then enter the 12-digit UTR verification code.
-                </p>
-
-                {/* Dynamic UPI QR Code */}
-                <div style={{ display: 'flex', justifyContent: 'center', margin: '0.75rem 0' }}>
-                  <div style={{ backgroundColor: '#fff', padding: '0.85rem', borderRadius: '10px' }}>
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=5&data=${encodeURIComponent(getRenewalUpiUrl())}`} 
-                      alt="UPI QR Code" 
-                      style={{ display: 'block', width: '180px', height: '180px' }} 
-                    />
-                  </div>
-                </div>
-
-                <div style={{ backgroundColor: '#0f172a', padding: '0.65rem 0.85rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.75rem', textAlign: 'left' }}>
-                  <div><span style={{ color: '#64748b' }}>Payee Name:</span> <strong style={{ color: '#fff' }}>ROHIT BARGE</strong></div>
-                  <div><span style={{ color: '#64748b' }}>VPA:</span> <strong style={{ color: '#fff', fontFamily: 'monospace' }}>rohitbarge22-3@okaxis</strong></div>
-                  <div><span style={{ color: '#64748b' }}>Transaction Note:</span> <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{getRenewalUpiNote()}</strong></div>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>Enter 12-digit UPI Ref / UTR Number *</label>
-                <input 
-                  type="text" 
-                  required
-                  pattern="\d{12}"
-                  maxLength={12}
-                  placeholder="e.g. 123456789012"
-                  value={renewalUtr}
-                  onChange={(e) => setRenewalUtr(e.target.value.replace(/\D/g, '').substring(0, 12))}
-                  style={{
-                    width: '100%',
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    padding: '0.65rem 0.85rem',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              {renewalStatus && (
-                <div style={{
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  padding: '0.75rem',
-                  fontSize: '0.8rem',
-                  color: '#0f172a',
-                  lineHeight: 1.4
-                }}>
-                  {renewalStatus}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsRenewalOpen(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: 'transparent',
-                    border: '1px solid #475569',
-                    color: '#94a3b8',
-                    padding: '0.65rem',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={renewalLoading}
-                  style={{
-                    flex: 2,
-                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                    border: 'none',
-                    color: '#fff',
-                    padding: '0.65rem',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    cursor: renewalLoading ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
-                  }}
-                >
-                  {renewalLoading ? 'Submitting...' : 'Submit Payment'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <SubscriptionModal 
+          tenantProfile={tenantProfile}
+          selectedPlan={selectedPlan}
+          setSelectedPlan={setSelectedPlan}
+          renewalUtr={renewalUtr}
+          setRenewalUtr={setRenewalUtr}
+          renewalLoading={renewalLoading}
+          renewalStatus={renewalStatus}
+          dynamicPlansMap={dynamicPlansMap}
+          onClose={() => setIsRenewalOpen(false)}
+          onSubmit={handleRenewalSubmit}
+        />
       )}
 
-      {/* RECORD PAYMENT MODAL */}
+      {isSettingsOpen && (
+        <TenantSettingsModal 
+          tenantProfile={tenantProfile}
+          settingsData={settingsData}
+          setSettingsData={setSettingsData}
+          onLogoUpload={handleWorkspaceLogoUpload}
+          onSignatureUpload={handleWorkspaceSignatureUpload}
+          onClose={() => setIsSettingsOpen(false)}
+          onSubmit={handleSettingsSubmit}
+        />
+      )}
+
       {isRecordPaymentModalOpen && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
-          <div className="modal-card" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3 style={{ color: '#0f172a', fontSize: '1.15rem' }}>💳 Record Payment / Advance Collection</h3>
-              <button type="button" className="btn-close" onClick={() => setIsRecordPaymentModalOpen(false)}>&times;</button>
-            </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (paymentModalData.amount <= 0) {
-                alert('Please enter a valid payment amount greater than 0');
-                return;
-              }
-              try {
-                await recordPaymentMutation.mutateAsync({
-                  clientId: paymentModalData.clientId,
-                  invoiceId: paymentModalData.invoiceId || null,
-                  amount: Number(paymentModalData.amount),
-                  type: paymentModalData.type,
-                  paymentMode: paymentModalData.paymentMode,
-                  referenceNo: paymentModalData.referenceNo || null,
-                  notes: paymentModalData.notes || null
-                });
-                alert('Payment recorded successfully!');
-                setIsRecordPaymentModalOpen(false);
-              } catch (err: any) {
-                alert(err.response?.data?.message || 'Failed to record payment');
-              }
-            }}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem' }}>
-                {paymentModalData.invoiceNumber && (
-                  <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#e0e7ff', borderRadius: '6px', fontSize: '0.85rem', color: '#3730a3', fontWeight: 600 }}>
-                    Linked Invoice #: {paymentModalData.invoiceNumber}
-                  </div>
-                )}
+        <RecordPaymentModal 
+          paymentModalData={paymentModalData}
+          setPaymentModalData={setPaymentModalData}
+          isPending={recordPaymentMutation.isPending}
+          onClose={() => setIsRecordPaymentModalOpen(false)}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (paymentModalData.amount <= 0) {
+              alert('Please enter a valid payment amount greater than 0');
+              return;
+            }
+            try {
+              await recordPaymentMutation.mutateAsync({
+                clientId: paymentModalData.clientId,
+                invoiceId: paymentModalData.invoiceId || null,
+                amount: Number(paymentModalData.amount),
+                type: paymentModalData.type,
+                paymentMode: paymentModalData.paymentMode,
+                referenceNo: paymentModalData.referenceNo || null,
+                notes: paymentModalData.notes || null
+              });
+              alert('Payment recorded successfully!');
+              setIsRecordPaymentModalOpen(false);
+            } catch (err: any) {
+              alert(err.response?.data?.message || 'Failed to record payment');
+            }
+          }}
+        />
+      )}
 
-                <div>
-                  <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
-                    Payment Type
-                  </label>
-                  <select
-                    value={paymentModalData.type}
-                    onChange={(e: any) => setPaymentModalData({ ...paymentModalData, type: e.target.value })}
-                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.8rem', fontSize: '0.9rem' }}
-                  >
-                    <option value="PAYMENT_RECEIVED">💵 Payment Received against Invoice</option>
-                    <option value="ADVANCE_PAYMENT">💳 Advance Payment Deposit</option>
-                  </select>
-                </div>
+      {isExcelPreviewOpen && (
+        <ExcelPreviewModal 
+          excelPreviewTab={excelPreviewTab}
+          setExcelPreviewTab={setExcelPreviewTab}
+          quotations={filteredQuotes as Quotation[]}
+          proformas={filteredProformas as ProformaInvoice[]}
+          invoices={filteredInvoices as FinalInvoice[]}
+          onExportToExcel={handleExportToExcel}
+          onClose={() => setIsExcelPreviewOpen(false)}
+        />
+      )}
 
-                <div>
-                  <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
-                    Amount Collected (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0.01"
-                    required
-                    value={paymentModalData.amount || ''}
-                    onChange={(e) => setPaymentModalData({ ...paymentModalData, amount: Number(e.target.value) || 0 })}
-                    placeholder="Enter amount"
-                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.85rem', fontSize: '1rem', fontWeight: 700 }}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
-                      Payment Mode
-                    </label>
-                    <select
-                      value={paymentModalData.paymentMode}
-                      onChange={(e: any) => setPaymentModalData({ ...paymentModalData, paymentMode: e.target.value })}
-                      style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.8rem', fontSize: '0.9rem' }}
-                    >
-                      <option value="CASH">💵 Cash</option>
-                      <option value="UPI">📱 UPI / QR</option>
-                      <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
-                      <option value="CHEQUE">📜 Cheque</option>
-                      <option value="OTHER">✨ Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
-                      Txn Ref / Cheque #
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentModalData.referenceNo}
-                      onChange={(e) => setPaymentModalData({ ...paymentModalData, referenceNo: e.target.value })}
-                      placeholder="e.g. UPI-998822"
-                      style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.8rem', fontSize: '0.9rem' }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.8rem', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
-                    Notes / Remarks
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentModalData.notes}
-                    onChange={(e) => setPaymentModalData({ ...paymentModalData, notes: e.target.value })}
-                    placeholder="Optional details"
-                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', padding: '0.6rem 0.8rem', fontSize: '0.9rem' }}
-                  />
-                </div>
-              </div>
-              <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn-secondary-action" onClick={() => setIsRecordPaymentModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary-action" disabled={recordPaymentMutation.isPending}>
-                  {recordPaymentMutation.isPending ? 'Saving Payment...' : 'Save Payment'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {printDoc && (
+        <PrintPreviewModal 
+          printDoc={printDoc}
+          tenantProfile={tenantProfile}
+          quotations={quotations}
+          proformas={proformas}
+          invoices={invoices}
+          onConvertQuote={handleConvertQuote}
+          onConvertQuoteToInvoiceDirect={handleConvertQuoteToInvoiceDirect}
+          onConvertProforma={handleConvertProforma}
+          onDownloadHtml={handleDownloadHtml}
+          onClose={() => setPrintDoc(null)}
+        />
       )}
     </div>
   );
