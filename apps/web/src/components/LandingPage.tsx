@@ -79,8 +79,9 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
     // Strict 35 character max transaction note: SUB-[TIER_CODE]-[TENANT_ID]
     const tn = `SUB-${planCode}-${formattedTenant}`.substring(0, 35);
+    const amountVal = typeof selectedPlan.price === 'number' ? selectedPlan.price : (parseFloat(String(selectedPlan.price || 0)) || 0);
     
-    return `upi://pay?pa=rohitbarge22-3@okaxis&pn=ROHIT%20BARGE&am=${selectedPlan.price.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`;
+    return `upi://pay?pa=rohitbarge22-3@okaxis&pn=ROHIT%20BARGE&am=${amountVal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`;
   };
 
   const getUpiNote = () => {
@@ -1919,14 +1920,22 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                     </label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
                       {Object.values(dynamicPlans)
-                        .filter((p: any) => p.isActive !== false)
+                        .filter((p: any) => p && p.isActive !== false)
                         .map((plan: any) => {
                           const isSelected = selectedPlan?.id === plan.planId;
+                          const priceNum = typeof plan.effectivePrice === 'number' 
+                            ? plan.effectivePrice 
+                            : (typeof plan.regularPrice === 'number' 
+                              ? plan.regularPrice 
+                              : (typeof plan.price === 'number' ? plan.price : (parseFloat(plan.effectivePrice || plan.regularPrice || plan.price || 0) || 0)));
+                          const durationText = plan.billingCycleMonths 
+                            ? (plan.billingCycleMonths === 1 ? 'mo' : `${plan.billingCycleMonths} mos`)
+                            : (plan.planId === 'LIFETIME' ? 'one-time' : 'period');
                           return (
                             <button
                               key={plan.planId}
                               type="button"
-                              onClick={() => setSelectedPlan({ id: plan.planId, name: plan.name, price: plan.price })}
+                              onClick={() => setSelectedPlan({ id: plan.planId, name: plan.name, price: priceNum })}
                               style={{
                                 backgroundColor: isSelected ? '#e0e7ff' : '#0f172a',
                                 border: isSelected ? '2px solid #6366f1' : '1px solid #1e293b',
@@ -1941,7 +1950,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                                 {plan.name}
                               </div>
                               <div style={{ color: isSelected ? '#6366f1' : '#94a3b8', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                                ₹{plan.price.toLocaleString()} / {plan.duration || 'period'}
+                                ₹{priceNum.toLocaleString('en-IN')} / {durationText}
                               </div>
                             </button>
                           );
@@ -1954,8 +1963,10 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
                 <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '10px', padding: '0.85rem' }}>
                   <span style={{ fontSize: '0.75rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>SELECTED TARGET PLAN</span>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.2rem' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{selectedPlan.name}</span>
-                    <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#34d399', fontFamily: 'monospace' }}>₹{selectedPlan.price.toLocaleString()}</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{selectedPlan?.name || ''}</span>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#34d399', fontFamily: 'monospace' }}>
+                      ₹{(selectedPlan?.price || 0).toLocaleString('en-IN')}
+                    </span>
                   </div>
                 </div>
 
