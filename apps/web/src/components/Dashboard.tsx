@@ -2125,7 +2125,9 @@ export default function Dashboard() {
               .filter(plan => {
                 const planData = dynamicPlansMap[plan.id];
                 const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
-                return isCurrent || (planData ? planData.isActive !== false : true);
+                if (isCurrent) return true;
+                if (!planData || planData.isActive === false) return false;
+                return true;
               })
               .map((plan) => {
                 const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
@@ -3516,7 +3518,9 @@ export default function Dashboard() {
                 .filter(plan => {
                   const planData = dynamicPlansMap[plan.id];
                   const isCurrent = (tenantProfile?.subscriptionPlan || '1_MONTH') === plan.id;
-                  return isCurrent || (planData ? planData.isActive !== false : true);
+                  if (isCurrent) return true;
+                  if (!planData || planData.isActive === false) return false;
+                  return true;
                 })
                 .map((plan) => (
                   <button

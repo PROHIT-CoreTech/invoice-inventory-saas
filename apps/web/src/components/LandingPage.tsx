@@ -16,12 +16,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
     return 'http://localhost:5001/api';
   };
 
-  const [dynamicPlans, setDynamicPlans] = useState<Record<string, any>>({
-    '1_MONTH': { planId: '1_MONTH', name: '1 Month Plan', regularPrice: 999, effectivePrice: 999, isActive: true },
-    '6_MONTHS': { planId: '6_MONTHS', name: '6 Months Plan', regularPrice: 4999, effectivePrice: 4999, isActive: true },
-    '1_YEAR': { planId: '1_YEAR', name: '1 Year Plan', regularPrice: 9999, effectivePrice: 9999, isActive: true },
-    'LIFETIME': { planId: 'LIFETIME', name: 'Lifetime Plan', regularPrice: 20000, effectivePrice: 20000, isActive: true }
-  });
+  const [dynamicPlans, setDynamicPlans] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -900,8 +895,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
               <React.Fragment key={loopIndex}>
                 {/* Plan 1: Monthly Starter */}
                 {(() => {
-                  const plan = dynamicPlans['1_MONTH'] || { regularPrice: 999, effectivePrice: 999, isActive: true };
-                  if (plan && plan.isActive === false) return null;
+                  const plan = dynamicPlans['1_MONTH'];
+                  if (!plan || plan.isActive === false) return null;
                   const isOffer = plan.isOfferActive;
                   const price = plan.effectivePrice ?? plan.regularPrice;
                   return (
@@ -959,8 +954,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
                 {/* Plan 2: Bi-Annual Pro */}
                 {(() => {
-                  const plan = dynamicPlans['6_MONTHS'] || { regularPrice: 4999, effectivePrice: 4999, isActive: true };
-                  if (plan && plan.isActive === false) return null;
+                  const plan = dynamicPlans['6_MONTHS'];
+                  if (!plan || plan.isActive === false) return null;
                   const isOffer = plan.isOfferActive;
                   const price = plan.effectivePrice ?? plan.regularPrice;
                   const monthlyEquivalent = plan.monthlyEquivalentPrice || Math.round(price / 6);
@@ -1024,8 +1019,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
                 {/* Plan 3: Annual Enterprise */}
                 {(() => {
-                  const plan = dynamicPlans['1_YEAR'] || { regularPrice: 9999, effectivePrice: 9999, isActive: true };
-                  if (plan && plan.isActive === false) return null;
+                  const plan = dynamicPlans['1_YEAR'];
+                  if (!plan || plan.isActive === false) return null;
                   const isOffer = plan.isOfferActive;
                   const price = plan.effectivePrice ?? plan.regularPrice;
                   const monthlyEquivalent = plan.monthlyEquivalentPrice || Math.round(price / 12);
@@ -1088,8 +1083,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
                 {/* Plan 4: Lifetime Unlimited */}
                 {(() => {
-                  const plan = dynamicPlans['LIFETIME'] || { regularPrice: 20000, effectivePrice: 20000, isActive: true };
-                  if (plan && plan.isActive === false) return null;
+                  const plan = dynamicPlans['LIFETIME'];
+                  if (!plan || plan.isActive === false) return null;
                   const isOffer = plan.isOfferActive;
                   const price = plan.effectivePrice ?? plan.regularPrice;
                   return (
