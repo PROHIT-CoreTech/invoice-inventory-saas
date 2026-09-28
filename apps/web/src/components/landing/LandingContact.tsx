@@ -5,18 +5,16 @@ export const LandingContact: React.FC = () => {
     fullName: '',
     mobileNumber: '',
     workEmail: '',
-    fleetSize: '1 - 10 Vehicles',
+    companySize: '1 - 10 Employees (Small Business)',
     message: ''
   });
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMessage('');
 
     const accessKey = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY || 'fb606c64-f1b5-4d59-aac9-e8b592ffce07';
 
@@ -29,12 +27,12 @@ export const LandingContact: React.FC = () => {
         },
         body: JSON.stringify({
           access_key: accessKey,
-          subject: `New Fleet Inquiry from ${formData.fullName}`,
+          subject: `New Business Inquiry from ${formData.fullName}`,
           from_name: 'PROCash Invoices Landing Page',
           name: formData.fullName,
           phone: formData.mobileNumber,
           email: formData.workEmail,
-          fleet_size: formData.fleetSize,
+          company_size: formData.companySize,
           message: formData.message
         })
       });
@@ -48,7 +46,7 @@ export const LandingContact: React.FC = () => {
             fullName: '',
             mobileNumber: '',
             workEmail: '',
-            fleetSize: '1 - 10 Vehicles',
+            companySize: '1 - 10 Employees (Small Business)',
             message: ''
           });
         }, 5000);
@@ -77,19 +75,20 @@ export const LandingContact: React.FC = () => {
       <div
         className="get-in-touch-container"
         style={{
-          backgroundColor: '#f4f8fd',
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(16px)',
           borderRadius: '24px',
           padding: '3.5rem 2.5rem',
-          boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.3)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          color: '#0f172a'
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          color: '#ffffff'
         }}
       >
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
           <span
             style={{
-              color: '#0284c7',
+              color: '#38bdf8',
               fontSize: '0.85rem',
               fontWeight: 800,
               letterSpacing: '0.1em',
@@ -104,24 +103,24 @@ export const LandingContact: React.FC = () => {
             style={{
               fontSize: 'clamp(1.75rem, 4vw, 2.5rem)',
               fontWeight: 800,
-              color: '#0f172a',
+              color: '#ffffff',
               marginBottom: '1rem',
               letterSpacing: '-0.02em',
               textTransform: 'uppercase'
             }}
           >
-            WE'RE HERE TO HELP YOU SCALE YOUR FLEET
+            WE'RE HERE TO HELP YOU SCALE YOUR BUSINESS
           </h2>
           <p
             style={{
-              color: '#64748b',
+              color: '#94a3b8',
               fontSize: '1.05rem',
               maxWidth: '680px',
               margin: '0 auto',
               lineHeight: 1.6
             }}
           >
-            Have questions about enterprise custom plans, API integrations, or hardware compatibility? Our specialist team is ready to assist.
+            Have questions about enterprise custom plans, multi-user workflows, or custom GST billing requirements? Our specialist team is ready to assist.
           </p>
         </div>
 
@@ -140,18 +139,18 @@ export const LandingContact: React.FC = () => {
             {/* Card 1: Location */}
             <div
               style={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
+                backgroundColor: 'rgba(21, 28, 47, 0.65)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '16px',
                 padding: '1.75rem',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
               }}
             >
               <h4
                 style={{
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  color: '#334155',
+                  color: '#94a3b8',
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   marginBottom: '0.75rem',
@@ -160,7 +159,7 @@ export const LandingContact: React.FC = () => {
               >
                 LOCATION
               </h4>
-              <p style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', lineHeight: 1.5, fontWeight: 600 }}>
+              <p style={{ margin: 0, fontSize: '1.05rem', color: '#ffffff', lineHeight: 1.5, fontWeight: 600 }}>
                 Mumbai, Maharashtra, India
               </p>
             </div>
@@ -168,18 +167,18 @@ export const LandingContact: React.FC = () => {
             {/* Card 2: Email Us Directly */}
             <div
               style={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
+                backgroundColor: 'rgba(21, 28, 47, 0.65)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '16px',
                 padding: '1.75rem',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
               }}
             >
               <h4
                 style={{
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  color: '#334155',
+                  color: '#94a3b8',
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   marginBottom: '0.75rem',
@@ -193,7 +192,7 @@ export const LandingContact: React.FC = () => {
                 style={{
                   fontSize: '1.15rem',
                   fontWeight: 800,
-                  color: '#0284c7',
+                  color: '#38bdf8',
                   textDecoration: 'none',
                   display: 'inline-block',
                   marginBottom: '0.4rem'
@@ -201,7 +200,7 @@ export const LandingContact: React.FC = () => {
               >
                 info@prohitcoretech.com
               </a>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
                 Typical response time: under 2 hours
               </p>
             </div>
@@ -209,18 +208,18 @@ export const LandingContact: React.FC = () => {
             {/* Card 3: Hours */}
             <div
               style={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
+                backgroundColor: 'rgba(21, 28, 47, 0.65)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '16px',
                 padding: '1.75rem',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
               }}
             >
               <h4
                 style={{
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  color: '#334155',
+                  color: '#94a3b8',
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   marginBottom: '0.75rem',
@@ -233,13 +232,13 @@ export const LandingContact: React.FC = () => {
                 style={{
                   fontSize: '1.1rem',
                   fontWeight: 700,
-                  color: '#0f172a',
+                  color: '#ffffff',
                   marginBottom: '0.4rem'
                 }}
               >
                 Mon–Sat, 10:00–19:00 IST
               </div>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
                 Direct Phone Support: +91 757 839 7539
               </p>
             </div>
@@ -248,18 +247,18 @@ export const LandingContact: React.FC = () => {
           {/* Right Column - Send Us a Message Form Card */}
           <div
             style={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
+              backgroundColor: 'rgba(21, 28, 47, 0.75)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '20px',
               padding: '2.25rem',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
             }}
           >
             <h3
               style={{
                 fontSize: '1.4rem',
                 fontWeight: 800,
-                color: '#0f172a',
+                color: '#ffffff',
                 marginTop: 0,
                 marginBottom: '1.75rem'
               }}
@@ -270,17 +269,17 @@ export const LandingContact: React.FC = () => {
             {submitted ? (
               <div
                 style={{
-                  backgroundColor: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid #10b981',
                   borderRadius: '12px',
                   padding: '2rem',
                   textAlign: 'center',
-                  color: '#166534'
+                  color: '#34d399'
                 }}
               >
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎉</div>
                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.15rem', fontWeight: 700 }}>Inquiry Submitted!</h4>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#15803d' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#a7f3d0' }}>
                   Thank you for contacting us. Our specialist team will reach out to you shortly.
                 </p>
               </div>
@@ -294,7 +293,7 @@ export const LandingContact: React.FC = () => {
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        color: '#475569',
+                        color: '#94a3b8',
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase'
                       }}
@@ -312,10 +311,10 @@ export const LandingContact: React.FC = () => {
                         width: '100%',
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: '#0a0d16',
                         fontSize: '0.95rem',
-                        color: '#0f172a',
+                        color: '#ffffff',
                         outline: 'none',
                         boxSizing: 'border-box',
                         transition: 'border-color 0.2s'
@@ -329,7 +328,7 @@ export const LandingContact: React.FC = () => {
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        color: '#475569',
+                        color: '#94a3b8',
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase'
                       }}
@@ -347,10 +346,10 @@ export const LandingContact: React.FC = () => {
                         width: '100%',
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: '#0a0d16',
                         fontSize: '0.95rem',
-                        color: '#0f172a',
+                        color: '#ffffff',
                         outline: 'none',
                         boxSizing: 'border-box',
                         transition: 'border-color 0.2s'
@@ -359,7 +358,7 @@ export const LandingContact: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Row 2: Work Email & Fleet Size */}
+                {/* Row 2: Work Email & Business Size */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     <label
@@ -367,7 +366,7 @@ export const LandingContact: React.FC = () => {
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        color: '#475569',
+                        color: '#94a3b8',
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase'
                       }}
@@ -385,10 +384,10 @@ export const LandingContact: React.FC = () => {
                         width: '100%',
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: '#0a0d16',
                         fontSize: '0.95rem',
-                        color: '#0f172a',
+                        color: '#ffffff',
                         outline: 'none',
                         boxSizing: 'border-box',
                         transition: 'border-color 0.2s'
@@ -398,39 +397,40 @@ export const LandingContact: React.FC = () => {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     <label
-                      htmlFor="fleetSize"
+                      htmlFor="companySize"
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        color: '#475569',
+                        color: '#94a3b8',
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase'
                       }}
                     >
-                      FLEET SIZE
+                      BUSINESS / COMPANY SIZE
                     </label>
                     <select
-                      id="fleetSize"
-                      value={formData.fleetSize}
-                      onChange={(e) => setFormData({ ...formData, fleetSize: e.target.value })}
+                      id="companySize"
+                      value={formData.companySize}
+                      onChange={(e) => setFormData({ ...formData, companySize: e.target.value })}
                       style={{
                         width: '100%',
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: '#0a0d16',
                         fontSize: '0.95rem',
-                        color: '#0f172a',
+                        color: '#ffffff',
                         outline: 'none',
                         boxSizing: 'border-box',
                         cursor: 'pointer',
                         appearance: 'auto'
                       }}
                     >
-                      <option value="1 - 10 Vehicles">1 - 10 Vehicles</option>
-                      <option value="11 - 50 Vehicles">11 - 50 Vehicles</option>
-                      <option value="51 - 200 Vehicles">51 - 200 Vehicles</option>
-                      <option value="200+ Vehicles">200+ Vehicles</option>
+                      <option value="1 - 10 Employees (Small Business)">1 - 10 Employees (Small Business)</option>
+                      <option value="11 - 50 Employees (Mid-Market)">11 - 50 Employees (Mid-Market)</option>
+                      <option value="51 - 200 Employees (Growing Business)">51 - 200 Employees (Growing Business)</option>
+                      <option value="200+ Employees (Enterprise ERP)">200+ Employees (Enterprise ERP)</option>
+                      <option value="Freelancer / Independent">Freelancer / Independent</option>
                     </select>
                   </div>
                 </div>
@@ -442,7 +442,7 @@ export const LandingContact: React.FC = () => {
                     style={{
                       fontSize: '0.7rem',
                       fontWeight: 800,
-                      color: '#475569',
+                      color: '#94a3b8',
                       letterSpacing: '0.05em',
                       textTransform: 'uppercase'
                     }}
@@ -453,17 +453,17 @@ export const LandingContact: React.FC = () => {
                     id="message"
                     rows={4}
                     required
-                    placeholder="Tell us about your fleet requirements..."
+                    placeholder="Tell us about your billing & invoice requirements..."
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     style={{
                       width: '100%',
                       padding: '0.75rem 1rem',
                       borderRadius: '10px',
-                      border: '1px solid #cbd5e1',
-                      backgroundColor: '#ffffff',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      backgroundColor: '#0a0d16',
                       fontSize: '0.95rem',
-                      color: '#0f172a',
+                      color: '#ffffff',
                       outline: 'none',
                       boxSizing: 'border-box',
                       resize: 'vertical',
@@ -478,7 +478,7 @@ export const LandingContact: React.FC = () => {
                   disabled={loading}
                   style={{
                     width: '100%',
-                    backgroundColor: loading ? '#94a3b8' : '#0284c7',
+                    background: loading ? '#475569' : 'linear-gradient(135deg, #0284c7, #0369a1)',
                     color: '#ffffff',
                     border: 'none',
                     padding: '0.85rem 1.5rem',
@@ -492,19 +492,19 @@ export const LandingContact: React.FC = () => {
                     justifyContent: 'center',
                     gap: '0.5rem',
                     transition: 'all 0.2s',
-                    boxShadow: loading ? 'none' : '0 4px 12px rgba(2, 132, 199, 0.3)',
+                    boxShadow: loading ? 'none' : '0 4px 20px rgba(2, 132, 199, 0.4)',
                     opacity: loading ? 0.7 : 1
                   }}
                   onMouseOver={(e) => {
                     if (!loading) {
-                      e.currentTarget.style.backgroundColor = '#0369a1';
                       e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 6px 24px rgba(2, 132, 199, 0.5)';
                     }
                   }}
                   onMouseOut={(e) => {
                     if (!loading) {
-                      e.currentTarget.style.backgroundColor = '#0284c7';
                       e.currentTarget.style.transform = 'translateY(0px)';
+                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(2, 132, 199, 0.4)';
                     }
                   }}
                 >
