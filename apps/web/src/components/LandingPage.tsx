@@ -4,6 +4,7 @@ import { LandingHero } from './landing/LandingHero';
 import { ParallaxDashboardPreview } from './landing/ParallaxDashboardPreview';
 import { LandingFeatures } from './landing/LandingFeatures';
 import { LandingPricing } from './landing/LandingPricing';
+import { LandingContact } from './landing/LandingContact';
 import { LandingFooter } from './landing/LandingFooter';
 import { LandingCheckoutModal } from './landing/LandingCheckoutModal';
 import { LandingOnboardingModal } from './landing/LandingOnboardingModal';
@@ -474,6 +475,8 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
         dynamicPlans={dynamicPlans}
         onOpenCheckout={handleOpenCheckout}
       />
+
+      <LandingContact />
 
       <LandingFooter onOpenAdmin={onOpenAdmin} />
 
