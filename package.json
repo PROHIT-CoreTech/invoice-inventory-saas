@@ -11,7 +11,9 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
-    "db:clear": "npm run db:clear --workspace=@procash-invoices/backend --"
+    "db:clear": "npm run db:clear --workspace=@procash-invoices/backend --",
+    "mobile:android": "npm run android --workspace=@procash-invoices/mobile",
+    "mobile:start": "npm run start --workspace=@procash-invoices/mobile"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

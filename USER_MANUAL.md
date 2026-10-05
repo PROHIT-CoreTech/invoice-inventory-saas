@@ -125,3 +125,26 @@ The document template includes an official signature block for **PROCASH INVOICE
 - To display your signature on printed PDFs, upload a signature image file named either `signature.png` or `signature.svg` to the following folder:
   `apps/web/public/images/`
 - The system will automatically detect the file. If both formats are missing, the signature area will remain cleanly hidden without displaying a broken image error.
+
+---
+
+## 7. Android Mobile Application Guide
+
+The **PROCash Invoice ERP** mobile app brings the full billing ecosystem directly to Android devices with a crisp **Light / White Theme**:
+
+### Core Features
+- **Financial Metrics Dashboard**: Live overview cards for Quotation Volume (Blue), Pending Proformas (Gold), and Billed Revenue (Green/Orange).
+- **Document Editor**: Dynamic line item manager with rate, optional quantity, discount %, CGST/SGST/IGST tax calculation, and auto-generated numbers (`2026-27/CFS-QT-001`, `2026-27/CFS-PRO-001`, `2026-27/CFS-INV-001`).
+- **Inline Client Registration**: Register new clients on the fly without leaving document creation.
+- **1-Tap WhatsApp Sharing**: Share formatted invoices directly with customers via WhatsApp.
+- **API Host Switcher**: Settings screen allows toggling API host URLs between local Wi-Fi IP (`http://192.168.x.x:5001/api`), emulator host (`http://10.0.2.2:5001/api`), or production cloud backend.
+
+### Quick Start Commands
+```bash
+# Start Metro Bundler
+npm run mobile:start
+
+# Run on Android Emulator or Connected Physical Device
+npm run mobile:android
+```
+

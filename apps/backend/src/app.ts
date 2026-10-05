@@ -13,6 +13,7 @@ import paymentRoutes from './routes/payments';
 import subscriptionRoutes from './routes/subscriptions';
 import clientLedgerRoutes from './routes/clientLedger';
 import subscriptionPlanRoutes from './routes/subscriptionPlans';
+import authRoutes from './routes/auth';
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 });
 
 // App Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/proforma-invoices', proformaRoutes);
 app.use('/api/final-invoices', finalInvoiceRoutes);
