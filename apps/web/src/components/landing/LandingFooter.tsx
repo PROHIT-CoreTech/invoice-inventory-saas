@@ -8,7 +8,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenAdmin }) => 
   return (
     <footer
       style={{
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+        borderTop: '1px solid #e2e8f0',
         padding: '3rem 2rem',
         textAlign: 'center',
         color: '#64748b',
@@ -26,7 +26,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenAdmin }) => 
           style={{
             background: 'none',
             border: 'none',
-            color: '#818cf8',
+            color: '#4f46e5',
             textDecoration: 'underline',
             cursor: 'pointer',
             fontSize: '0.75rem',

@@ -30,7 +30,7 @@ export const LandingHeader: React.FC = () => {
           <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fff' }}>P</span>
         </div>
         <span className="logo-title">
-          PROCash <span style={{ color: '#818cf8' }}>Invoices</span>
+          PROCash <span style={{ color: '#4f46e5' }}>Invoices</span>
         </span>
       </div>
     </header>

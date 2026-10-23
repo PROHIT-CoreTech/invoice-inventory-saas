@@ -408,14 +408,14 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
       className="landing-container"
       style={{
         minHeight: '100vh',
-        backgroundColor: '#070a13',
-        color: '#f8fafc',
+        backgroundColor: '#f8fafc',
+        color: '#0f172a',
         fontFamily: "'Outfit', 'Inter', sans-serif",
         position: 'relative',
         overflowX: 'hidden'
       }}
     >
-      {/* Decorative Background Orbs */}
+      {/* Decorative Background Orbs for Light Theme */}
       <div
         style={{
           position: 'absolute',
@@ -423,7 +423,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           left: '-10%',
           width: '45vw',
           height: '45vw',
-          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 65%)',
+          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%)',
           filter: 'blur(80px)',
           animation: 'drift 25s infinite ease-in-out',
           zIndex: 0
@@ -436,7 +436,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           right: '-15%',
           width: '40vw',
           height: '40vw',
-          background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(168, 85, 247, 0.06) 0%, transparent 70%)',
           filter: 'blur(90px)',
           animation: 'drift 30s infinite ease-in-out alternate',
           zIndex: 0
@@ -449,7 +449,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
           left: '40%',
           width: '30vw',
           height: '30vw',
-          background: 'radial-gradient(circle, rgba(251, 146, 60, 0.08) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, rgba(251, 146, 60, 0.05) 0%, transparent 60%)',
           filter: 'blur(70px)',
           animation: 'drift 20s infinite ease-in-out 3s',
           zIndex: 0

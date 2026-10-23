@@ -75,20 +75,19 @@ export const LandingContact: React.FC = () => {
       <div
         className="get-in-touch-container"
         style={{
-          backgroundColor: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(16px)',
+          backgroundColor: '#ffffff',
           borderRadius: '24px',
           padding: '3.5rem 2.5rem',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          color: '#ffffff'
+          boxShadow: '0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 0 1px 1px rgba(0, 0, 0, 0.04)',
+          border: '1px solid #e2e8f0',
+          color: '#0f172a'
         }}
       >
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
           <span
             style={{
-              color: '#38bdf8',
+              color: '#0284c7',
               fontSize: '0.85rem',
               fontWeight: 800,
               letterSpacing: '0.1em',
@@ -103,7 +102,7 @@ export const LandingContact: React.FC = () => {
             style={{
               fontSize: 'clamp(1.75rem, 4vw, 2.5rem)',
               fontWeight: 800,
-              color: '#ffffff',
+              color: '#0f172a',
               marginBottom: '1rem',
               letterSpacing: '-0.02em',
               textTransform: 'uppercase'
@@ -113,7 +112,7 @@ export const LandingContact: React.FC = () => {
           </h2>
           <p
             style={{
-              color: '#94a3b8',
+              color: '#475569',
               fontSize: '1.05rem',
               maxWidth: '680px',
               margin: '0 auto',
@@ -139,18 +138,18 @@ export const LandingContact: React.FC = () => {
             {/* Card 1: Location */}
             <div
               style={{
-                backgroundColor: 'rgba(21, 28, 47, 0.65)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
                 borderRadius: '16px',
                 padding: '1.75rem',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
               }}
             >
               <h4
                 style={{
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  color: '#94a3b8',
+                  color: '#64748b',
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   marginBottom: '0.75rem',
@@ -159,7 +158,7 @@ export const LandingContact: React.FC = () => {
               >
                 LOCATION
               </h4>
-              <p style={{ margin: 0, fontSize: '1.05rem', color: '#ffffff', lineHeight: 1.5, fontWeight: 600 }}>
+              <p style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', lineHeight: 1.5, fontWeight: 700 }}>
                 Mumbai, Maharashtra, India
               </p>
             </div>
@@ -167,18 +166,18 @@ export const LandingContact: React.FC = () => {
             {/* Card 2: Email Us Directly */}
             <div
               style={{
-                backgroundColor: 'rgba(21, 28, 47, 0.65)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
                 borderRadius: '16px',
                 padding: '1.75rem',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
               }}
             >
               <h4
                 style={{
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  color: '#94a3b8',
+                  color: '#64748b',
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   marginBottom: '0.75rem',
@@ -192,7 +191,7 @@ export const LandingContact: React.FC = () => {
                 style={{
                   fontSize: '1.15rem',
                   fontWeight: 800,
-                  color: '#38bdf8',
+                  color: '#0284c7',
                   textDecoration: 'none',
                   display: 'inline-block',
                   marginBottom: '0.4rem'
@@ -208,18 +207,18 @@ export const LandingContact: React.FC = () => {
             {/* Card 3: Hours */}
             <div
               style={{
-                backgroundColor: 'rgba(21, 28, 47, 0.65)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
                 borderRadius: '16px',
                 padding: '1.75rem',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
               }}
             >
               <h4
                 style={{
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  color: '#94a3b8',
+                  color: '#64748b',
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   marginBottom: '0.75rem',
@@ -232,7 +231,7 @@ export const LandingContact: React.FC = () => {
                 style={{
                   fontSize: '1.1rem',
                   fontWeight: 700,
-                  color: '#ffffff',
+                  color: '#0f172a',
                   marginBottom: '0.4rem'
                 }}
               >
@@ -247,18 +246,18 @@ export const LandingContact: React.FC = () => {
           {/* Right Column - Send Us a Message Form Card */}
           <div
             style={{
-              backgroundColor: 'rgba(21, 28, 47, 0.75)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
               borderRadius: '20px',
               padding: '2.25rem',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+              boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)'
             }}
           >
             <h3
               style={{
                 fontSize: '1.4rem',
                 fontWeight: 800,
-                color: '#ffffff',
+                color: '#0f172a',
                 marginTop: 0,
                 marginBottom: '1.75rem'
               }}
@@ -269,17 +268,17 @@ export const LandingContact: React.FC = () => {
             {submitted ? (
               <div
                 style={{
-                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  backgroundColor: '#ecfdf5',
                   border: '1px solid #10b981',
                   borderRadius: '12px',
                   padding: '2rem',
                   textAlign: 'center',
-                  color: '#34d399'
+                  color: '#059669'
                 }}
               >
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎉</div>
                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.15rem', fontWeight: 700 }}>Inquiry Submitted!</h4>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#a7f3d0' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#047857' }}>
                   Thank you for contacting us. Our specialist team will reach out to you shortly.
                 </p>
               </div>
@@ -293,7 +292,7 @@ export const LandingContact: React.FC = () => {
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        color: '#94a3b8',
+                        color: '#475569',
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase'
                       }}
@@ -311,13 +310,21 @@ export const LandingContact: React.FC = () => {
                         width: '100%',
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        backgroundColor: '#0a0d16',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
                         fontSize: '0.95rem',
-                        color: '#ffffff',
+                        color: '#0f172a',
                         outline: 'none',
                         boxSizing: 'border-box',
-                        transition: 'border-color 0.2s'
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#0284c7';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(2, 132, 199, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     />
                   </div>
@@ -328,7 +335,7 @@ export const LandingContact: React.FC = () => {
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        color: '#94a3b8',
+                        color: '#475569',
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase'
                       }}
@@ -346,13 +353,21 @@ export const LandingContact: React.FC = () => {
                         width: '100%',
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        backgroundColor: '#0a0d16',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
                         fontSize: '0.95rem',
-                        color: '#ffffff',
+                        color: '#0f172a',
                         outline: 'none',
                         boxSizing: 'border-box',
-                        transition: 'border-color 0.2s'
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#0284c7';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(2, 132, 199, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     />
                   </div>
@@ -366,7 +381,7 @@ export const LandingContact: React.FC = () => {
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        color: '#94a3b8',
+                        color: '#475569',
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase'
                       }}
@@ -384,13 +399,21 @@ export const LandingContact: React.FC = () => {
                         width: '100%',
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        backgroundColor: '#0a0d16',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
                         fontSize: '0.95rem',
-                        color: '#ffffff',
+                        color: '#0f172a',
                         outline: 'none',
                         boxSizing: 'border-box',
-                        transition: 'border-color 0.2s'
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#0284c7';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(2, 132, 199, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     />
                   </div>
@@ -401,7 +424,7 @@ export const LandingContact: React.FC = () => {
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        color: '#94a3b8',
+                        color: '#475569',
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase'
                       }}
@@ -416,14 +439,22 @@ export const LandingContact: React.FC = () => {
                         width: '100%',
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        backgroundColor: '#0a0d16',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
                         fontSize: '0.95rem',
-                        color: '#ffffff',
+                        color: '#0f172a',
                         outline: 'none',
                         boxSizing: 'border-box',
                         cursor: 'pointer',
                         appearance: 'auto'
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#0284c7';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(2, 132, 199, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
                       <option value="1 - 10 Employees (Small Business)">1 - 10 Employees (Small Business)</option>
@@ -442,7 +473,7 @@ export const LandingContact: React.FC = () => {
                     style={{
                       fontSize: '0.7rem',
                       fontWeight: 800,
-                      color: '#94a3b8',
+                      color: '#475569',
                       letterSpacing: '0.05em',
                       textTransform: 'uppercase'
                     }}
@@ -460,14 +491,23 @@ export const LandingContact: React.FC = () => {
                       width: '100%',
                       padding: '0.75rem 1rem',
                       borderRadius: '10px',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      backgroundColor: '#0a0d16',
+                      border: '1px solid #cbd5e1',
+                      backgroundColor: '#ffffff',
                       fontSize: '0.95rem',
-                      color: '#ffffff',
+                      color: '#0f172a',
                       outline: 'none',
                       boxSizing: 'border-box',
                       resize: 'vertical',
-                      fontFamily: 'inherit'
+                      fontFamily: 'inherit',
+                      transition: 'border-color 0.2s, box-shadow 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#0284c7';
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(2, 132, 199, 0.15)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#cbd5e1';
+                      e.currentTarget.style.boxShadow = 'none';
                     }}
                   />
                 </div>
@@ -478,7 +518,7 @@ export const LandingContact: React.FC = () => {
                   disabled={loading}
                   style={{
                     width: '100%',
-                    background: loading ? '#475569' : 'linear-gradient(135deg, #0284c7, #0369a1)',
+                    background: loading ? '#94a3b8' : 'linear-gradient(135deg, #0284c7, #0369a1)',
                     color: '#ffffff',
                     border: 'none',
                     padding: '0.85rem 1.5rem',
@@ -492,19 +532,19 @@ export const LandingContact: React.FC = () => {
                     justifyContent: 'center',
                     gap: '0.5rem',
                     transition: 'all 0.2s',
-                    boxShadow: loading ? 'none' : '0 4px 20px rgba(2, 132, 199, 0.4)',
+                    boxShadow: loading ? 'none' : '0 4px 20px rgba(2, 132, 199, 0.3)',
                     opacity: loading ? 0.7 : 1
                   }}
                   onMouseOver={(e) => {
                     if (!loading) {
                       e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 6px 24px rgba(2, 132, 199, 0.5)';
+                      e.currentTarget.style.boxShadow = '0 6px 24px rgba(2, 132, 199, 0.4)';
                     }
                   }}
                   onMouseOut={(e) => {
                     if (!loading) {
                       e.currentTarget.style.transform = 'translateY(0px)';
-                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(2, 132, 199, 0.4)';
+                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(2, 132, 199, 0.3)';
                     }
                   }}
                 >

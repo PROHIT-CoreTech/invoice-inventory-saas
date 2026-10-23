@@ -15,20 +15,20 @@ interface LandingOnboardingModalProps {
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: '0.8rem',
-  fontWeight: 600,
+  fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
-  color: '#cbd5e1',
+  color: '#475569',
   marginBottom: '0.45rem',
   textAlign: 'left'
 };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  backgroundColor: '#0f172a',
-  border: '1px solid #334155',
+  backgroundColor: '#f8fafc',
+  border: '1px solid #cbd5e1',
   borderRadius: '8px',
-  color: '#fff',
+  color: '#0f172a',
   padding: '0.65rem 0.95rem',
   fontSize: '0.9rem',
   outline: 'none',
@@ -60,8 +60,8 @@ export const LandingOnboardingModal: React.FC<LandingOnboardingModalProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(7, 10, 19, 0.85)',
-        backdropFilter: 'blur(16px)',
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        backdropFilter: 'blur(12px)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
@@ -73,32 +73,33 @@ export const LandingOnboardingModal: React.FC<LandingOnboardingModalProps> = ({
       <div
         className="onboarding-modal-card"
         style={{
-          backgroundColor: '#151c2f',
-          border: '1px solid rgba(255,255,255,0.08)',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e2e8f0',
           borderRadius: '24px',
           width: '100%',
           maxWidth: '750px',
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '2.5rem',
-          boxShadow: '0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255,255,255,0.1)',
+          boxShadow: '0 30px 60px rgba(15, 23, 42, 0.2)',
           position: 'relative',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          color: '#0f172a'
         }}
       >
         <div style={{ marginBottom: '2rem', textAlign: 'left' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
             🏢 Onboard Your Invoice Workspace
           </h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            Enter the branding, tax, and bank details for <strong style={{ color: '#818cf8' }}>{onboardingTenant}{getSuffix()}</strong>. These details will render on your professional GST invoices automatically.
+          <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+            Enter the branding, tax, and bank details for <strong style={{ color: '#4f46e5' }}>{onboardingTenant}{getSuffix()}</strong>. These details will render on your professional GST invoices automatically.
           </p>
         </div>
 
         <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* 1. Company Profile */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1.5rem', textAlign: 'left' }}>
-            <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5rem', textAlign: 'left' }}>
+            <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               1. Company Profile
             </h4>
             <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -139,8 +140,8 @@ export const LandingOnboardingModal: React.FC<LandingOnboardingModalProps> = ({
           </div>
 
           {/* 2. Tax Identifiers */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1.5rem', textAlign: 'left' }}>
-            <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5rem', textAlign: 'left' }}>
+            <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               2. Government Tax Identifiers
             </h4>
             <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -168,8 +169,8 @@ export const LandingOnboardingModal: React.FC<LandingOnboardingModalProps> = ({
           </div>
 
           {/* 3. Settlement Bank Account */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1.5rem', textAlign: 'left' }}>
-            <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5rem', textAlign: 'left' }}>
+            <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               3. Settlement Bank Account Details
             </h4>
             <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
@@ -230,25 +231,25 @@ export const LandingOnboardingModal: React.FC<LandingOnboardingModalProps> = ({
 
           {/* 4. Branding Assets */}
           <div style={{ paddingBottom: '0.5rem', textAlign: 'left' }}>
-            <h4 style={{ color: '#818cf8', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <h4 style={{ color: '#4f46e5', fontSize: '0.9rem', margin: '0 0 1rem 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               4. Branding Assets (Optional)
             </h4>
             <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
               <div>
                 <label style={labelStyle}>Company Logo</label>
-                <input type="file" accept="image/*" onChange={onLogoUpload} style={{ color: '#94a3b8', fontSize: '0.85rem' }} />
+                <input type="file" accept="image/*" onChange={onLogoUpload} style={{ color: '#64748b', fontSize: '0.85rem' }} />
                 {formData.logoUrl && (
                   <div style={{ marginTop: '0.5rem' }}>
-                    <img src={formData.logoUrl} alt="Logo Preview" style={{ height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #334155', backgroundColor: '#fff', padding: '2px' }} />
+                    <img src={formData.logoUrl} alt="Logo Preview" style={{ height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#fff', padding: '2px' }} />
                   </div>
                 )}
               </div>
               <div>
                 <label style={labelStyle}>Authorized Signature</label>
-                <input type="file" accept="image/*" onChange={onSignatureUpload} style={{ color: '#94a3b8', fontSize: '0.85rem' }} />
+                <input type="file" accept="image/*" onChange={onSignatureUpload} style={{ color: '#64748b', fontSize: '0.85rem' }} />
                 {formData.signatureUrl && (
                   <div style={{ marginTop: '0.5rem' }}>
-                    <img src={formData.signatureUrl} alt="Signature Preview" style={{ height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #334155', backgroundColor: '#fff', padding: '2px' }} />
+                    <img src={formData.signatureUrl} alt="Signature Preview" style={{ height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#fff', padding: '2px' }} />
                   </div>
                 )}
               </div>
@@ -262,8 +263,8 @@ export const LandingOnboardingModal: React.FC<LandingOnboardingModalProps> = ({
               onClick={onClose}
               style={{
                 backgroundColor: 'transparent',
-                border: '1px solid #475569',
-                color: '#94a3b8',
+                border: '1px solid #cbd5e1',
+                color: '#64748b',
                 padding: '0.65rem 1.5rem',
                 borderRadius: '10px',
                 fontSize: '0.9rem',
@@ -287,7 +288,7 @@ export const LandingOnboardingModal: React.FC<LandingOnboardingModalProps> = ({
                 boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)'
               }}
             >
-              Complete Onboarding & Launch →
+              Complete Onboarding &amp; Launch →
             </button>
           </div>
         </form>
