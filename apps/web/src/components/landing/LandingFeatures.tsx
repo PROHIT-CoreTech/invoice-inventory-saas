@@ -90,6 +90,14 @@ export const LandingFeatures: React.FC = () => {
                   Send professional PDF invoices directly to clients via WhatsApp web API or automated email links.
                 </p>
               </div>
+
+              <div className="feature-card marquee-card-item" style={{ ...cardStyle, textAlign: 'left', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                <div style={iconContainerStyle}>📱</div>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem' }}>iOS &amp; Android Apps</h4>
+                <p style={{ fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                  On-the-go billing companion with offline caching, instant PDF sharing, and biometric login synced directly to your cloud ERP.
+                </p>
+              </div>
             </React.Fragment>
           ))}
         </div>

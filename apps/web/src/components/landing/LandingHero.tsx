@@ -29,7 +29,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             animation: 'pulse 1.8s infinite'
           }}
         />
-        Enterprise Quotation & Billing Engine
+        Enterprise Billing ERP • Web & Mobile Apps
       </div>
 
       {/* Heading */}
@@ -49,7 +49,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
       {/* Subtitle */}
       <p className="hero-subtitle">
-        Automate your quotation-to-invoice lifecycle, generate Tally-compliant GST reports, and isolate workflows under client-specific subdomains.
+        Automate your quotation-to-invoice lifecycle, track collections on-the-go with native mobile apps (iOS &amp; Android), and isolate workflows under client-specific subdomains.
       </p>
 
       {/* Interactive Workspace Redirection Form */}
