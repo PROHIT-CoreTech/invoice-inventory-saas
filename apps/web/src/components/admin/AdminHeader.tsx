@@ -7,6 +7,7 @@ interface AdminHeaderProps {
   tenantsCount?: number;
   plansCount: number;
   onRefresh?: () => void;
+  isRefreshing?: boolean;
   onOpenCreateModal: () => void;
   onChangePassword?: () => void;
   onClose: () => void;
@@ -19,12 +20,20 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   tenantsCount,
   plansCount,
   onRefresh,
+  isRefreshing = false,
   onOpenCreateModal,
   onChangePassword,
   onClose
 }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
+      <style>{`
+        @keyframes admin-spin-anim {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* Top Title & Quick Actions Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -43,22 +52,33 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <button
             type="button"
             onClick={onRefresh}
+            disabled={isRefreshing}
             style={{
-              backgroundColor: '#ffffff',
+              backgroundColor: isRefreshing ? '#f1f5f9' : '#ffffff',
               border: '1px solid #cbd5e1',
-              color: '#334155',
+              color: isRefreshing ? '#64748b' : '#334155',
               padding: '0.55rem 1rem',
               borderRadius: '8px',
               fontSize: '0.85rem',
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: isRefreshing ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.4rem',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              gap: '0.45rem',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s',
+              opacity: isRefreshing ? 0.8 : 1
             }}
           >
-            🔄 Refresh Data
+            <span
+              style={{
+                display: 'inline-block',
+                animation: isRefreshing ? 'admin-spin-anim 0.8s infinite linear' : 'none'
+              }}
+            >
+              🔄
+            </span>
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh Data'}</span>
           </button>
           <button
             type="button"
@@ -129,7 +149,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             transition: 'all 0.2s'
           }}
         >
-          🏢 Workspaces Directory ({tenantsCount})
+          🏢 Workspaces Directory ({tenantsCount !== undefined ? tenantsCount : 0})
         </button>
 
         <button

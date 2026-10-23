@@ -42,12 +42,25 @@ export const getPlanPrice = (
   dynamicPlansMap: Record<string, any> = {},
   subscriptionAmount?: number | null
 ): string => {
-  if (typeof subscriptionAmount === 'number') {
+  if (!planId || planId === 'FREE' || planId === 'TRIAL') return '₹0';
+  
+  const catalogPrice = getPlanPriceNum(planId, dynamicPlansMap);
+
+  if (typeof subscriptionAmount === 'number' && subscriptionAmount > 0) {
+    // If the recorded amount is from a prior mismatched tier, use the current plan's catalog price
+    if (planId === '1_YEAR' && subscriptionAmount < 9000) {
+      return `₹${catalogPrice.toLocaleString('en-IN')}`;
+    }
+    if (planId === '6_MONTHS' && subscriptionAmount < 4000) {
+      return `₹${catalogPrice.toLocaleString('en-IN')}`;
+    }
+    if (planId === 'LIFETIME' && subscriptionAmount < 15000) {
+      return `₹${catalogPrice.toLocaleString('en-IN')}`;
+    }
     return `₹${subscriptionAmount.toLocaleString('en-IN')}`;
   }
-  if (!planId) return '₹0';
-  const num = getPlanPriceNum(planId, dynamicPlansMap);
-  return `₹${num.toLocaleString('en-IN')}`;
+
+  return `₹${catalogPrice.toLocaleString('en-IN')}`;
 };
 
 export const formatCurrency = (amount: number | undefined | null): string => {

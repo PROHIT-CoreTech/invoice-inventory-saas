@@ -10,6 +10,8 @@ import { AdminRevenueDashboard } from './admin/AdminRevenueDashboard';
 import EditPlanModal from './admin/EditPlanModal';
 import EditTenantModal from './admin/EditTenantModal';
 import CreateTenantModal from './admin/CreateTenantModal';
+import { ChangePasswordModal } from './admin/ChangePasswordModal';
+import { getApiBaseUrl } from './dashboard/utils';
 
 interface AdminPortalProps {
   onClose: () => void;
@@ -30,6 +32,8 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
   const [revenueAnalytics, setRevenueAnalytics] = useState<RevenueAnalytics | null>(null);
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Plan Pricing Management States
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlanConfig | null>(null);
@@ -94,7 +98,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
   const [saveError, setSaveError] = useState('');
 
   const fetchAdminData = async (adminPassword: string) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+    const baseUrl = getApiBaseUrl();
     
     // 1. Fetch Tenants
     const tenantsUrl = `${baseUrl}/admin/tenants?password=${encodeURIComponent(adminPassword)}`;
@@ -128,12 +132,13 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     }
 
     // 4. Fetch Revenue Analytics & Audit Ledger
-    fetchRevenueData(adminPassword);
+    await fetchRevenueData(adminPassword);
   };
 
   const fetchRevenueData = async (adminPassword = password) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-    const revenueUrl = `${baseUrl}/admin/revenue?password=${encodeURIComponent(adminPassword)}`;
+    const baseUrl = getApiBaseUrl();
+    const effectivePassword = adminPassword || (typeof window !== 'undefined' ? sessionStorage.getItem('procash_admin_pwd') || '' : '');
+    const revenueUrl = `${baseUrl}/admin/revenue?password=${encodeURIComponent(effectivePassword)}`;
     setRevenueLoading(true);
     try {
       const res = await fetch(revenueUrl);
@@ -145,6 +150,21 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
       console.error('Failed to fetch revenue analytics:', e);
     } finally {
       setRevenueLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    const adminPassword = password || (typeof window !== 'undefined' ? sessionStorage.getItem('procash_admin_pwd') || '' : '');
+    if (!adminPassword) return;
+
+    setIsRefreshing(true);
+    try {
+      await fetchAdminData(adminPassword);
+    } catch (e) {
+      console.error('Failed to refresh admin data:', e);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -205,7 +225,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
 
     setCreateLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/admin/tenants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -274,7 +294,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     setPlanSaveSuccess('');
 
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/admin/subscription-plans/${editingPlan.planId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -313,7 +333,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     if (!confirm('Are you sure you want to apply the scheduled future price as the regular price immediately?')) return;
     setActionLoadingId(planId);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/admin/subscription-plans/${planId}/apply-future`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -339,7 +359,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     if (!confirm('Are you sure you want to clear the active offer for this plan?')) return;
     setActionLoadingId(planId);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/admin/subscription-plans/${planId}/offer`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -364,7 +384,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
   const handleApprovePayment = async (paymentId: string) => {
     setActionLoadingId(paymentId);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/admin/approve-payment/${paymentId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -387,7 +407,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     if (!confirm('Are you sure you want to reject this payment request?')) return;
     setActionLoadingId(paymentId);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/admin/reject-payment/${paymentId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -433,7 +453,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     setSaveError('');
 
     try {
-      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/admin/tenants/${editingTenant.tenantId}`;
+      const apiUrl = `${getApiBaseUrl()}/admin/tenants/${editingTenant.tenantId}`;
       const res = await fetch(apiUrl, {
         method: 'PUT',
         headers: {
@@ -492,8 +512,12 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         pendingCount={pendingPayments.length}
+        tenantsCount={tenants.length}
         plansCount={subscriptionPlans.length}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
+        onChangePassword={() => setIsChangePasswordOpen(true)}
         onClose={handleExitAdmin}
       />
 
@@ -575,6 +599,16 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
           createSuccess={createSuccess}
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={handleCreateTenantSubmit}
+        />
+      )}
+
+      {isChangePasswordOpen && (
+        <ChangePasswordModal
+          currentAdminPassword={password}
+          onPasswordChanged={(newPwd) => {
+            setPassword(newPwd);
+          }}
+          onClose={() => setIsChangePasswordOpen(false)}
         />
       )}
     </div>

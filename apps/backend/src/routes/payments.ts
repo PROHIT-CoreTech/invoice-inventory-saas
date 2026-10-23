@@ -52,6 +52,7 @@ router.post('/start-trial', async (req: Request, res: Response, next: NextFuncti
         data: {
           tier: 'PREMIUM',
           subscriptionPlan: 'TRIAL',
+          subscriptionAmount: 0,
           subscriptionStatus: 'ACTIVE',
           subscriptionExpiresAt: subscriptionExpiresAt
         }
@@ -64,6 +65,7 @@ router.post('/start-trial', async (req: Request, res: Response, next: NextFuncti
           address: 'Default Billing Address',
           tier: 'PREMIUM',
           subscriptionPlan: 'TRIAL',
+          subscriptionAmount: 0,
           subscriptionStatus: 'ACTIVE',
           subscriptionExpiresAt: subscriptionExpiresAt
         }
@@ -109,6 +111,7 @@ router.post('/simulate-success', async (req: Request, res: Response, next: NextF
         data: {
           tier: 'PREMIUM',
           subscriptionPlan: planId,
+          subscriptionAmount: plan.price,
           subscriptionStatus: 'ACTIVE',
           subscriptionExpiresAt: subscriptionExpiresAt
         }
@@ -121,6 +124,7 @@ router.post('/simulate-success', async (req: Request, res: Response, next: NextF
           address: 'Default Billing Address',
           tier: 'PREMIUM',
           subscriptionPlan: planId,
+          subscriptionAmount: plan.price,
           subscriptionStatus: 'ACTIVE',
           subscriptionExpiresAt: subscriptionExpiresAt
         }
@@ -277,6 +281,7 @@ router.post('/verify-payment', async (req: Request, res: Response, next: NextFun
       data: {
         tier: 'PREMIUM',
         subscriptionPlan: planId,
+        subscriptionAmount: plan.price,
         subscriptionStatus: 'ACTIVE',
         subscriptionExpiresAt: subscriptionExpiresAt
       }

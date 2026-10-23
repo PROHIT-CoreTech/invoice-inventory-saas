@@ -17,28 +17,42 @@ export const getPlanPrice = (
   subscriptionPlans: SubscriptionPlanConfig[] = [],
   subscriptionAmount?: number | null
 ): string => {
-  if (typeof subscriptionAmount === 'number') {
-    return `₹${subscriptionAmount.toLocaleString('en-IN')}`;
-  }
   if (!planId || planId === 'FREE' || planId === 'TRIAL') return '₹0';
   
-  const planConfig = subscriptionPlans.find(p => p.planId === planId);
-  if (planConfig) {
-    const priceNum = typeof planConfig.effectivePrice === 'number'
-      ? planConfig.effectivePrice
-      : (typeof planConfig.regularPrice === 'number'
-        ? planConfig.regularPrice
-        : (parseFloat(String(planConfig.effectivePrice || planConfig.regularPrice || 0)) || 0));
-    return `₹${priceNum.toLocaleString('en-IN')}`;
+  const getCatalogPrice = (): string => {
+    const planConfig = subscriptionPlans.find(p => p.planId === planId);
+    if (planConfig) {
+      const priceNum = typeof planConfig.effectivePrice === 'number'
+        ? planConfig.effectivePrice
+        : (typeof planConfig.regularPrice === 'number'
+          ? planConfig.regularPrice
+          : (parseFloat(String(planConfig.effectivePrice || planConfig.regularPrice || 0)) || 0));
+      return `₹${priceNum.toLocaleString('en-IN')}`;
+    }
+
+    switch (planId) {
+      case '1_MONTH': return '₹1,499';
+      case '6_MONTHS': return '₹4,999';
+      case '1_YEAR': return '₹9,999';
+      case 'LIFETIME': return '₹20,000';
+      default: return '₹0';
+    }
+  };
+
+  if (typeof subscriptionAmount === 'number' && subscriptionAmount > 0) {
+    if (planId === '1_YEAR' && subscriptionAmount < 9000) {
+      return getCatalogPrice();
+    }
+    if (planId === '6_MONTHS' && subscriptionAmount < 4000) {
+      return getCatalogPrice();
+    }
+    if (planId === 'LIFETIME' && subscriptionAmount < 15000) {
+      return getCatalogPrice();
+    }
+    return `₹${subscriptionAmount.toLocaleString('en-IN')}`;
   }
 
-  switch (planId) {
-    case '1_MONTH': return '₹1,499';
-    case '6_MONTHS': return '₹4,999';
-    case '1_YEAR': return '₹9,999';
-    case 'LIFETIME': return '₹20,000';
-    default: return '₹0';
-  }
+  return getCatalogPrice();
 };
 
 export const formatDateTime = (dateStr?: string | null): string => {

@@ -11,6 +11,34 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       where: { tenantId: req.tenantId! }
     });
     
+    // Auto-repair subscriptionAmount if mismatched with active subscriptionPlan
+    if (profile && profile.subscriptionPlan) {
+      const defaultMap: Record<string, number> = {
+        'TRIAL': 0,
+        '1_MONTH': 1499,
+        '6_MONTHS': 4999,
+        '1_YEAR': 9999,
+        'LIFETIME': 20000,
+        'FREE': 0
+      };
+      const expectedAmount = defaultMap[profile.subscriptionPlan];
+      const isMismatched =
+        expectedAmount !== undefined &&
+        (profile.subscriptionAmount === null ||
+          profile.subscriptionAmount === undefined ||
+          (profile.subscriptionPlan === '1_YEAR' && profile.subscriptionAmount < 9000) ||
+          (profile.subscriptionPlan === '6_MONTHS' && profile.subscriptionAmount < 4000) ||
+          (profile.subscriptionPlan === 'LIFETIME' && profile.subscriptionAmount < 15000));
+
+      if (isMismatched) {
+        profile.subscriptionAmount = expectedAmount;
+        await req.db.tenantProfile.update({
+          where: { tenantId: req.tenantId! },
+          data: { subscriptionAmount: expectedAmount }
+        }).catch((err: any) => console.error('Failed to auto-repair subscriptionAmount:', err));
+      }
+    }
+
     // Return null instead of 404 so client knows onboarding is needed without triggering global error handlers
     res.json(profile);
   } catch (error) {

@@ -149,4 +149,10 @@ model SubscriptionHistory {
   @@index([tenantId])
 }
 
-
+model SystemSetting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

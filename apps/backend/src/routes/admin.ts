@@ -6,24 +6,33 @@ const router = Router();
 
 async function seedHistoricalSubscriptionsIfNeeded() {
   try {
+    const defaultMap: Record<string, number> = {
+      'TRIAL': 0,
+      '1_MONTH': 1499,
+      '6_MONTHS': 4999,
+      '1_YEAR': 9999,
+      'LIFETIME': 20000,
+      'FREE': 0
+    };
+
     const tenants = await prisma.tenantProfile.findMany();
     for (const t of tenants) {
       let amount = t.subscriptionAmount;
-      if (amount === null || amount === undefined) {
+      const expectedAmount = defaultMap[t.subscriptionPlan || 'FREE'] ?? 0;
+      const isMismatched =
+        amount === null ||
+        amount === undefined ||
+        (t.subscriptionPlan === '1_YEAR' && amount < 9000) ||
+        (t.subscriptionPlan === '6_MONTHS' && amount < 4000) ||
+        (t.subscriptionPlan === 'LIFETIME' && amount < 15000);
+
+      if (isMismatched) {
         if (t.tenantId === 'priya' || t.tenantId === 'rohit') {
           amount = 999;
-        } else if (t.tenantId === 'demoworkspace') {
+        } else if (t.tenantId === 'demoworkspace' && t.subscriptionPlan === '1_MONTH') {
           amount = 1499;
         } else {
-          const defaultMap: Record<string, number> = {
-            'TRIAL': 0,
-            '1_MONTH': 1499,
-            '6_MONTHS': 4999,
-            '1_YEAR': 9999,
-            'LIFETIME': 20000,
-            'FREE': 0
-          };
-          amount = defaultMap[t.subscriptionPlan || 'FREE'] || 0;
+          amount = expectedAmount;
         }
         await prisma.tenantProfile.update({
           where: { tenantId: t.tenantId },
@@ -35,7 +44,8 @@ async function seedHistoricalSubscriptionsIfNeeded() {
         where: { tenantId: t.tenantId }
       });
 
-      if (historyCount === 0 && (amount > 0 || t.subscriptionPlan !== 'FREE')) {
+      const effectiveAmount = amount ?? expectedAmount;
+      if (historyCount === 0 && (effectiveAmount > 0 || t.subscriptionPlan !== 'FREE')) {
         const planNames: Record<string, string> = {
           '1_MONTH': 'Monthly Starter',
           '6_MONTHS': '6 Months Pro',
@@ -49,7 +59,7 @@ async function seedHistoricalSubscriptionsIfNeeded() {
             tenantId: t.tenantId,
             planId: t.subscriptionPlan || 'FREE',
             planName: planNames[t.subscriptionPlan || 'FREE'] || 'Subscription Plan',
-            amount: amount,
+            amount: effectiveAmount,
             paymentStatus: 'VERIFIED',
             paymentMode: 'UPI',
             utrNumber: `HIST-${t.tenantId.toUpperCase()}-001`,
@@ -64,13 +74,63 @@ async function seedHistoricalSubscriptionsIfNeeded() {
   }
 }
 
+export async function getExpectedAdminPassword(): Promise<string> {
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: 'admin_password' }
+    });
+    if (setting && setting.value) {
+      return setting.value;
+    }
+  } catch (e) {
+    console.error('Failed to query admin_password from SystemSetting:', e);
+  }
+  return process.env.ADMIN_PASSWORD || 'admin123';
+}
+
+export async function verifyAdminPassword(provided: any): Promise<boolean> {
+  if (!provided || typeof provided !== 'string') return false;
+  const expected = await getExpectedAdminPassword();
+  return provided === expected;
+}
+
+// POST: Change Admin Password
+router.post('/change-password', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ message: 'Current password and new password are required.' });
+      return;
+    }
+
+    if (!await verifyAdminPassword(currentPassword)) {
+      res.status(401).json({ message: 'Current admin password is incorrect.' });
+      return;
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.trim().length < 6) {
+      res.status(400).json({ message: 'New password must be at least 6 characters long.' });
+      return;
+    }
+
+    await prisma.systemSetting.upsert({
+      where: { key: 'admin_password' },
+      update: { value: newPassword.trim() },
+      create: { key: 'admin_password', value: newPassword.trim() }
+    });
+
+    res.json({ success: true, message: 'Admin password changed successfully!' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET: Fetch all tenant profiles (Requires admin password query param)
 router.get('/tenants', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { password } = req.query;
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -114,8 +174,7 @@ router.get('/tenants', async (req: Request, res: Response, next: NextFunction) =
 router.get('/revenue', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { password } = req.query;
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -215,7 +274,7 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction) 
     } = req.body;
 
     const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -259,6 +318,15 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction) 
       }
     }
 
+    const amountMap: Record<string, number> = {
+      'TRIAL': 0,
+      '1_MONTH': 1499,
+      '6_MONTHS': 4999,
+      '1_YEAR': 9999,
+      'LIFETIME': 20000,
+      'FREE': 0
+    };
+
     const newTenant = await prisma.tenantProfile.create({
       data: {
         tenantId: cleanTenantId,
@@ -276,21 +344,13 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction) 
         theme: theme || 'DEFAULT',
         tier: subscriptionPlan === 'FREE' ? 'FREE' : 'PREMIUM',
         subscriptionPlan,
+        subscriptionAmount: amountMap[subscriptionPlan] || 0,
         subscriptionStatus: subscriptionPlan === 'FREE' ? 'INACTIVE' : 'ACTIVE',
         subscriptionExpiresAt: expiresAt
       }
     });
 
     // Also log a cash payment record in the Mongoose payment tracking collection
-    const amountMap: Record<string, number> = {
-      'TRIAL': 0,
-      '1_MONTH': 1499,
-      '6_MONTHS': 4999,
-      '1_YEAR': 9999,
-      'LIFETIME': 20000,
-      'FREE': 0
-    };
-
     try {
       const SubscriptionPayment = require('../models/SubscriptionPayment').default;
       const payment = new SubscriptionPayment({
@@ -336,7 +396,7 @@ router.put('/tenants/:tenantId', async (req: Request, res: Response, next: NextF
     } = req.body;
 
     const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -377,8 +437,7 @@ router.put('/tenants/:tenantId', async (req: Request, res: Response, next: NextF
 router.get('/pending-payments', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { password } = req.query;
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -397,8 +456,7 @@ router.post('/approve-payment/:paymentId', async (req: Request, res: Response, n
   try {
     const { paymentId } = req.params;
     const { password } = req.body;
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -432,12 +490,22 @@ router.post('/approve-payment/:paymentId', async (req: Request, res: Response, n
       }
     }
 
+    const amountMap: Record<string, number> = {
+      'TRIAL': 0,
+      '1_MONTH': 1499,
+      '6_MONTHS': 4999,
+      '1_YEAR': 9999,
+      'LIFETIME': 20000,
+      'FREE': 0
+    };
+
     // Update the corresponding TenantProfile
     await prisma.tenantProfile.update({
       where: { tenantId: payment.tenantId },
       data: {
         tier: 'PREMIUM',
         subscriptionPlan: payment.planTier,
+        subscriptionAmount: payment.amountPaid || amountMap[payment.planTier] || 0,
         subscriptionStatus: 'ACTIVE',
         subscriptionExpiresAt: expiresAt
       }
@@ -454,8 +522,7 @@ router.post('/reject-payment/:paymentId', async (req: Request, res: Response, ne
   try {
     const { paymentId } = req.params;
     const { password } = req.body;
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -477,8 +544,7 @@ router.post('/reject-payment/:paymentId', async (req: Request, res: Response, ne
 router.get('/subscription-plans', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { password } = req.query;
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -515,8 +581,7 @@ router.put('/subscription-plans/:planId', async (req: Request, res: Response, ne
       billingCycleMonths
     } = req.body;
 
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -569,8 +634,7 @@ router.post('/subscription-plans/:planId/apply-future', async (req: Request, res
   try {
     const { planId } = req.params;
     const { password } = req.body;
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
@@ -602,8 +666,7 @@ router.delete('/subscription-plans/:planId/offer', async (req: Request, res: Res
   try {
     const { planId } = req.params;
     const { password } = req.body;
-    const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password !== expectedPassword) {
+    if (!await verifyAdminPassword(password)) {
       res.status(401).json({ message: 'Invalid Admin Password.' });
       return;
     }
