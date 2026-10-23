@@ -4,6 +4,7 @@ import { getSubdomain } from '@procash-invoices/api-client';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import AdminPortal from './components/AdminPortal';
+import { LegalPage } from './components/legal/LegalPage';
 
 function GlobalLoader() {
   const [activeRequests, setActiveRequests] = useState(0);
@@ -92,17 +93,93 @@ function GlobalLoader() {
 
 export default function App() {
   const subdomain = getSubdomain();
-  const [isAdminMode, setIsAdminMode] = useState(false);
+  
+  // Track pathname and hash for clean SPA URL routing
+  const [currentPath, setCurrentPath] = useState(() => {
+    if (typeof window === 'undefined') return '/';
+    return window.location.pathname || '/';
+  });
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname || '/');
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
+
+  const navigateTo = (path: string) => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', path);
+      setCurrentPath(path);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  // Dedicated System Admin Route detection
+  const isSystemAdminPath = 
+    currentPath === '/admin' || 
+    currentPath === '/admin/' || 
+    currentPath.startsWith('/admin') ||
+    currentPath === '/system-admin' ||
+    currentPath === '/system-admin/' ||
+    (typeof window !== 'undefined' && (window.location.hash.toLowerCase() === '#admin' || window.location.hash.toLowerCase() === '#/admin'));
+
+  // Legal & Compliance Routes
+  const isTermsRoute =
+    currentPath === '/terms' ||
+    currentPath === '/terms/' ||
+    currentPath === '/terms-and-conditions' ||
+    currentPath === '/terms-and-conditions/' ||
+    (typeof window !== 'undefined' && (window.location.hash.toLowerCase() === '#terms' || window.location.hash.toLowerCase() === '#/terms'));
+
+  const isPrivacyRoute =
+    currentPath === '/privacy' ||
+    currentPath === '/privacy/' ||
+    currentPath === '/privacy-policy' ||
+    currentPath === '/privacy-policy/' ||
+    (typeof window !== 'undefined' && (window.location.hash.toLowerCase() === '#privacy' || window.location.hash.toLowerCase() === '#/privacy'));
+
+  const isRefundRoute =
+    currentPath === '/refund-policy' ||
+    currentPath === '/refund-policy/' ||
+    currentPath === '/refund' ||
+    currentPath === '/refund/' ||
+    currentPath === '/cancellation-policy' ||
+    currentPath === '/cancellation-policy/' ||
+    currentPath === '/refund-and-cancellation' ||
+    currentPath === '/refund-and-cancellation/' ||
+    (typeof window !== 'undefined' && (window.location.hash.toLowerCase() === '#refund' || window.location.hash.toLowerCase() === '#/refund'));
 
   const renderContent = () => {
-    if (isAdminMode) {
-      return <AdminPortal onClose={() => setIsAdminMode(false)} />;
+    // 1. Dedicated System Admin Portal Page Route (/admin)
+    if (isSystemAdminPath) {
+      return <AdminPortal onClose={() => navigateTo('/')} />;
     }
 
+    // 2. Legal Center Pages
+    if (isTermsRoute) {
+      return <LegalPage initialDoc="terms" onNavigate={navigateTo} />;
+    }
+    if (isPrivacyRoute) {
+      return <LegalPage initialDoc="privacy" onNavigate={navigateTo} />;
+    }
+    if (isRefundRoute) {
+      return <LegalPage initialDoc="refund" onNavigate={navigateTo} />;
+    }
+
+    // 3. Public Root Domain Landing Page
     if (!subdomain) {
-      return <LandingPage onOpenAdmin={() => setIsAdminMode(true)} />;
+      return <LandingPage onOpenAdmin={() => navigateTo('/admin')} onNavigate={navigateTo} />;
     }
 
+    // 4. Isolated Workspace Tenant Dashboard
     return <Dashboard />;
   };
 

@@ -11,9 +11,10 @@ import { LandingOnboardingModal } from './landing/LandingOnboardingModal';
 
 interface LandingPageProps {
   onOpenAdmin: () => void;
+  onNavigate?: (path: string) => void;
 }
 
-export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
+export default function LandingPage({ onOpenAdmin, onNavigate }: LandingPageProps) {
   const [tenantName, setTenantName] = useState('');
   const [error, setError] = useState('');
 
@@ -478,7 +479,7 @@ export default function LandingPage({ onOpenAdmin }: LandingPageProps) {
 
       <LandingContact />
 
-      <LandingFooter onOpenAdmin={onOpenAdmin} />
+      <LandingFooter onOpenAdmin={onOpenAdmin} onNavigate={onNavigate} />
 
       <LandingCheckoutModal
         showCheckoutModal={showCheckoutModal}

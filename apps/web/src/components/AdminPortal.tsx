@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tenant, SubscriptionPlanConfig, PendingPayment, RevenueAnalytics } from './admin/types';
 import PasswordModal from './admin/PasswordModal';
 import { AdminHeader } from './admin/AdminHeader';
@@ -148,6 +148,29 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     }
   };
 
+  useEffect(() => {
+    const savedPassword = typeof window !== 'undefined' ? sessionStorage.getItem('procash_admin_pwd') : null;
+    if (savedPassword && !isAuthenticated) {
+      setPassword(savedPassword);
+      setIsLoading(true);
+      fetchAdminData(savedPassword)
+        .then(() => setIsAuthenticated(true))
+        .catch(() => {
+          sessionStorage.removeItem('procash_admin_pwd');
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, []);
+
+  const handleExitAdmin = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('procash_admin_pwd');
+    }
+    setIsAuthenticated(false);
+    setPassword('');
+    onClose();
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password.trim()) {
@@ -160,6 +183,9 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
     try {
       await fetchAdminData(password);
       setIsAuthenticated(true);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('procash_admin_pwd', password);
+      }
     } catch (err: any) {
       setError(err.message || 'Network error occurred.');
     } finally {
@@ -450,7 +476,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
         isLoading={isLoading}
         error={error}
         onSubmit={handleLogin}
-        onClose={onClose}
+        onClose={handleExitAdmin}
       />
     );
   }
@@ -468,7 +494,7 @@ export default function AdminPortal({ onClose }: AdminPortalProps) {
         pendingCount={pendingPayments.length}
         plansCount={subscriptionPlans.length}
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
-        onClose={onClose}
+        onClose={handleExitAdmin}
       />
 
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1.5rem' }}>
